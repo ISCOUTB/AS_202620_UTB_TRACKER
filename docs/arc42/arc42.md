@@ -53,7 +53,7 @@ Estos cinco objetivos son la base del árbol de utilidad (sección 10).
 |--------------|-----------------|---------------------|
 | **Propietario** | Dueño de uno o más vehículos de carga pesada | Llevar el historial completo de sus vehículos, controlar quién edita qué, facturar rápido |
 | **Conductor** | Empleado contratado para manejar el vehículo | Registrar el viaje de forma simple, sin depender de tener internet en el momento |
-| **Equipo de desarrollo** | Geronimo Cadena, Elías Ramos, Mateo Milán, Dilan Gonzales | Construir un sistema mantenible dentro del tiempo del semestre |
+| **Equipo de desarrollo** | Sebastián García, Gerónimo Cadena, Joriel Samir Barros, Mateo Milán | Construir un sistema mantenible dentro del tiempo del semestre |
 | **Docente / evaluador** | Profesor del curso | Verificar que la arquitectura documentada corresponda con lo implementado en el repositorio |
 
 # Architecture Constraints
@@ -112,11 +112,47 @@ del conductor.
 
 ![Diagrama de contexto C4 Nivel 1 - Tractar](images/c4_nivel1_contexto.png)
 
-*(Diagrama generado en Structurizr a partir de `workspace.dsl`. Muestra Propietario y Conductor
+*(Diagrama modelado en Structurizr a partir de `workspace.dsl`. Muestra Propietario y Conductor
 como actores, Tractar como sistema central, y dos sistemas externos: el archivo Excel exportado
 y el almacenamiento local del dispositivo usado para sincronización offline.)*
 
 # Solution Strategy
+
+Esta sección resume las decisiones tecnológicas y de estilo que atraviesan todo el sistema, y
+por qué se tomaron — el detalle completo de cada una vive en su propio ADR bajo `docs/adr/`.
+
+## Decisiones tecnológicas
+
+| Decisión | Motivación |
+|---|---|
+| Backend en Django (Python) | Ya lo maneja el equipo, cumple la restricción de "herramientas dadas por el profesor", y su convención de *apps* encaja de forma natural con un estilo modular sin pelear contra el framework |
+| Persistencia en MySQL | Restricción técnica directa (sección 2.1) |
+| Frontend en HTML servido por el propio backend (sin framework de SPA separado) | Restricción técnica directa; además reduce la superficie de trabajo para un equipo de 4 en un semestre |
+
+## Decisión de estilo arquitectónico
+
+Se eligió **Monolito Modular**: un único desplegable dividido internamente en módulos de
+dominio independientes (`usuarios`, `vehículos`, `viajes`, `facturación`).
+
+La comparación completa contra los otros dos estilos evaluados (capas y hexagonal) está en
+[`docs/matriz_estilos.md`](../matriz_estilos.md), y la decisión formal con alternativas
+descartadas y consecuencias en
+[`docs/adr/0001-estilo-arquitectonico.md`](../adr/0001-estilo-arquitectonico.md) (**ADR-0001**).
+
+En resumen: se descartó *capas* porque la sincronización offline (escenario QS-01) atraviesa
+las tres capas técnicas a la vez, y se descartó *hexagonal* porque el costo de sostener
+puertos y adaptadores no es realista para un equipo de 4 estudiantes en un semestre. El
+monolito modular es el que menos compromisos rotos deja contra las restricciones de la
+sección 2 y los escenarios de calidad de la sección 10.
+
+## Cómo se logran los objetivos de calidad principales
+
+| Objetivo de calidad | Enfoque de solución |
+|---|---|
+| Disponibilidad / offline (QS-01) | Encapsulado dentro del módulo que lo necesita, no disperso en capas técnicas (ver ADR-0001) |
+| Usabilidad (QS-05) | Menos tiempo invertido en indirección arquitectónica = más tiempo para el formulario simple |
+| Seguridad (QS-04) | Autorización a nivel de módulo `facturacion`, contraseñas con hash (Django lo provee por defecto) |
+| Rendimiento (QS-02, QS-03) | Pendiente de detallar en Building Block View (S4/S6); no se resuelve con el estilo, se resuelve con decisiones de infraestructura posteriores |
 
 # Building Block View
 
@@ -254,6 +290,11 @@ Mapping of Building Blocks to Infrastructure
 
 # Architecture Decisions
 
+Las decisiones de arquitectura se documentan como ADR individuales en `docs/adr/`, no en esta
+sección. Índice de decisiones tomadas hasta ahora:
+
+- [ADR-0001](../adr/0001-estilo-arquitectonico.md) — Estilo arquitectónico: Monolito Modular (S3)
+
 # Quality Requirements
 
 ## Quality Requirements Overview
@@ -286,9 +327,12 @@ Utilidad (Tractar)
 ## Quality Scenarios
 
 Se documentan 5 escenarios, uno por rama principal del árbol, en formato
-Fuente–Estímulo–Ambiente–Artefacto–Respuesta–Medida (SEI).
+Fuente–Estímulo–Ambiente–Artefacto–Respuesta–Medida (SEI). Cada uno está enlazado desde su
+aspecto correspondiente en `docs/aspectos.md`.
 
-**QS-01 — Disponibilidad**
+### QS-01 — Disponibilidad
+
+*(Motiva [ADR-0001](../adr/0001-estilo-arquitectonico.md) — ver Solution Strategy)*
 
 | Campo | Descripción |
 |---|---|
@@ -299,7 +343,7 @@ Fuente–Estímulo–Ambiente–Artefacto–Respuesta–Medida (SEI).
 | **Respuesta** | El sistema atiende la solicitud sin caída del servicio |
 | **Medida** | Disponibilidad ≥ 99% del tiempo dentro de la ventana 7am–10pm |
 
-**QS-02 — Rendimiento (tiempo de respuesta)**
+### QS-02 — Rendimiento (tiempo de respuesta)
 
 | Campo | Descripción |
 |---|---|
@@ -310,7 +354,7 @@ Fuente–Estímulo–Ambiente–Artefacto–Respuesta–Medida (SEI).
 | **Respuesta** | La vista carga y queda interactiva |
 | **Medida** | Tiempo de carga ≤ 3 segundos |
 
-**QS-03 — Rendimiento (concurrencia)**
+### QS-03 — Rendimiento (concurrencia)
 
 | Campo | Descripción |
 |---|---|
@@ -321,7 +365,7 @@ Fuente–Estímulo–Ambiente–Artefacto–Respuesta–Medida (SEI).
 | **Respuesta** | El sistema procesa las solicitudes sin degradar el servicio |
 | **Medida** | Soporta al menos 300 usuarios simultáneos sin errores ni caídas |
 
-**QS-04 — Seguridad**
+### QS-04 — Seguridad
 
 | Campo | Descripción |
 |---|---|
@@ -332,7 +376,9 @@ Fuente–Estímulo–Ambiente–Artefacto–Respuesta–Medida (SEI).
 | **Respuesta** | El sistema deniega el acceso y no expone la información |
 | **Medida** | 0% de solicitudes no autorizadas exitosas; contraseñas almacenadas con hash (nunca en texto plano) |
 
-**QS-05 — Usabilidad**
+### QS-05 — Usabilidad
+
+*(Motiva [ADR-0001](../adr/0001-estilo-arquitectonico.md) — ver Solution Strategy)*
 
 | Campo | Descripción |
 |---|---|
@@ -342,11 +388,6 @@ Fuente–Estímulo–Ambiente–Artefacto–Respuesta–Medida (SEI).
 | **Artefacto** | Formulario de registro de viaje |
 | **Respuesta** | El usuario completa el formulario correctamente |
 | **Medida** | Completa el registro en ≤ 3 intentos y en menos de 2 minutos, sin asistencia externa |
-
-Estos escenarios son la línea base para el reto de corte: cualquier decisión arquitectónica
-posterior (elección de stack, patrón offline-first, esquema de autenticación, etc.) debe poder
-justificarse contra QS-01 a QS-05. Cada uno está enlazado desde su aspecto correspondiente en
-`docs/aspectos.md`.
 
 # Risks and Technical Debts
 

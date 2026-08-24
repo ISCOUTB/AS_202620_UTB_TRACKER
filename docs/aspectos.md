@@ -60,17 +60,17 @@ columnas quedan en `—` porque todavía no existen ADRs, código ni pruebas.
 
 | ID | Aspecto | Requisito | C4 | ADR | Código | Pruebas | Evidencia |
 |----|---------|-----------|----|----|--------|---------|-----------|
-| A-01 | Formularios intuitivos para conductores y propietarios | Usabilidad para usuarios con poca experiencia tecnológica — [QS-05](arc42/10_requisitos_calidad.md#qs-05--usabilidad) | C1: Usuario ↔ Tu sistema (definido, S2) — C2/C3: pendiente (S4, S6) | — pendiente, se anota si aplica | — | — | — |
-| A-02 | Acceso al sistema durante la jornada laboral | Disponibilidad ≥99% en horario 7am–10pm — [QS-01](arc42/10_requisitos_calidad.md#qs-01--disponibilidad) | C1: Usuario ↔ Tu sistema (definido, S2) — C2/C3: pendiente (S4, S6) | — pendiente, se anota si aplica | — | — | — |
-| A-03 | Respuesta rápida de la interfaz en dispositivos de gama baja | Tiempo de carga ≤3s en dispositivo de 2GB RAM — [QS-02](arc42/10_requisitos_calidad.md#qs-02--rendimiento-tiempo-de-respuesta) | C1: Usuario ↔ Tu sistema (definido, S2) — C2/C3: pendiente (S4, S6) | — pendiente, se anota si aplica | — | — | — |
-| A-04 | Estabilidad del sistema con muchos usuarios simultáneos | Soporta ≥300 usuarios concurrentes sin caídas — [QS-03](arc42/10_requisitos_calidad.md#qs-03--rendimiento-concurrencia) | C1: Usuario ↔ Tu sistema (definido, S2) — C2/C3: pendiente (S4, S6) | — pendiente, se anota si aplica | — | — | — |
-| A-05 | Confidencialidad de la información financiera de cada propietario | 0% de accesos no autorizados exitosos; contraseñas con hash — [QS-04](arc42/10_requisitos_calidad.md#qs-04--seguridad) | C1: Usuario ↔ Tu sistema (definido, S2) — C2/C3: pendiente (S4, S6) | — pendiente, se anota si aplica | — | — | — |
+| A-01 | Formularios intuitivos para conductores y propietarios | Usabilidad para usuarios con poca experiencia tecnológica — [QS-05](arc42.md#qs-05--usabilidad) | C1: Usuario ↔ Tu sistema (definido, S2) — C2/C3: pendiente (S4, S6) | [ADR-0001](adr/0001-estilo-arquitectonico.md) | apps/usuarios (esqueleto) | health check (S3) | — |
+| A-02 | Acceso al sistema durante la jornada laboral | Disponibilidad ≥99% en horario 7am–10pm — [QS-01](arc42.md#qs-01--disponibilidad) | C1: Usuario ↔ Tu sistema (definido, S2) — C2/C3: pendiente (S4, S6) | [ADR-0001](adr/0001-estilo-arquitectonico.md) | apps/viajes (esqueleto) | health check (S3) | — |
+| A-03 | Respuesta rápida de la interfaz en dispositivos de gama baja | Tiempo de carga ≤3s en dispositivo de 2GB RAM — [QS-02](arc42.md#qs-02--rendimiento-tiempo-de-respuesta) | C1: Usuario ↔ Tu sistema (definido, S2) — C2/C3: pendiente (S4, S6) | [ADR-0001](adr/0001-estilo-arquitectonico.md) | — | — | — |
+| A-04 | Estabilidad del sistema con muchos usuarios simultáneos | Soporta ≥300 usuarios concurrentes sin caídas — [QS-03](arc42.md#qs-03--rendimiento-concurrencia) | C1: Usuario ↔ Tu sistema (definido, S2) — C2/C3: pendiente (S4, S6) | [ADR-0001](adr/0001-estilo-arquitectonico.md) | — | — | — |
+| A-05 | Confidencialidad de la información financiera de cada propietario | 0% de accesos no autorizados exitosos; contraseñas con hash — [QS-04](arc42.md#qs-04--seguridad) | C1: Usuario ↔ Tu sistema (definido, S2) — C2/C3: pendiente (S4, S6) | [ADR-0001](adr/0001-estilo-arquitectonico.md) | apps/facturacion (esqueleto) | health check (S3) | — |
 
 ---
 
 ## Especificar (escenarios medibles)
 
-**Escenario QS-05 — Usabilidad** *(A-01, definido en `docs/arc42/10_requisitos_calidad.md`, sección 10.2)*
+**Escenario QS-05 — Usabilidad** *(A-01, definido en `docs/arc42.md`, sección 10.2)*
 
 | Campo | Descripción |
 |---|---|
@@ -126,10 +126,4 @@ columnas quedan en `—` porque todavía no existen ADRs, código ni pruebas.
 | **Medida** | 0% de solicitudes no autorizadas exitosas; contraseñas almacenadas con hash (nunca en texto plano) |
 
 Cada escenario queda como línea base verificable para su aspecto: cuando exista implementación
-y pruebas, se contrastan contra la medida correspondiente para declarar el aspecto como cumplido.C2/C3: pendiente (S4, S6) | — pendiente, se anota si aplica | — | — | — |
-
-## Especificar (pendiente de escenario medible)
-
-Falta redactar el escenario de calidad en formato de seis partes (estímulo, fuente, entorno,
-artefacto, respuesta, medida) para A-01. Se completa cuando trabajemos la sección 10
-(Requisitos de calidad) del arc42.
+y pruebas, se contrastan contra la medida correspondiente para declarar el aspecto como cumplido.
