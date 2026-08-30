@@ -1,1 +1,44 @@
+# Entornos virtuales
 venv/
+.venv/
+env/
+ENV/
+
+# Archivos de configuración local / Variables de entorno
+.env
+.env.*
+*.env
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+doc/build/
+
+# Caché de Testing / Cobertura (Pytest)
+.pytest_cache/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# IDEs y Editores de código
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+.DS_Store
+
+# Base de datos local (desarrollo)
+*.sqlite3
+*.db

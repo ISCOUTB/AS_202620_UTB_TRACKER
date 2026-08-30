@@ -1,48 +1,63 @@
-# Tractar
+# UTB Tracker
 
-Sistema de registro de viajes para el gremio de camioneros de Cartagena. Ver `docs/arc42/`
-para la documentación de arquitectura completa.
+Sistema de control de inventario y gestión de préstamos de recursos electrónicos y de laboratorios para la Universidad Tecnológica de Bolívar (UTB).
+
+Ver `docs/arc42/` para la documentación completa del diseño de arquitectura.
+
+---
 
 ## Cómo arrancar (un solo comando)
 
+Para levantar el proyecto de forma automática, ejecuta:
+
 ```bash
+chmod +x run.sh  # (Opcional, en entornos Unix para dar permisos de ejecución)
 ./run.sh
 ```
 
-Esto crea el entorno virtual si no existe, instala las dependencias, aplica migraciones,
-corre las pruebas y levanta el servidor en `http://127.0.0.1:8000`.
+Este script:
+1. Crea el entorno virtual (`venv`) si no existe.
+2. Instala las dependencias necesarias de FastAPI, Pytest y HTTPX.
+3. Ejecuta las pruebas unitarias automatizadas.
+4. Inicia el servidor de desarrollo local en `http://127.0.0.1:8000`.
 
-Para confirmar que el esqueleto responde:
+### Confirmar funcionamiento del esqueleto
+Una vez levantado el servidor, el endpoint de salud debe responder:
 
 ```bash
 curl http://127.0.0.1:8000/salud/
-# {"status": "ok", "proyecto": "Tractar"}
+# Respuesta esperada: {"status": "ok", "proyecto": "UTB Tracker"}
 ```
 
-## Estructura (Monolito Modular)
+---
 
-La organización del código sigue el estilo decidido en
-[`docs/adr/0001-estilo-arquitectonico.md`](docs/adr/0001-estilo-arquitectonico.md):
-módulos de dominio independientes dentro de un único desplegable.
+## Estructura del Código (Monolito Modular)
+
+La estructura del código sigue el estilo arquitectónico de **Monolito Modular** sobre **FastAPI**, tal como se define en el [ADR-0001](docs/adr/0001-estilo-arquitectonico.md). El código se divide en módulos de dominio independientes bajo la carpeta `app/`:
 
 ```
-config/             # configuración del proyecto Django (settings, urls)
-apps/
-  core/              # infraestructura transversal (health check, utilidades)
-  usuarios/          # propietarios y conductores
-  vehiculos/         # vehículos y afiliación de conductores
-  viajes/            # registro y estado de viajes
-  facturacion/       # pagos/no pagos y exportación a Excel
+app/
+  main.py              # Inicialización de FastAPI, configuración de middlewares y montaje de rutas
+  routers/
+    __init__.py
+    users.py           # Gestión de usuarios, autenticación y roles (A-01)
+    loans.py           # Registro de préstamos y devoluciones de equipos (A-02)
+    resources.py       # Catálogo de objetos electrónicos y salones (A-05)
+  tests/
+    __init__.py
+    test_main.py       # Pruebas automatizadas (valida arranque y salud del servidor)
 ```
 
-Cada módulo en `apps/` es la frontera de un aspecto (ver `docs/aspectos.md`). Todavía no
-tienen modelos ni lógica de negocio: eso se implementa en las semanas siguientes según el
-cronograma del curso — esta entrega (S3) solo deja la fontanería lista.
+Cada archivo dentro de `routers/` representa la frontera física de un aspecto de calidad del dominio de negocio (detallados en [aspectos.md](docs/aspectos.md)). Actualmente, no contienen lógica de negocio compleja, permitiendo que la fase de desarrollo inicie directamente sobre la arquitectura propuesta.
 
-## Pruebas
+---
+
+## Pruebas Automatizadas
+
+Las pruebas unitarias se ejecutan de forma automática al correr `./run.sh`, pero si deseas ejecutarlas de forma independiente con el entorno virtual activo, puedes correr:
 
 ```bash
-./venv/bin/python manage.py test
+python -m pytest app/tests/
 ```
 
-Actualmente hay 1 prueba: confirma que el servidor arranca y el endpoint de salud responde.
+Actualmente, el repositorio cuenta con una prueba unitaria inicial en verde que verifica el endpoint `/salud/` de forma integral usando el `TestClient` de FastAPI.

@@ -15,35 +15,30 @@ Template Version 9.0-EN. (based upon AsciiDoc version), July 2025
 Created, maintained and © by Dr. Peter Hruschka, Dr. Gernot Starke and
 contributors. See <https://arc42.org>.
 
-# Introduction and Goals
+# Introducción y objetivos
 
-## Requirements Overview
+## Descripción general de los requisitos
 
-Tractar es un sistema web dirigido al gremio de camioneros de Cartagena. Resuelve un problema
-concreto: hoy el registro de viajes de carga pesada se hace en papel, el conductor se lo entrega
-al propietario y este transcribe manualmente los datos para llevar historial y facturar. Ese
-proceso consume entre 1 y 2 horas por viaje y depende de que el papel no se pierda ni se dañe.
+UTB Tracker es un sistema movil dirigido a los auxiliares de planta de la UTB. Este sistema ayudara a mantener un registro de los objetos electronicos de cada salon de la universidad como video beams, computadores, aires acondicionados, etc. Esto para saber el estado actual de los aparatos, su ubicación y funcionalidad.
 
-Tractar reemplaza ese flujo por una aplicación web donde propietarios y conductores registran los
-viajes directamente, con soporte para seguir trabajando sin conexión y sincronizar los cambios
-cuando el dispositivo recupera internet.
+Este sistema busca ayudar a los auxiliares de planta y de laboratorio a la hora de que se presten aparatos a profesores o estudiantes como video beams asi manteniendo un registro de a quien se presto y a que salon fue llevado cada aparato. Ademas mantiene un registro de la funcionalidad de los aparatos de cada salon para saber si por ejemplo el computador numero 24 del salon A1-304 esta dañado y se debe someter a mantenimiento.
 
-El sistema está dirigido principalmente a propietarios independientes (no a grandes empresas de
-transporte todavía).
+Finalmente el sistema esta dirigido tanto a auxiliares de planta y laboratorio asi como a profesores y estudiantes interesados por prestar aparatos electronicos de los salones o de los laboratorios de la UTB.
 
-## Quality Goals
 
-Los objetivos de calidad se priorizaron a partir de las entrevistas con propietarios y de las
-condiciones reales de trabajo del conductor (en ruta, con conectividad intermitente, muchas veces
-usando un teléfono de gama baja que le entrega el propietario).
+
+## Objetivos de calidad
+
+Los objetivos de calidad se derivaron directamente de los problemas que UTB Tracker busca resolver
+(sección 2 del documento de idea) y de las reglas de negocio que dependen de que el sistema sea confiable.
 
 | # | Objetivo de calidad | Motivación |
 |---|---|---|
-| 1 | **Disponibilidad** | El conductor debe poder registrar el viaje apenas termina, no varias horas después. |
-| 2 | **Usabilidad** | Los usuarios (incluyendo adultos mayores) tienen conocimiento tecnológico limitado. |
-| 3 | **Seguridad** | El historial de viajes es información financiera sensible; solo el propietario debe verla completa. |
-| 4 | **Rendimiento** | El sistema debe responder rápido incluso en dispositivos de gama baja y con muchos usuarios a la vez. |
-| 5 | **Portabilidad** | Debe funcionar en el rango real de dispositivos que usan los conductores (Android 8+, 2GB RAM). |
+| 1 | **Confiabilidad de los datos** | El problema central que resuelve el sistema es la falta de un registro confiable del estado de cada recurso; si el estado (disponible/prestado/dañado) puede quedar inconsistente, el sistema no resuelve nada mejor que el proceso actual. |
+| 2 | **Usabilidad** | El auxiliar de planta necesita registrar préstamos rápido, sin fricción, mientras atiende a varias personas; el estudiante/profesor necesita pedir un préstamo sin pasos innecesarios. |
+| 3 | **Seguridad** | Hay dos roles con permisos distintos (administrador vs. usuario UTB); un usuario no debería poder alterar el catálogo ni el estado de recursos que no le corresponden. |
+| 4 | **Disponibilidad** | El sistema debe estar accesible durante el horario en que opera el campus, que es cuando ocurren los préstamos y devoluciones. |
+| 5 | **Rendimiento** | La app debe responder rápido en los momentos de mayor uso (por ejemplo, inicio de semestre, cuando muchos profesores piden equipos a la vez). |
 
 Estos cinco objetivos son la base del árbol de utilidad (sección 10).
 
@@ -51,72 +46,68 @@ Estos cinco objetivos son la base del árbol de utilidad (sección 10).
 
 | Role/Name | Contact | Expectations |
 |--------------|-----------------|---------------------|
-| **Propietario** | Dueño de uno o más vehículos de carga pesada | Llevar el historial completo de sus vehículos, controlar quién edita qué, facturar rápido |
-| **Conductor** | Empleado contratado para manejar el vehículo | Registrar el viaje de forma simple, sin depender de tener internet en el momento |
+| **Auxiliar de planta** | Trabajador de la UTB encargado de apoyar el mantenimiento, la operación y el cuidado de la infraestructura física o de los laboratorios y talleres del campus | Llevar el historial de prestamos y ubicación de cada objeto prestado y tambien la disponibilidad y el estado de los objetos de los salones y laboratorios |
+| **Profesores/Estudiantes** | Personas interesadas en hacer un prestamo de algun objeto | Solicitar el prestamo mediante la aplicación y recibir una confirmación mediante esta misma |
 | **Equipo de desarrollo** | Sebastián García, Gerónimo Cadena, Joriel Samir Barros, Mateo Milán | Construir un sistema mantenible dentro del tiempo del semestre |
 | **Docente / evaluador** | Profesor del curso | Verificar que la arquitectura documentada corresponda con lo implementado en el repositorio |
 
-# Architecture Constraints
+# Restricciones arquitectónicas
 
 Cada restricción se documenta con su justificación: de dónde sale y qué implica para el diseño.
 No son preferencias del equipo, son condiciones que ya vienen dadas y que la arquitectura tiene
-que respetar.
+que respetar. Las decisiones tecnológicas que el equipo sí eligió (Flutter, FastAPI, PostgreSQL)
+no van aquí — están justificadas en la sección "Solution Strategy" y en `docs/adr/0002-*.md`.
 
 **Restricciones técnicas**
 
 | Restricción | Origen | Implicación arquitectónica |
 |---|---|---|
-| Interfaz web construida con HTML y base de datos MySQL | Definida por el curso / recursos disponibles del equipo | El backend debe exponer una API consumible desde un frontend web estándar; el modelo de datos se diseña sobre un motor relacional |
-| Solo pueden usarse las librerías/herramientas dadas por el profesor | Condición del curso | Limita las opciones de frameworks; hay que validar cada dependencia antes de adoptarla |
-| Compatibilidad con Android 8 en adelante, mínimo 2GB de RAM | Los conductores usan smartphones de gama baja que muchas veces les entrega el propietario | El cliente no puede ser una app pesada; se prioriza una web app ligera en vez de nativa, y hay que evitar librerías de frontend que consuman mucha memoria |
-| Debe funcionar sin conexión y sincronizar al recuperar internet | El conductor está en ruta, con conectividad intermitente (RNF derivado del alcance del producto) | Obliga a un patrón de almacenamiento local en el cliente + sincronización diferida, en vez de un modelo que asuma conexión permanente |
+| Solo pueden usarse las librerías/herramientas dadas o aprobadas por el profesor | Condición del curso | Limita las opciones de frameworks; cada dependencia nueva se valida antes de adoptarla |
+| El backend debe exponerse como API consumible por un cliente móvil separado | El cliente es una app Flutter, no una interfaz servida por el propio backend | Backend y cliente quedan desacoplados por un contrato HTTP/JSON; cualquier cambio de ese contrato afecta a los dos lados a la vez |
+| Los cambios de esquema de base de datos deben quedar versionados | El equipo usa PostgreSQL con Alembic para migraciones | El modelo de datos no se modifica "a mano" en producción; cada cambio de esquema pasa por una migración registrada |
 
 **Restricciones organizacionales**
 
 | Restricción | Origen | Implicación arquitectónica |
 |---|---|---|
-| El proyecto debe estar terminado dentro del semestre académico | Calendario del curso | Favorece una arquitectura simple y modular sobre una solución sobre-diseñada; no hay tiempo para reescrituras grandes |
+| El proyecto debe estar terminado dentro del semestre académico | Calendario del curso | Favorece una arquitectura simple y modular sobre una solución sobre-diseñada |
 | Equipo de 4 personas, todas simultáneamente estudiantes de otras materias | Composición real del equipo | La arquitectura debe permitir trabajo en paralelo sin choques constantes (separación clara de módulos/responsabilidades) |
 
 **Restricciones legales / normativas**
 
 | Restricción | Origen | Implicación arquitectónica |
 |---|---|---|
-| Cumplimiento de la Ley de Protección de Datos Personales (Ley 1581 de 2012, Colombia) | Los usuarios registran datos personales (nombre, contacto, contraseña) y datos financieros de sus viajes | Las contraseñas deben resguardarse cifradas/hasheadas, y el acceso a los datos finales de facturación debe restringirse solo al propietario correspondiente (no a otros propietarios ni a conductores) |
+| Cumplimiento de la Ley de Protección de Datos Personales (Ley 1581 de 2012, Colombia) | El sistema registra datos personales de usuarios (nombre, rol) y trazabilidad de sus préstamos | El acceso a los datos de un usuario debe restringirse según su rol (administrador vs. usuario UTB); las credenciales (JWT) deben manejarse de forma segura |
 
-# Context and Scope
+# Contexto y alcance
 
-## Business Context
+## Contexto de negocio
 
-Tractar se sitúa entre dos roles humanos que hoy se comunican en papel: el **propietario** del
-vehículo y el **conductor** que lo opera. El sistema reemplaza ese intercambio físico por
-registro digital directo de cada uno.
+UTB Tracker se situa en un contexto donde los **auxiliares de planta** de la UTB no tienen una herramienta que les facilite el registro de prestamos de objetos electronicos y de laboratorio ademas de un sistema para saber el estado de estos mismos. De modo que nuestro sistema busca ayudarles en esta labor con una solucion digital 
+
 
 | Comunicación | Descripción | Formato / canal |
 |---|---|---|
-| Propietario → Tractar | Crea vehículos, afilia/desvincula conductores, define datos guía (trayectos y valores frecuentes), edita y bloquea formularios, marca viajes como pagados/no pagados, exporta historial | Interfaz web, HTTPS |
-| Conductor → Tractar | Se afilia a un vehículo (con confirmación del propietario), llena el formulario de cada viaje, actualiza el estado del vehículo | Interfaz web/móvil, HTTPS, con cola local si no hay conexión |
-| Tractar → Archivo Excel | Genera el documento de historial para que el propietario facture | Exportación bajo demanda |
+| Auxiliar de planta → UTB Tracker | Registra prestamos de objetos, actualiza estado de los objetos, crea nuevos objetos, elimina objetos, gestiona usuarios | Interfaz movil, HTTPS |
+| Estudiante/Profesor → UTB Tracker | Solicita prestamos de objetos, deja comentarios de los objetos | Interfaz movil, HTTPS |
+| UTB Tracker → Correo electronico | Envía correos automáticos de confirmación al solicitar un préstamo, recordatorios de devolución de equipos atrasados a estudiantes/profesores, o notificaciones a auxiliares sobre reportes de daños. | SMTP / HTML |
 
 No hay integración con sistemas externos de terceros (por ejemplo, pasarelas de pago o sistemas
 de otras empresas): el alcance actual es interno entre estos dos roles y el propio sistema.
 
-## Technical Context
+## Contexto técnico
 
-El conductor accede normalmente desde un smartphone de gama baja/media, muchas veces sin conexión
-constante; el propietario accede típicamente desde un navegador de escritorio o móvil con mejor
-conectividad. Esta diferencia es la que obliga al sistema a soportar edición offline en el lado
-del conductor.
+El auxiliar de planta accede normalmente desde la app móvil, muchas veces con conexión intermitente en el campus; el estudiante o profesor accede desde dispositivos con mejor conectividad. Esta diferencia obliga a la aplicación móvil a tolerar fallas temporales de conexión.
+
 
 **Diagrama de contexto (C4 Nivel 1)**
 
-![Diagrama de contexto C4 Nivel 1 - Tractar](images/c4_nivel1_contexto.png)
+![Diagrama de contexto C4 Nivel 1 - Tractar](c4/c4_nivel1.md)
 
-*(Diagrama modelado en Structurizr a partir de `workspace.dsl`. Muestra Propietario y Conductor
-como actores, Tractar como sistema central, y dos sistemas externos: el archivo Excel exportado
-y el almacenamiento local del dispositivo usado para sincronización offline.)*
+*(Diagrama modelado utilizando la extension de *Mermaid* para VSCode. Muestra Auxiliar de planta y usuario UTB
+como actores, UTB Tracker como sistema central, y un sistema externo: el sistema de correo electronico.)*
 
-# Solution Strategy
+# Estrategia de solución
 
 Esta sección resume las decisiones tecnológicas y de estilo que atraviesan todo el sistema, y
 por qué se tomaron — el detalle completo de cada una vive en su propio ADR bajo `docs/adr/`.
@@ -125,48 +116,44 @@ por qué se tomaron — el detalle completo de cada una vive en su propio ADR ba
 
 | Decisión | Motivación |
 |---|---|
-| Backend en Django (Python) | Ya lo maneja el equipo, cumple la restricción de "herramientas dadas por el profesor", y su convención de *apps* encaja de forma natural con un estilo modular sin pelear contra el framework |
-| Persistencia en MySQL | Restricción técnica directa (sección 2.1) |
-| Frontend en HTML servido por el propio backend (sin framework de SPA separado) | Restricción técnica directa; además reduce la superficie de trabajo para un equipo de 4 en un semestre |
+| Backend en FastAPI (Python) | Proporciona un desarrollo rápido, tipado estático con Pydantic para validación automática en los formularios (crucial para la usabilidad de QS-05) y documentación interactiva nativa (Swagger/OpenAPI). Se ejecuta mediante Uvicorn. |
+| Persistencia en SQL (SQLAlchemy / Alembic) | Garantiza la integridad de las transacciones de préstamos mediante restricciones de clave foránea y transacciones ACID. Alembic maneja las migraciones de forma estructurada. |
+| Arquitectura Monolítica Modular | Permite a los 4 desarrolladores trabajar en paralelo en sus propios módulos de dominio (`users`, `loans`, `resources`) bajo `app/routers/` reduciendo conflictos en Git y manteniendo fronteras claras. |
 
 ## Decisión de estilo arquitectónico
 
 Se eligió **Monolito Modular**: un único desplegable dividido internamente en módulos de
-dominio independientes (`usuarios`, `vehículos`, `viajes`, `facturación`).
+dominio independientes (`users`, `loans`, `resources`).
 
 La comparación completa contra los otros dos estilos evaluados (capas y hexagonal) está en
 [`docs/matriz_estilos.md`](../matriz_estilos.md), y la decisión formal con alternativas
 descartadas y consecuencias en
 [`docs/adr/0001-estilo-arquitectonico.md`](../adr/0001-estilo-arquitectonico.md) (**ADR-0001**).
 
-En resumen: se descartó *capas* porque la sincronización offline (escenario QS-01) atraviesa
-las tres capas técnicas a la vez, y se descartó *hexagonal* porque el costo de sostener
-puertos y adaptadores no es realista para un equipo de 4 estudiantes en un semestre. El
-monolito modular es el que menos compromisos rotos deja contra las restricciones de la
-sección 2 y los escenarios de calidad de la sección 10.
+En resumen: se descartó *capas* porque el acoplamiento técnico dificulta que el equipo trabaje en paralelo, y se descartó *hexagonal* porque el exceso de indirección y andamiaje (puertos y adaptadores) consume demasiado tiempo valioso del semestre académico. El monolito modular en FastAPI ofrece el balance ideal entre límites claros de dominio y velocidad de desarrollo.
 
 ## Cómo se logran los objetivos de calidad principales
 
 | Objetivo de calidad | Enfoque de solución |
 |---|---|
-| Disponibilidad / offline (QS-01) | Encapsulado dentro del módulo que lo necesita, no disperso en capas técnicas (ver ADR-0001) |
-| Usabilidad (QS-05) | Menos tiempo invertido en indirección arquitectónica = más tiempo para el formulario simple |
-| Seguridad (QS-04) | Autorización a nivel de módulo `facturacion`, contraseñas con hash (Django lo provee por defecto) |
-| Rendimiento (QS-02, QS-03) | Pendiente de detallar en Building Block View (S4/S6); no se resuelve con el estilo, se resuelve con decisiones de infraestructura posteriores |
+| Disponibilidad / rendimiento (QS-01) | La asincronía nativa de FastAPI (utilizando endpoints `async def`) optimiza la concurrencia y los tiempos de respuesta del servidor frente a alta demanda en el campus. |
+| Usabilidad (QS-05) | Al evitar indirección arquitectónica compleja, el equipo puede enfocarse en interfaces sencillas y en la validación automatizada en tiempo real que provee Pydantic. |
+| Seguridad / Integridad (QS-03, QS-04) | Uso de dependencias de FastAPI (`Depends`) para inyectar políticas de autorización de forma limpia a nivel de router. Las contraseñas se almacenan cifradas con `bcrypt` (en lugar de texto plano). |
+| Integridad de los Datos (QS-02) | Manejo de transacciones ACID nativas a través del ORM SQLAlchemy conectado a la base de datos SQL. |
 
-# Building Block View
+# Estructura del sistema
 
-## Whitebox Overall System
+## Vista general del sistema
 
-***\<Overview Diagram\>***
+***\<Diagrama general\>***
 
-Motivation  
+**Motivación**  
 *\<text explanation\>*
 
-Contained Building Blocks  
+**Contained Building Blocks**  
 *\<Description of contained building block (black boxes)\>*
 
-Important Interfaces  
+**Interfaces importantes**  
 *\<Description of important interfaces\>*
 
 ### \<Name black box 1\>
@@ -288,43 +275,43 @@ Mapping of Building Blocks to Infrastructure
 
 *\<explanation\>*
 
-# Architecture Decisions
+# Decisiones arquitectónicas
 
 Las decisiones de arquitectura se documentan como ADR individuales en `docs/adr/`, no en esta
 sección. Índice de decisiones tomadas hasta ahora:
 
 - [ADR-0001](../adr/0001-estilo-arquitectonico.md) — Estilo arquitectónico: Monolito Modular (S3)
 
-# Quality Requirements
+# Requisitos de calidad
 
-## Quality Requirements Overview
+## Descripción general de los requisitos de calidad
 
-El árbol parte de los cinco objetivos de calidad definidos en la sección "Quality Goals". Cada
-rama se desglosa en atributos concretos y se prioriza con dos ejes: **importancia para el
+El árbol parte de los cinco objetivos de calidad definidos en la sección "Introducción y objetivos".
+Cada rama se desglosa en atributos concretos y se prioriza con dos ejes: **importancia para el
 negocio** y **dificultad técnica de lograrlo** (Alta/Media/Baja, Alta/Media/Baja).
 
 ```
-Utilidad (Tractar)
+Utilidad (UTB Tracker)
 │
-├── Disponibilidad
-│   └── Sistema accesible en horario laboral del conductor (7am-10pm)      [Alta / Media]
-│
-├── Rendimiento
-│   ├── Tiempo de carga de la interfaz                                     [Alta / Media]
-│   └── Soporte de usuarios concurrentes                                   [Alta / Alta]
-│
-├── Seguridad
-│   ├── Protección de contraseñas                                         [Alta / Baja]
-│   └── Confidencialidad de datos de facturación entre propietarios       [Alta / Media]
+├── Confiabilidad de los datos
+│   └── El sistema le da la confianza a quien lo usa de que el estado de los objetos (Prestado/funcionando/dañado) es correcto en todo momento      [Alta / Media]
 │
 ├── Usabilidad
-│   └── Formulario de viaje utilizable por adultos mayores / poco expertos [Alta / Media]
+│   ├── Necesita ser rapida e intuitiva para el auxiliar de planta a la hora de registrar un prestamo, devolverlo o registrar daños. [Alta / Media]
+│   └── Necesita ser rapida e intuitiva para los docentes/estudiantes a la hora de pedir prestamos de forma concurrente.                       [Alta / Media]
 │
-└── Portabilidad
-    └── Funcionamiento en dispositivos de gama baja (Android 8+, 2GB RAM)  [Media / Media]
+├── Seguridad
+│   ├── Proteccion de usuarios. Solo el usuario y el administrador pueden ingresar al sistema y cada uno tiene distintos permisos                  [Alta / Alta]
+│   └── Confidencialidad de datos de facturación entre propietarios       [Alta / Media]
+│
+├── Disponibilidad
+│   └── El sistema debe estar disponible en los horarios donde se encuentran trabajando los auxiliares de planta     [Media / Baja]
+│
+└── Rendimiento
+    └── El sistema debe poder soportar varias solicitudes a la vez y responder en un tiempo razonable [Alta / Media]
 ```
 
-## Quality Scenarios
+## Escenarios de calidad
 
 Se documentan 5 escenarios, uno por rama principal del árbol, en formato
 Fuente–Estímulo–Ambiente–Artefacto–Respuesta–Medida (SEI). Cada uno está enlazado desde su
@@ -332,25 +319,25 @@ aspecto correspondiente en `docs/aspectos.md`.
 
 ### QS-01 — Disponibilidad
 
-*(Motiva [ADR-0001](../adr/0001-estilo-arquitectonico.md) — ver Solution Strategy)*
+
 
 | Campo | Descripción |
 |---|---|
-| **Fuente** | Conductor o propietario |
+| **Fuente** | Auxiliar o profesor/estudiante |
 | **Estímulo** | Intenta acceder al sistema |
-| **Ambiente** | Horario laboral habitual (7:00 a.m. – 10:00 p.m.) |
-| **Artefacto** | Servicio web de Tractar |
+| **Ambiente** | Horario habitual del campus (7:00 a.m. – 7:00 p.m.) |
+| **Artefacto** | Servicio movil de UTB Tracker |
 | **Respuesta** | El sistema atiende la solicitud sin caída del servicio |
-| **Medida** | Disponibilidad ≥ 99% del tiempo dentro de la ventana 7am–10pm |
+| **Medida** | Disponibilidad ≥ 99% del tiempo dentro de la ventana 7am–7pm |
 
 ### QS-02 — Rendimiento (tiempo de respuesta)
 
 | Campo | Descripción |
 |---|---|
-| **Fuente** | Usuario (propietario o conductor) |
+| **Fuente** | Auxiliar o profesor/estudiante |
 | **Estímulo** | Abre la aplicación o navega a una nueva vista |
-| **Ambiente** | Operación normal, dispositivo de gama baja (2GB RAM) |
-| **Artefacto** | Interfaz web de Tractar |
+| **Ambiente** | Operación normal, dispositivo conectado (probablemente) al internet del campus |
+| **Artefacto** | Servicio movil de UTB Tracker |
 | **Respuesta** | La vista carga y queda interactiva |
 | **Medida** | Tiempo de carga ≤ 3 segundos |
 
@@ -358,10 +345,10 @@ aspecto correspondiente en `docs/aspectos.md`.
 
 | Campo | Descripción |
 |---|---|
-| **Fuente** | Conjunto de usuarios del sistema |
+| **Fuente** | Auxiliar o profesor/estudiante |
 | **Estímulo** | Múltiples usuarios usan el sistema al mismo tiempo (hora pico) |
 | **Ambiente** | Operación normal |
-| **Artefacto** | Backend / API de Tractar |
+| **Artefacto** | Backend / API de UTB Tracker |
 | **Respuesta** | El sistema procesa las solicitudes sin degradar el servicio |
 | **Medida** | Soporta al menos 300 usuarios simultáneos sin errores ni caídas |
 
@@ -369,31 +356,29 @@ aspecto correspondiente en `docs/aspectos.md`.
 
 | Campo | Descripción |
 |---|---|
-| **Fuente** | Propietario distinto al dueño de los datos, o atacante externo |
-| **Estímulo** | Intenta acceder al historial de facturación de un vehículo que no le pertenece |
+| **Fuente** | Usuario sin rol de auxiliar/administrador, o un atacante externo |
+| **Estímulo** | Intenta registrar, modificar o eliminar un recurso del catálogo (objeto o salón) |
 | **Ambiente** | Operación normal del sistema |
-| **Artefacto** | Módulo de autorización / datos de facturación |
-| **Respuesta** | El sistema deniega el acceso y no expone la información |
-| **Medida** | 0% de solicitudes no autorizadas exitosas; contraseñas almacenadas con hash (nunca en texto plano) |
+| **Artefacto** | Módulo de autorización / API de gestión de recursos |
+| **Respuesta** | El sistema bloquea la acción, deniega el acceso y no altera la base de datos |
+| **Medida** | 0% de operaciones de modificación no autorizadas permitidas; tokens de sesión (JWT) firmados de forma segura |
 
 ### QS-05 — Usabilidad
 
-*(Motiva [ADR-0001](../adr/0001-estilo-arquitectonico.md) — ver Solution Strategy)*
-
 | Campo | Descripción |
 |---|---|
-| **Fuente** | Conductor con conocimiento tecnológico limitado (incluye adultos mayores) |
-| **Estímulo** | Debe registrar un viaje nuevo por primera vez, sin capacitación previa |
-| **Ambiente** | Uso normal en campo |
-| **Artefacto** | Formulario de registro de viaje |
-| **Respuesta** | El usuario completa el formulario correctamente |
-| **Medida** | Completa el registro en ≤ 3 intentos y en menos de 2 minutos, sin asistencia externa |
+| **Fuente** | Auxiliar de planta / laboratorio |
+| **Estímulo** | Debe registrar el préstamo de un equipo o reportar un daño por primera vez, sin capacitación previa |
+| **Ambiente** | Operación normal en el campus (con usuarios en fila para atención) |
+| **Artefacto** | Formulario de registro de préstamo o daño en la app móvil |
+| **Respuesta** | El auxiliar completa la operación correctamente |
+| **Medida** | Completa el registro del préstamo o reporte en menos de 1 minuto y en su primer intento, sin cometer errores críticos |
 
-# Risks and Technical Debts
+# Riesgos y deudas técnicas
 
-# Glossary
+# Glosario
 
-| Term | Definition |
+| Término | Definición |
 |--------------|--------------------|
 | *\<Term-1\>* | *\<definition-1\>* |
 | *\<Term-2\>* | *\<definition-2\>* |

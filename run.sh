@@ -1,22 +1,33 @@
-#!/usr/bin/env bash
-# Un solo comando para levantar Tractar desde cero: crea el entorno
-# virtual si no existe, instala dependencias, migra y corre las pruebas
-# antes de arrancar el servidor de desarrollo.
+#!/bin/bash
+
+# Terminar en caso de error
 set -e
 
+echo "=== Levantando Entorno de UTB Tracker ==="
+
+# 1. Crear entorno virtual si no existe
 if [ ! -d "venv" ]; then
-    echo "==> Creando entorno virtual..."
-    python3 -m venv venv
+    echo "Creando entorno virtual (venv)..."
+    python -m venv venv
 fi
 
-echo "==> Instalando dependencias..."
-./venv/bin/pip install -q -r requirements.txt
+# 2. Activar entorno virtual de forma multiplataforma
+echo "Activando entorno virtual..."
+if [ -d "venv/Scripts" ]; then
+    source venv/Scripts/activate
+else
+    source venv/bin/activate
+fi
 
-echo "==> Aplicando migraciones..."
-./venv/bin/python manage.py migrate
+# 3. Instalar/Actualizar dependencias
+echo "Instalando dependencias desde requirements.txt..."
+pip install --upgrade pip
+pip install -r requirements.txt
 
-echo "==> Corriendo pruebas..."
-./venv/bin/python manage.py test
+# 4. Ejecutar pruebas automatizadas con pytest
+echo "Ejecutando pruebas unitarias..."
+python -m pytest app/tests/
 
-echo "==> Levantando servidor en http://127.0.0.1:8000 (Ctrl+C para detener)"
-./venv/bin/python manage.py runserver
+# 5. Iniciar servidor de desarrollo con Uvicorn
+echo "Iniciando servidor de desarrollo en http://127.0.0.1:8000..."
+python -m uvicorn app.main:app --reload --port 8000
