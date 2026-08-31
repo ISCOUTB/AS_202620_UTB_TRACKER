@@ -1,63 +1,75 @@
 # UTB Tracker
 
-Sistema de control de inventario y gestión de préstamos de recursos electrónicos y de laboratorios para la Universidad Tecnológica de Bolívar (UTB).
-
-Ver `docs/arc42/` para la documentación completa del diseño de arquitectura.
-
----
+Sistema de inventario y préstamos de equipos electrónicos de la UTB. Ver `docs/arc42.md` para la documentación de arquitectura completa.
 
 ## Cómo arrancar (un solo comando)
 
-Para levantar el proyecto de forma automática, ejecuta:
-
 ```bash
-chmod +x run.sh  # (Opcional, en entornos Unix para dar permisos de ejecución)
 ./run.sh
 ```
 
-Este script:
-1. Crea el entorno virtual (`venv`) si no existe.
-2. Instala las dependencias necesarias de FastAPI, Pytest y HTTPX.
-3. Ejecuta las pruebas unitarias automatizadas.
-4. Inicia el servidor de desarrollo local en `http://127.0.0.1:8000`.
+Esto crea el entorno virtual si no existe, instala dependencias, corre las pruebas y levanta el servidor en `http://127.0.0.1:8000`. La documentación interactiva de la API (Swagger, generada sola por FastAPI) queda en `http://127.0.0.1:8000/docs`.
 
-### Confirmar funcionamiento del esqueleto
-Una vez levantado el servidor, el endpoint de salud debe responder:
+## Corte vertical ejecutable (S4)
+
+Esta entrega incluye una funcionalidad real de punta a punta, no solo esqueleto: **registrar un préstamo respetando el estado del recurso**. Es la regla de negocio central del sistema (documento de idea, sección 6) y corresponde al escenario **QS-06** (`docs/arc42.md`, sección Requisitos de calidad) y al aspecto **A-06** (`docs/aspectos.md`).
+
+### Prueba manual (con el servidor corriendo):
 
 ```bash
-curl http://127.0.0.1:8000/salud/
-# Respuesta esperada: {"status": "ok", "proyecto": "UTB Tracker"}
+# 1. Crear un recurso (queda en estado "disponible")
+curl -X POST http://127.0.0.1:8000/recursos \
+  -H "Content-Type: application/json" \
+  -d '{"categoria":"video_beam","salon_id":"A1-304","serial":"VB-DEMO-01"}'
+
+# 2. Prestarlo (funciona, el recurso pasa a "prestado")
+curl -X POST http://127.0.0.1:8000/prestamos \
+  -H "Content-Type: application/json" \
+  -d '{"recurso_id":1,"usuario_id":1,"fecha_devolucion_esperada":"2026-09-20T18:00:00"}'
+
+# 3. Intentar prestarlo de nuevo (falla con 409, porque ya no está disponible)
+curl -X POST http://127.0.0.1:8000/prestamos \
+  -H "Content-Type: application/json" \
+  -d '{"recurso_id":1,"usuario_id":2,"fecha_devolucion_esperada":"2026-09-21T18:00:00"}'
 ```
 
----
+### Prueba automatizada (misma regla, sin necesidad de tener el servidor corriendo a mano):
 
-## Estructura del Código (Monolito Modular)
-
-La estructura del código sigue el estilo arquitectónico de **Monolito Modular** sobre **FastAPI**, tal como se define en el [ADR-0001](docs/adr/0001-estilo-arquitectonico.md). El código se divide en módulos de dominio independientes bajo la carpeta `app/`:
-
+```bash
+./venv/bin/python -m pytest tests/test_loans.py -v
 ```
+
+## Estructura (Monolito Modular)
+
+```text
 app/
-  main.py              # Inicialización de FastAPI, configuración de middlewares y montaje de rutas
+  main.py              # arma la app FastAPI, monta los routers
+  database.py           # configuración SQLAlchemy (SQLite en dev/CI, PostgreSQL en despliegue)
+  models.py              # modelos: Usuario, Recurso, Prestamo
+  schemas.py              # contratos Pydantic de entrada/salida de la API
   routers/
-    __init__.py
-    users.py           # Gestión de usuarios, autenticación y roles (A-01)
-    loans.py           # Registro de préstamos y devoluciones de equipos (A-02)
-    resources.py       # Catálogo de objetos electrónicos y salones (A-05)
-  tests/
-    __init__.py
-    test_main.py       # Pruebas automatizadas (valida arranque y salud del servidor)
+    health.py              # endpoint de verificación (S3)
+    usuarios.py             # módulo declarado, sin lógica todavía
+    resources.py             # CRUD de recursos (S4)
+    loans.py                  # préstamos + regla de disponibilidad (S4)
+
+tests/
+  conftest.py                 # fixture de base de datos aislada por prueba
+  test_health.py                # 1 prueba (S3)
+  test_resources.py              # 3 pruebas (S4)
+  test_loans.py                   # 3 pruebas (S4) — cubre la regla de negocio central
 ```
 
-Cada archivo dentro de `routers/` representa la frontera física de un aspecto de calidad del dominio de negocio (detallados en [aspectos.md](docs/aspectos.md)). Actualmente, no contienen lógica de negocio compleja, permitiendo que la fase de desarrollo inicie directamente sobre la arquitectura propuesta.
+Cada módulo en `app/routers/` es la frontera de un aspecto (ver `docs/aspectos.md`). La tabla de bloques completa está en la sección 5 de `docs/arc42.md`.
 
----
+## Base de datos
 
-## Pruebas Automatizadas
+En desarrollo y CI se usa SQLite (`utbtracker.db`, se crea sola al arrancar — sin configuración). En despliegue se apunta a PostgreSQL con la variable de entorno `DATABASE_URL`. Las migraciones con Alembic quedan pendientes (ver [ADR-0002](docs/adr/0002-cambio-stack-fastapi-flutter.md), "Deuda aceptada a sabiendas").
 
-Las pruebas unitarias se ejecutan de forma automática al correr `./run.sh`, pero si deseas ejecutarlas de forma independiente con el entorno virtual activo, puedes correr:
+## Pruebas
 
 ```bash
-python -m pytest app/tests/
+./venv/bin/python -m pytest tests/ -v
 ```
 
-Actualmente, el repositorio cuenta con una prueba unitaria inicial en verde que verifica el endpoint `/salud/` de forma integral usando el `TestClient` de FastAPI.
+Actualmente hay 7 pruebas, todas en verde.

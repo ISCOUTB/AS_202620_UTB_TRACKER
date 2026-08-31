@@ -145,88 +145,106 @@ En resumen: se descartó *capas* porque el acoplamiento técnico dificulta que e
 
 ## Vista general del sistema
 
-***\<Diagrama general\>***
+**Diagrama**
 
-**Motivación**  
-*\<text explanation\>*
+```mermaid
+    graph TB
+    A[Recurso] --> B[Prestamo]
+    B --> C[Usuario]
+```
 
-**Contained Building Blocks**  
-*\<Description of contained building block (black boxes)\>*
+**Motivación**
 
-**Interfaces importantes**  
-*\<Description of important interfaces\>*
+Cada módulo bajo `app/routers/` corresponde a un módulo de dominio, siguiendo el estilo Monolito Modular (ADR-0001). La estructura de carpetas del repositorio (`app/routers/resources.py`, `app/routers/loans.py`, etc.) coincide 1 a 1 con los bloques del diagrama.
 
-### \<Name black box 1\>
+**Bloques contenidos**
 
-*\<Purpose/Responsibility\>*
+| Bloque | Estado en esta entrega |
+|---|---|
+| `health` | Completo desde S3 — endpoint de verificación |
+| `usuarios` | Módulo declarado, sin lógica de negocio todavía |
+| `recursos` | **Corte vertical S4**: crear, listar y consultar recursos |
+| `prestamos` | **Corte vertical S4**: crear préstamo, con regla de negocio central |
 
-*\<Interface(s)\>*
+**Interfaces importantes**
 
-*\<(Optional) Quality/Performance Characteristics\>*
+Todos los módulos se comunican vía HTTP/JSON. Internamente, `prestamos` depende de `recursos` (consulta y modifica estado). La dependencia está declarada explícitamente en `app/routers/loans.py`.
 
-*\<(Optional) Directory/File Location\>*
+### recursos
 
-*\<(Optional) Fulfilled Requirements\>*
+*Responsabilidad:* mantener el catálogo de equipos y su estado (disponible/prestado/dañado).
+*Interfaz:* `POST /recursos`, `GET /recursos`, `GET /recursos/{id}`.
+*Ubicación:* `app/routers/resources.py`, modelo en `app/models.py::Recurso`.
+*Requisitos que cumple:* base para QS-06 (confiabilidad de datos).
 
-*\<(optional) Open Issues/Problems/Risks\>*
+### prestamos
 
-### \<Name black box 2\>
+*Responsabilidad:* registrar préstamos y aplicar la regla "un recurso solo puede prestarse si está disponible".
+*Interfaz:* `POST /prestamos`, `GET /prestamos`.
+*Ubicación:* `app/routers/loans.py`, modelo en `app/models.py::Prestamo`.
+*Requisitos que cumple:* QS-06 (confiabilidad de datos) probado en `tests/test_loans.py`.
 
-*\<black box template\>*
+## Nivel 2
 
-### \<Name black box n\>
+### White Box *recursos*
 
-*\<black box template\>*
+router (resources.py) → schema (RecursoCreate / RecursoOut) → modelo (Recurso) → SQLite/PostgreSQL
 
-### \<Name interface 1\>
+El router valida la entrada con Pydantic, rechaza serial duplicado con 409 y devuelve salida validada.
 
-…
+### White Box *prestamos*
 
-### \<Name interface m\>
+router (loans.py) → valida existencia y estado del Recurso → schema (PrestamoCreate/Out) → modelo (Prestamo) → SQLite/PostgreSQL → actualiza Recurso.estado a "prestado"
 
-## Level 2
-
-### White Box *\<building block 1\>*
-
-*\<white box template\>*
-
-### White Box *\<building block 2\>*
-
-*\<white box template\>*
-
-…
-
-### White Box *\<building block m\>*
-
-*\<white box template\>*
+Antes de crear el préstamo, el router comprueba `recurso.estado == "disponible"`; si no, responde 409.
 
 ## Level 3
 
-### White Box \<\_building block x.1\_\>
-
-*\<white box template\>*
-
-### White Box \<\_building block x.2\_\>
-
-*\<white box template\>*
-
-### White Box \<\_building block y.1\_\>
-
-*\<white box template\>*
+*(pendiente)*
 
 # Runtime View
 
-## \<Runtime Scenario 1\>
+## Vista de ejecución
 
-- *\<insert runtime diagram or textual description of the scenario\>*
-- *\<insert description of the notable aspects of the interactions
-  between the building block instances depicted in this diagram.\>*
+### Escenario 1 — Préstamo exitoso
 
-## \<Runtime Scenario 2\>
+Un auxiliar registra el préstamo de un recurso que está disponible.
 
-## …
+```mermaid
+sequenceDiagram
+    actor Auxiliar
+    participant API as UTB Tracker (FastAPI)
+    participant DB as Base de datos
+    
+    Auxiliar->>API: POST /prestamos {recurso_id, usuario_id, fecha_devolucion_esperada}
+    API->>DB: SELECT recurso WHERE id = recurso_id
+    DB-->>API: recurso (estado = "disponible")
+    API->>DB: INSERT prestamo
+    API->>DB: UPDATE recurso SET estado = "prestado"
+    DB-->>API: OK
+    API-->>Auxiliar: 201 Created {prestamo}
+```
 
-## \<Runtime Scenario n\>
+**Aspectos notables:** la comprobación de disponibilidad y la actualización de estado ocurren en el mismo request.
+
+### Escenario 2 — Préstamo rechazado (recurso no disponible)
+
+Un segundo usuario intenta prestar el mismo recurso mientras ya está prestado.
+
+```mermaid
+sequenceDiagram
+    actor Usuario2 as Segundo usuario
+    participant API as UTB Tracker (FastAPI)
+    participant DB as Base de datos
+    
+    Usuario2->>API: POST /prestamos {recurso_id, usuario_id, fecha_devolucion_esperada}
+    API->>DB: SELECT recurso WHERE id = recurso_id
+    DB-->>API: recurso (estado = "prestado")
+    API-->>Usuario2: 409 Conflict {"detail": "El recurso no esta disponible..."}
+    Note over API,DB: No se crea ningun registro de prestamo
+```
+
+**Aspectos notables:** este es el escenario de calidad QS-06, el sistema nunca permite dos préstamos activos sobre el mismo recurso.
 
 # Deployment View
 
@@ -281,6 +299,7 @@ Las decisiones de arquitectura se documentan como ADR individuales en `docs/adr/
 sección. Índice de decisiones tomadas hasta ahora:
 
 - [ADR-0001](../adr/0001-estilo-arquitectonico.md) — Estilo arquitectónico: Monolito Modular (S3)
+- [ADR-0002](../adr/0002-cambio-stack-fastapi-flutter.md) — Cambio de stack: Django → FastAPI + Flutter (S4)
 
 # Requisitos de calidad
 
@@ -379,6 +398,15 @@ aspecto correspondiente en `docs/aspectos.md`.
 # Glosario
 
 | Término | Definición |
-|--------------|--------------------|
-| *\<Term-1\>* | *\<definition-1\>* |
-| *\<Term-2\>* | *\<definition-2\>* |
+|---|---|
+| **Recurso** | Equipo electrónico individual trackeado por el sistema (video beam, computador, A/C, TV, sistema de audio). No incluye mobiliario (sillas, mesas) — esos no se registran por unidad. |
+| **Salón** | Aula, laboratorio, auditorio o almacén de la UTB, identificado por un código (ej. `A1-304`). Es la ubicación "de origen" de un recurso. |
+| **Estado (de un recurso)** | Uno de: `disponible`, `prestado`, `dañado`, `mantenimiento`. Determina si el recurso puede prestarse — ver regla de negocio en `app/routers/loans.py`. |
+| **Préstamo** | Registro de que un `Usuario` tomó un `Recurso` prestado, con fecha esperada y real de devolución. Un recurso solo puede tener un préstamo activo a la vez (QS-06). |
+| **Vencido** | Un préstamo cuya fecha de devolución esperada ya pasó y no se ha devuelto. Se calcula en la consulta, no se guarda como estado aparte. *(La regla de bloqueo por préstamo vencido está pendiente de implementación — ver arc42 sección 5, riesgos abiertos de `prestamos`.)* |
+| **Auxiliar (de planta / laboratorio)** | Rol administrador del sistema: gestiona el catálogo, revisa préstamos, reporta daños. |
+| **Usuario UTB** | Rol de estudiante o profesor: consulta el catálogo y solicita préstamos. |
+| **Aspecto** | Corte vertical del sistema con valor propio, trazable de punta a punta (ver `docs/aspectos.md`). No confundir con "recurso" del dominio de negocio. |
+| **Escenario de calidad (QS)** | Especificación medible de un atributo de calidad, en formato Fuente-Estímulo-Ambiente-Artefacto-Respuesta-Medida (arc42 sección 10). |
+| **ADR** | Architecture Decision Record — registro corto e inmutable de una decisión de arquitectura, con alternativas descartadas y consecuencias (`docs/adr/`). |
+| **Corte vertical** | Funcionalidad completa que atraviesa varios módulos de dominio con lógica de negocio real (no solo esqueleto), probada de extremo a extremo. |

@@ -1,33 +1,19 @@
-#!/bin/bash
-
-# Terminar en caso de error
+#!/usr/bin/env bash
+# Un solo comando para levantar UTB Tracker desde cero: crea el entorno
+# virtual si no existe, instala dependencias, corre las pruebas y
+# arranca el servidor de desarrollo.
 set -e
 
-echo "=== Levantando Entorno de UTB Tracker ==="
-
-# 1. Crear entorno virtual si no existe
 if [ ! -d "venv" ]; then
-    echo "Creando entorno virtual (venv)..."
-    python -m venv venv
+    echo "==> Creando entorno virtual..."
+    python3 -m venv venv
 fi
 
-# 2. Activar entorno virtual de forma multiplataforma
-echo "Activando entorno virtual..."
-if [ -d "venv/Scripts" ]; then
-    source venv/Scripts/activate
-else
-    source venv/bin/activate
-fi
+echo "==> Instalando dependencias..."
+./venv/bin/pip install -q -r requirements.txt
 
-# 3. Instalar/Actualizar dependencias
-echo "Instalando dependencias desde requirements.txt..."
-pip install --upgrade pip
-pip install -r requirements.txt
+echo "==> Corriendo pruebas..."
+./venv/bin/python -m pytest tests/ -v
 
-# 4. Ejecutar pruebas automatizadas con pytest
-echo "Ejecutando pruebas unitarias..."
-python -m pytest app/tests/
-
-# 5. Iniciar servidor de desarrollo con Uvicorn
-echo "Iniciando servidor de desarrollo en http://127.0.0.1:8000..."
-python -m uvicorn app.main:app --reload --port 8000
+echo "==> Levantando servidor en http://127.0.0.1:8000 (docs en /docs, Ctrl+C para detener)"
+./venv/bin/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000

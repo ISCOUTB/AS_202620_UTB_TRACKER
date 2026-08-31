@@ -1,18 +1,17 @@
 from fastapi import FastAPI
-from app.routers import users, loans, resources
 
-app = FastAPI(
-    title="UTB Tracker API",
-    description="API para el sistema de control de inventario y préstamos de la UTB",
-    version="1.0.0"
-)
+from app.database import Base, engine
+from app.routers import health, users, resources, loans
 
-# Registrar módulos de dominio independientes (Monolito Modular)
-app.include_router(users.router, prefix="/usuarios", tags=["Usuarios"])
-app.include_router(loans.router, prefix="/prestamos", tags=["Préstamos"])
-app.include_router(resources.router, prefix="/recursos", tags=["Recursos"])
+# Crea las tablas si no existen. Suficiente para este corte vertical;
+# Alembic (migraciones versionadas) queda pendiente para la siguiente
+# entrega, ver docs/adr/ si se documenta como decision aparte.
+Base.metadata.create_all(bind=engine)
 
-# Endpoint de salud para verificación automatizada (A-02 / QS-01)
-@app.get("/salud/")
-def health_check():
-    return {"status": "ok", "proyecto": "UTB Tracker"}
+app = FastAPI(title="UTB Tracker")
+
+app.include_router(health.router)
+app.include_router(users.router, prefix="/usuarios", tags=["usuarios"])
+app.include_router(resources.router, prefix="/recursos", tags=["recursos"])
+app.include_router(loans.router, prefix="/prestamos", tags=["prestamos"])
+
