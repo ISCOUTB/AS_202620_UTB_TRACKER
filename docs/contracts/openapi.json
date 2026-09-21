@@ -1,0 +1,382 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "UTB Tracker",
+    "description": "API de inventario y préstamos de equipos electrónicos de la UTB.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/salud": {
+      "get": {
+        "summary": "Health Check",
+        "description": "Endpoint minimo para confirmar que el esqueleto arranca correctamente.\nNo es logica de negocio: es fontaneria para la siguiente entrega.",
+        "operationId": "health_check_salud_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recursos": {
+      "get": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Listar Recursos",
+        "operationId": "listar_recursos_recursos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecursoOut"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Recursos Recursos Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Crear Recurso",
+        "operationId": "crear_recurso_recursos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecursoCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecursoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recursos/{recurso_id}": {
+      "get": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Obtener Recurso",
+        "operationId": "obtener_recurso_recursos__recurso_id__get",
+        "parameters": [
+          {
+            "name": "recurso_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recurso Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecursoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prestamos": {
+      "get": {
+        "tags": [
+          "prestamos"
+        ],
+        "summary": "Listar Prestamos",
+        "operationId": "listar_prestamos_prestamos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PrestamoOut"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Prestamos Prestamos Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "prestamos"
+        ],
+        "summary": "Crear Prestamo",
+        "operationId": "crear_prestamo_prestamos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrestamoCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestamoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PrestamoCreate": {
+        "properties": {
+          "recurso_id": {
+            "type": "integer",
+            "title": "Recurso Id"
+          },
+          "usuario_id": {
+            "type": "integer",
+            "title": "Usuario Id"
+          },
+          "fecha_devolucion_esperada": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Devolucion Esperada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recurso_id",
+          "usuario_id",
+          "fecha_devolucion_esperada"
+        ],
+        "title": "PrestamoCreate"
+      },
+      "PrestamoOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "recurso_id": {
+            "type": "integer",
+            "title": "Recurso Id"
+          },
+          "usuario_id": {
+            "type": "integer",
+            "title": "Usuario Id"
+          },
+          "fecha_prestamo": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Prestamo"
+          },
+          "fecha_devolucion_esperada": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Devolucion Esperada"
+          },
+          "fecha_devolucion_real": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Devolucion Real"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "recurso_id",
+          "usuario_id",
+          "fecha_prestamo",
+          "fecha_devolucion_esperada",
+          "fecha_devolucion_real"
+        ],
+        "title": "PrestamoOut"
+      },
+      "RecursoCreate": {
+        "properties": {
+          "categoria": {
+            "type": "string",
+            "title": "Categoria"
+          },
+          "salon_id": {
+            "type": "string",
+            "title": "Salon Id"
+          },
+          "serial": {
+            "type": "string",
+            "title": "Serial"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categoria",
+          "salon_id",
+          "serial"
+        ],
+        "title": "RecursoCreate"
+      },
+      "RecursoOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "categoria": {
+            "type": "string",
+            "title": "Categoria"
+          },
+          "salon_id": {
+            "type": "string",
+            "title": "Salon Id"
+          },
+          "serial": {
+            "type": "string",
+            "title": "Serial"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "categoria",
+          "salon_id",
+          "serial",
+          "estado"
+        ],
+        "title": "RecursoOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
