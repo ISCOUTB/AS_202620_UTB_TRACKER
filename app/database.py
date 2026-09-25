@@ -1,10 +1,6 @@
 """
 Configuracion de la base de datos.
 
-Para desarrollo y CI se usa SQLite (archivo local, sin dependencias
-externas). En despliegue real se apunta a PostgreSQL cambiando la
-variable de entorno DATABASE_URL - el codigo de la aplicacion no
-cambia porque SQLAlchemy abstrae el motor.
 
 Las migraciones con Alembic quedan pendientes para la siguiente
 entrega; por ahora el esquema se crea con Base.metadata.create_all()
@@ -15,10 +11,12 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./utbtracker.db")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+psycopg://postgres:postgres@localhost:5432/utbtracker",
+)
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
+engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
