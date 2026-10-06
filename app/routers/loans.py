@@ -10,15 +10,16 @@ datos, arc42 seccion 10) hecho codigo.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app import models, schemas
-from app.database import get_db
+from app.models import recurso_models
+from app.schemas import schemas
+from app.core.database import get_db
 
 router = APIRouter()
 
 
 @router.post("", response_model=schemas.PrestamoOut, status_code=201)
 def crear_prestamo(prestamo: schemas.PrestamoCreate, db: Session = Depends(get_db)):
-    recurso = db.query(models.Recurso).filter(models.Recurso.id == prestamo.recurso_id).first()
+    recurso = db.query(recurso_models.Recurso).filter(recurso_models.Recurso.id == prestamo.recurso_id).first()
     if not recurso:
         raise HTTPException(status_code=404, detail="Recurso no encontrado")
 
@@ -28,7 +29,7 @@ def crear_prestamo(prestamo: schemas.PrestamoCreate, db: Session = Depends(get_d
             detail=f"El recurso no esta disponible (estado actual: {recurso.estado})",
         )
 
-    nuevo = models.Prestamo(**prestamo.model_dump())
+    nuevo = recurso_models.Prestamo(**prestamo.model_dump())
     recurso.estado = "prestado"
     db.add(nuevo)
     db.commit()
@@ -38,4 +39,4 @@ def crear_prestamo(prestamo: schemas.PrestamoCreate, db: Session = Depends(get_d
 
 @router.get("", response_model=list[schemas.PrestamoOut])
 def listar_prestamos(db: Session = Depends(get_db)):
-    return db.query(models.Prestamo).all()
+    return db.query(recurso_models.Prestamo).all()
