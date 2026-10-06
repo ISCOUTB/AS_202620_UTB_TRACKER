@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import Usuario
+from AS_202620_UTB_TRACKER.app.models.recurso_models import Usuario
 
 TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 

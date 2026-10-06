@@ -1,11 +1,3 @@
-"""
-Configuracion de la base de datos.
-
-
-Las migraciones con Alembic quedan pendientes para la siguiente
-entrega; por ahora el esquema se crea con Base.metadata.create_all()
-al arrancar, que alcanza para un corte vertical de demostracion.
-"""
 import os
 
 from dotenv import load_dotenv
