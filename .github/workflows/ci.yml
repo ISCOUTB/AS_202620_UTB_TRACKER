@@ -1,37 +1,42 @@
 name: UTB Tracker CI
 
 on:
-  push: 
-    branches: 
-      main
+  push:
+    branches: [main]
 
 jobs:
   test:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
     steps:
-    - name: Deploy via SSH
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          cd ${{ secrets.WORK_DIR}}
-          git fetch origin main
-          git reset --hard origin/main
-          source venv/bin/activate
-          pip install -r requirements.txt
-          python uvicorn app.main:app --host
-          sudo systemctl restart utb-tracker
+      - uses: actions/checkout@v4
 
-    - name: Configurar Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        cache: 'pip'
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
 
-   
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
 
-    - name: Ejecutar pruebas automatizadas (Pytest)
-      run: |
-        python -m pytest app/tests/
+      - name: Ejecutar pruebas (Pytest)
+        run: python -m pytest app/tests/
+
+  deploy:
+    needs: test         
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.USER_PASW }}
+          script: |
+            set -e
+            cd ${{ secrets.WORK_DIR }}
+            git fetch origin main
+            git reset --hard origin/main
+            source venv/bin/activate
+            pip install -r requirements.txt
+            sudo systemctl restart utb-tracker
