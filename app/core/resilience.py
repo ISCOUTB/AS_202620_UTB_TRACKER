@@ -37,10 +37,14 @@ def with_retry(
                 except retryable_exceptions as exc:
                     attempt += 1
                     if attempt > max_retries:
-                        logger.error(
-                            f"[Resilience] Fallo definitivo tras {max_retries} reintentos en {func.__name__}: {exc}"
+                        logger.exception(
+                            "[Resilience] Fallo definitivo tras %d reintentos en %s: %s",
+                            max_retries,
+                            func.__name__,
+                            exc,
                         )
                         raise
+
                     # Backoff exponencial + Jitter
                     jitter = random.uniform(0, base_delay * 0.5)
                     delay = min(max_delay, base_delay * (2 ** (attempt - 1))) + jitter
