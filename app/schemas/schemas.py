@@ -31,12 +31,18 @@ class PrestamoCreate(BaseModel):
     fecha_devolucion_esperada: datetime
 
 
+def _ensure_prestamo_contract(schema: dict) -> None:
+    req = schema.setdefault("required", [])
+    if "fecha_devolucion_real" not in req:
+        req.append("fecha_devolucion_real")
+
+
 class PrestamoOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, json_schema_extra=_ensure_prestamo_contract)
 
     id: int
     recurso_id: int
     usuario_id: int
     fecha_prestamo: datetime
     fecha_devolucion_esperada: datetime
-    fecha_devolucion_real: Optional[datetime]
+    fecha_devolucion_real: Optional[datetime] = None

@@ -8,6 +8,7 @@ ENV/
 .env
 .env.*
 *.env
+!.env.example
 
 # Caché de Python
 __pycache__/
@@ -41,4 +42,13 @@ coverage.xml
 
 # Base de datos local (desarrollo)
 *.sqlite3
+*.sqlite3-journal
 *.db
+*.db-journal
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# SonarCloud / Herramientas de análisis
+.scannerwork/
+.sonarlint/

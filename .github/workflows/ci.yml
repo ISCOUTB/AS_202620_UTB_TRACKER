@@ -7,6 +7,26 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    # Servicio de PostgreSQL para las pruebas de integración (S8 — req. 8.2)
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: utb_tracker_test
+          POSTGRES_USER: utb
+          POSTGRES_PASSWORD: utb_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://utb:utb_pass@localhost:5432/utb_tracker_test
+
     steps:
       - uses: actions/checkout@v4
 
@@ -17,17 +37,24 @@ jobs:
           cache: "pip"
 
       - name: Instalar dependencias
-        run: pip install -r requirements.txt
+        run: pip install --only-binary :all: -r requirements.txt
 
-      - name: Ejecutar pruebas (Pytest)
-        run: python -m pytest app/tests/
+      # Suite completa de pruebas (S8 — req. 8.2: corregido de app/tests/ a tests/)
+      - name: Ejecutar pruebas (Pytest — suite completa)
+        run: python -m pytest tests/ -v --tb=short
+
+      - name: Análisis estático SonarCloud
+        uses: SonarSource/sonarcloud-github-action@4b4d7634dab97dcee0b75763a54a6dc92a9e6bc1 # v3.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   deploy:
-    needs: test         
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}

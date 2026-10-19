@@ -6,56 +6,56 @@ Aceptado
 
 ## Contexto
 
-Tractar tiene que construirse en un semestre académico con un equipo de 4 personas que
-además cursan otras materias (restricción organizacional, sección 2.2 de arc42). El stack
-está condicionado a HTML + MySQL con las herramientas dadas por el profesor (restricción
-técnica, sección 2.1), y el equipo ya viene trabajando sobre Django.
+UTB Tracker tiene que construirse en un semestre académico con un equipo de 4 personas
+que además cursan otras materias (restricción organizacional, sección 2.2 de arc42).
+El stack fue migrado de Django a **FastAPI + Flutter** en la Semana 4 (ver ADR-0002),
+y el sistema atiende a auxiliares de planta y usuarios UTB de la universidad (profesores,
+estudiantes) para el registro de préstamos de equipos electrónicos de salones y
+laboratorios.
 
-El escenario de calidad que más presiona esta decisión es
-[QS-01 (disponibilidad / trabajo offline)](../arc42/10_requisitos_calidad.md#qs-01--disponibilidad):
-el conductor debe poder seguir registrando viajes sin conexión y sincronizar después, lo cual
-obliga a que la lógica de sincronización quede encapsulada y no dispersa por todo el sistema.
-También pesa [QS-05 (usabilidad)](../arc42/10_requisitos_calidad.md#qs-05--usabilidad): el
-tiempo de desarrollo que se gaste en indirección arquitectónica es tiempo que no se gasta en
-que el formulario sea simple de usar.
+Los escenarios de calidad que más presionan esta decisión son:
+- **QS-03 (concurrencia):** el sistema debe soportar hasta 300 usuarios simultáneos en
+  hora pico del campus sin degradar el servicio.
+- **QS-06 (confiabilidad de datos):** ningún equipo puede quedar prestado dos veces al
+  mismo tiempo — la regla de negocio central del sistema.
 
-Este ADR corresponde al aspecto
-[A-02 (Acceso al sistema durante la jornada laboral)](../aspectos.md) y, de forma transversal,
-a todos los aspectos declarados en `docs/aspectos.md`, porque la decisión de estilo afecta
-la estructura completa del código, no un solo módulo.
+Este ADR corresponde a los aspectos **A-02** (disponibilidad), **A-04** (concurrencia)
+y de forma transversal a todos los declarados en `docs/aspectos.md`, porque la decisión
+de estilo arquitectónico afecta la estructura completa del código, no un solo módulo.
 
 ## Decisión
 
-Se organiza Tractar como un **monolito modular** sobre Django: un único desplegable, dividido
-internamente en módulos de dominio independientes (`apps/usuarios`, `apps/vehiculos`,
-`apps/viajes`, `apps/facturacion`), cada uno con su propia frontera de responsabilidad.
+Se organiza UTB Tracker como un **Monolito Modular** sobre FastAPI: un único desplegable,
+dividido internamente en módulos de dominio independientes (`app/routers/resources.py`,
+`app/routers/loans.py`, `app/routers/auth.py`), cada uno con su propia frontera de
+responsabilidad.
 
 ## Alternativas consideradas
 
-**Capas (N-tier).** Se descartó porque la sincronización offline es un requisito que
-atraviesa presentación, lógica y persistencia a la vez; en una arquitectura por capas
-técnicas, cada ajuste a esa sincronización obligaría a tocar las tres capas en simultáneo,
-lo que va directamente en contra de QS-01.
+**Capas (N-tier).**
+Se descartó porque el acoplamiento técnico entre capas dificulta que el equipo trabaje en
+paralelo: un cambio en la lógica de préstamos tocaría simultáneamente la capa de
+presentación, la de negocio y la de persistencia.
 
-**Hexagonal (puertos y adaptadores).** Se descartó por costo/tiempo, no por ser mala idea en
-abstracto. El equipo son 4 estudiantes con un semestre y sin experiencia previa sosteniendo
-puertos y adaptadores bajo presión de entrega; el riesgo real es que la abstracción se rompa
-a mitad de camino y termine costando más de lo que aporta. Ver matriz completa en
-`docs/matriz_estilos.md`.
+**Hexagonal (puertos y adaptadores).**
+Se descartó por costo/tiempo, no por ser mala idea en abstracto. El equipo son 4
+estudiantes con un semestre y sin experiencia previa sosteniendo puertos y adaptadores
+bajo presión de entrega; el riesgo real es que la abstracción se rompa a mitad de camino
+y termine costando más de lo que aporta. Ver matriz completa en `docs/matriz_estilos.md`.
 
 ## Consecuencias
 
-**Se gana:** cada módulo de dominio puede evolucionar con bajo choque entre los 4 integrantes
-(uno puede trabajar en `viajes` mientras otro trabaja en `facturacion` sin pisarse), y el
-estilo no pelea con Django, que ya está pensado para organizarse en apps.
+**Se gana:** cada módulo de dominio puede evolucionar con bajo choque entre los 4
+integrantes (uno puede trabajar en `routers/loans.py` mientras otro trabaja en
+`routers/resources.py` sin pisarse), y el estilo no pelea con FastAPI, que ya está
+pensado para organizarse en routers independientes.
 
 **Se asume:** el monolito modular solo funciona si el equipo respeta la frontera entre
-módulos (por ejemplo, que `viajes` no importe directamente modelos internos de
-`facturacion`). Esa disciplina no la impone el framework, la tiene que sostener el equipo
-en revisión de código.
+módulos (por ejemplo, que `loans` no importe directamente el ORM interno de `auth`).
+Esa disciplina no la impone el framework; la sostiene el equipo en revisión de código.
 
-**Deuda aceptada a sabiendas:** si Tractar creciera más allá del alcance de un proyecto de
-gremio local (por ejemplo, si varias empresas grandes lo adoptaran a la vez), el monolito
-modular no escalaría los módulos de forma independiente. Se acepta ese límite porque está
-fuera del alcance actual (ver sección 1.1 de arc42: "dirigido a propietarios independientes,
-no a grandes empresas todavía").
+**Deuda aceptada a sabiendas:** si UTB Tracker creciera a escala de toda la universidad
+o múltiples sedes simultáneas, el monolito modular no podría escalar módulos de forma
+independiente. Se acepta ese límite porque está fuera del alcance declarado del proyecto
+académico actual (ver sección 1 de arc42: sistema dirigido a los auxiliares de planta de
+una única sede de la UTB).

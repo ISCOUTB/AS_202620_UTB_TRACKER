@@ -1,9 +1,11 @@
 """
-Modelos SQLAlchemy del corte vertical: Recurso y Prestamo.
+Modelos SQLAlchemy del dominio de recursos y préstamos (S4 / S9 / S11).
 
-Usuario y Salon quedan como referencias minimas (solo lo necesario
-para las llaves foraneas de este corte) - su modelo completo se
-desarrolla cuando se implemente el modulo de usuarios.
+Entidades:
+- Recurso: equipos físicos del inventario.
+- Prestamo: transacciones de préstamo vinculando recursos y usuarios (QS-06).
+- IdempotenciaRegistro: almacenamiento de claves de idempotencia (S11 — req. 11.3)
+  para evitar duplicación de préstamos ante reintentos de red del cliente móvil.
 """
 from datetime import datetime
 
@@ -11,7 +13,6 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
-
 
 
 class Recurso(Base):
@@ -38,3 +39,19 @@ class Prestamo(Base):
     fecha_devolucion_real = Column(DateTime, nullable=True)
 
     recurso = relationship("Recurso", back_populates="prestamos")
+
+
+class IdempotenciaRegistro(Base):
+    """
+    Registro de idempotencia (S11 — req. 11.3).
+    Garantiza que reintentos de red con la misma cabecera X-Idempotency-Key
+    retornen el préstamo original sin crear duplicados.
+    """
+    __tablename__ = "idempotencia_registros"
+
+    clave = Column(String, primary_key=True, index=True)
+    endpoint = Column(String, nullable=False)
+    prestamo_id = Column(Integer, ForeignKey("prestamos.id"), nullable=True)
+    fecha_creacion = Column(DateTime, default=datetime.utcnow)
+
+    prestamo = relationship("Prestamo")

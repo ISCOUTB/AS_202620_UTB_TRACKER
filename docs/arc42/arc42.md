@@ -246,52 +246,119 @@ sequenceDiagram
 
 **Aspectos notables:** este es el escenario de calidad QS-06, el sistema nunca permite dos préstamos activos sobre el mismo recurso.
 
-# Deployment View
 
 ## Infrastructure Level 1
 
-***\<Overview Diagram\>***
+El backend de UTB Tracker se despliega en un único servidor Linux (VPS) gestionado
+manualmente mediante `systemd`. El proceso de entrega continua está automatizado con
+GitHub Actions (`.github/workflows/ci.yml`).
 
-Motivation  
-*\<explanation in text form\>*
+```mermaid
+graph TD
+    subgraph Internet
+        Mobile["📱 App Flutter\n(cliente móvil)"]
+    end
 
-Quality and/or Performance Features  
-*\<explanation in text form\>*
+    subgraph VPS ["☁️ VPS Linux (Ubuntu 22.04)"]
+        Nginx["🔀 Nginx\n(proxy inverso, puerto 443/80)"]
+        Uvicorn["⚙️ Uvicorn\n(ASGI server, puerto 8000)\nutb-tracker.service (systemd)"]
+        Postgres["🗄️ PostgreSQL 16\n(puerto 5432, local)"]
+    end
 
-Mapping of Building Blocks to Infrastructure  
-*\<description of the mapping\>*
+    subgraph GitHub
+        CI["🔄 GitHub Actions\n(CI/CD pipeline)"]
+        SC["📊 SonarCloud\n(análisis estático)"]
+    end
+
+    Mobile -->|"HTTPS :443"| Nginx
+    Nginx -->|"HTTP :8000 (interno)"| Uvicorn
+    Uvicorn -->|"TCP :5432 (local)"| Postgres
+    CI -->|"SSH deploy"| VPS
+    CI -->|"análisis de código"| SC
+```
+
+**Motivación:**
+El equipo opera con un presupuesto y tiempo académico limitados. Un único VPS con Nginx
+como proxy inverso y Uvicorn gestionado por `systemd` cubre el escenario QS-03
+(300 usuarios simultáneos) sin la sobrecarga operativa de contenedores o servicios
+gestionados. La decisión de no usar microservicios está formalizada en
+[ADR-0005](../adr/0005-monolito-vs-microservicios.md).
+
+**Características de calidad y rendimiento:**
+- **TLS terminado en Nginx:** todo el tráfico entre el cliente móvil y el servidor
+  viaja cifrado (HTTPS), cumpliendo QS-04 y la Ley 1581 de 2012.
+- **Proceso Uvicorn gestionado por systemd:** el servicio se reinicia automáticamente
+  si el proceso cae (`Restart=always`), contribuyendo a la disponibilidad QS-01.
+- **PostgreSQL local (mismo host):** la latencia de red entre el backend y la base de
+  datos es prácticamente cero (loopback), favoreciendo QS-02 (tiempo de respuesta).
+- **Despliegue automatizado vía CI:** los cambios en `main` se despliegan sin
+  intervención manual después de pasar las pruebas y el Quality Gate de SonarCloud.
+
+**Mapeo de bloques constructivos a infraestructura:**
+
+| Bloque (`app/`) | Infraestructura |
+|---|---|
+| `routers/health.py` — `GET /salud` | Uvicorn → PostgreSQL (`SELECT 1` activo) |
+| `routers/resources.py` — `/recursos` | Uvicorn → PostgreSQL (tabla `recurso`) |
+| `routers/loans.py` — `/prestamos` | Uvicorn → PostgreSQL (tablas `recurso` + `prestamo`, transacción ACID) |
+| `routers/auth.py` — `/auth` | Uvicorn → PostgreSQL (tabla `usuario`) |
 
 ## Infrastructure Level 2
 
-### *\<Infrastructure Element 1\>*
+### Estimación de costos mensuales (S8 — req. 8.10)
 
-*\<diagram + explanation\>*
+Costos aproximados para el entorno de producción del proyecto académico:
 
-### *\<Infrastructure Element 2\>*
+| Componente | Proveedor / opción | Costo mensual estimado |
+|---|---|---|
+| **VPS 2 vCPU / 4 GB RAM** | DigitalOcean Droplet / Linode / Oracle Free Tier | USD $12 – $24 (Oracle: $0 en capa gratuita) |
+| **PostgreSQL** | Instancia local en el mismo VPS (incluida arriba) | $0 adicional |
+| **Dominio `.com`** | Namecheap / Google Domains | USD $1 – $2 (prorrateado mensual) |
+| **SSL/TLS** | Let's Encrypt (Certbot) | $0 |
+| **SonarCloud** | Plan Community (repositorios públicos) | $0 |
+| **GitHub Actions** | Plan Free (2 000 min/mes incluidos) | $0 |
+| **Total estimado** | | **USD $0 – $26 / mes** |
 
-*\<diagram + explanation\>*
+> La capa gratuita de Oracle Cloud Infrastructure (Ampere A1 4 vCPU / 24 GB RAM)
+> puede alojar el sistema completo en producción sin costo adicional durante la
+> vida académica del proyecto.
 
-…
 
-### *\<Infrastructure Element n\>*
+# Conceptos transversales (Cross-cutting Concepts)
 
-*\<diagram + explanation\>*
+## 8.1 Patrón de Capas y Control de Erosión Arquitectónica
+Para evitar la erosión del estilo Monolito Modular (S9 — req. 9.6), el backend implementa una separación estricta de tres capas en cada módulo de dominio:
+1. **Capa de Enrutamiento HTTP (`app/routers/`):** Expone endpoints REST, valida datos de entrada mediante esquemas Pydantic y gestiona respuestas HTTP/códigos de estado (200, 201, 404, 409). No ejecuta lógica de negocio ni consultas directas al ORM.
+2. **Capa de Servicio (`app/services/`):** Orquesta la lógica de negocio, reglas de dominio (ej. exclusividad de recursos en préstamo — QS-06) y transacciones de base de datos. Módulos: `services/resources.py`, `services/loans.py`, `services/auth.py`.
+3. **Capa de Persistencia y Modelos (`app/models/` y `app/core/database.py`):** Define entidades SQLAlchemy mapeadas a tablas PostgreSQL y administra la sesión de conexión.
 
-# Cross-cutting Concepts
+## 8.2 Seguridad, Hashing y Autenticación
+- **Protección de Credenciales (QS-04 / ADR-0004 / req. 9.8):** Las contraseñas se almacenan exclusivamente como hashes irreversibles generados con `bcrypt` (sales dinámicas automáticas). El sistema nunca almacena ni compara contraseñas en texto plano.
+- **Tokens de Acceso:** Uso de JSON Web Tokens (JWT) firmados con algoritmo simétrico HS256 (`PyJWT`), con tiempo de expiración configurable y verificación sin estado (*stateless*), desacoplando la autorización de la base de datos en cada consulta.
 
-## *\<Concept 1\>*
+## 8.3 Observabilidad y Logging Estructurado
+- **Middleware HTTP (`app/main.py`):** Cada petición entrante es interceptada para asignarle un identificador único correlativo (`request_id` formato UUID de 8 caracteres).
+- **Formato Estructurado:** Los eventos de acceso se registran en formato JSON con marca de tiempo UTC, método HTTP, ruta, código de estado y latencia en milisegundos (`latency_ms`), listo para ingesta en herramientas de monitoreo como Grafana Loki o Datadog.
+- **Sondeo de Salud Profundo (`app/routers/health.py`):** El endpoint `GET /salud` ejecuta activamente una consulta `SELECT 1` sobre el pool de PostgreSQL para validar la salud real de la infraestructura.
 
-*\<explanation\>*
+## 8.4 Evaluación de Inteligencia Artificial Generativa en el Producto (req. 9.9)
+Se evaluó la posible integración de modelos de IA generativa (LLMs) dentro del flujo operativo de UTB Tracker.
+- **Determinación Arquitectónica: NO APLICA / NO SE INTEGRA EN RUNTIME.**
+- **Justificación:** UTB Tracker es un sistema de misión crítica para el control y la trazabilidad de inventario físico en salones de clase. Los requisitos centrales del sistema son la **consistencia transaccional inmediata (QS-06)** y la **alta confiabilidad y predictibilidad (QS-03)**. Los modelos generativos introducen no determinismo, latencia adicional de inferencia y costos de API externos que no agregan valor al registro transaccional de préstamos. La IA se utiliza exclusivamente como herramienta de asistencia en el desarrollo y revisión de código por el equipo de ingeniería, documentada en `docs/ia.md`.
 
-## *\<Concept 2\>*
+## 8.5 Resiliencia, Timeouts y Reintentos (S11 — req. 11.1 y 11.2)
+- **Pool de Conexiones Resiliente (`app/core/database.py`):** Configurado con `pool_size=10`, `max_overflow=20`, `pool_timeout=30`, `pool_recycle=1800` y `pool_pre_ping=True`. La validación de ping previo descarta conexiones inactivas cerradas por el kernel o firewall, eliminando errores `OperationalError` tras periodos de inactividad.
+- **Reintentos con Backoff y Jitter (`app/core/resilience.py`):** Decorador `@with_retry` implementado para tolerar fallos transitorios en conexiones de red o base de datos. Emplea la fórmula `delay = min(max_delay, base_delay * 2^intento) + random_jitter`, mitigando problemas de sincronización de reintentos concurrentes (*thundering herd*).
 
-*\<explanation\>*
+## 8.6 Idempotencia y Prevención de Condiciones de Carrera (S11 — req. 11.3 y R-02)
+- **Idempotencia de Préstamos (`app/routers/loans.py`, `app/services/loans.py`):** Soporte para la cabecera `X-Idempotency-Key`. Los clientes móviles reintentan peticiones de forma transparente ante fluctuaciones de Wi-Fi; el backend registra la clave en `idempotencia_registros` y devuelve el préstamo original sin duplicar registros ni emitir falsos errores 409.
+- **Bloqueo Pesimista de Fila (QS-06):** Para evitar la condición de carrera identificada en R-02, la consulta del recurso en `crear_prestamo` aplica bloqueo pesimista `.with_for_update()`, serializando solicitudes que intenten prestar el mismo equipo simultáneamente.
 
-…
+## 8.7 Descomposición: Sagas, Patrón Outbox y Circuit Breakers (S11 — req. 11.4, 11.5 y 11.6)
+- **Evaluación de Sagas y Outbox: NO APLICAN (Justificado):** En una arquitectura de Monolito Modular con base de datos relacional única, todas las operaciones de negocio (cambio de estado del recurso y registro del préstamo) se ejecutan bajo una **única transacción ACID local**. El uso de Sagas u Outbox implicaría consistencia eventual y riesgo de partición innecesarios para esta etapa.
+- **Circuit Breaker (`app/core/resilience.py`):** Se provee la clase `CircuitBreaker` para aislar fallos en integraciones externas futuras (ej. SMTP o pasarelas de notificaciones push), alternando estados CLOSED, OPEN y HALF_OPEN para evitar caídas en cascada.
+- **Decisión de Microservicios:** Formalizada en [ADR-0005](../adr/0005-monolito-vs-microservicios.md), donde se fundamenta el rechazo de microservicios para maximizar la consistencia transaccional y simplicidad operativa del equipo.
 
-## *\<Concept n\>*
-
-*\<explanation\>*
 
 # Decisiones arquitectónicas
 
@@ -300,6 +367,9 @@ sección. Índice de decisiones tomadas hasta ahora:
 
 - [ADR-0001](../adr/0001-estilo-arquitectonico.md) — Estilo arquitectónico: Monolito Modular (S3)
 - [ADR-0002](../adr/0002-cambio-stack-fastapi-flutter.md) — Cambio de stack: Django → FastAPI + Flutter (S4)
+- [ADR-0003](../adr/0003-integracion-sincrona.md) — Integración entre módulos: llamadas directas síncronas (S4)
+- [ADR-0004](../adr/0004-seguridad-jwt.md) — Seguridad y Autenticación: JWT HS256 + bcrypt (S8)
+- [ADR-0005](../adr/0005-monolito-vs-microservicios.md) — Preservación del Monolito Modular: rechazo de microservicios (S8)
 
 # Requisitos de calidad
 
@@ -359,6 +429,7 @@ aspecto correspondiente en `docs/aspectos.md`.
 | **Artefacto** | Servicio movil de UTB Tracker |
 | **Respuesta** | La vista carga y queda interactiva |
 | **Medida** | Tiempo de carga ≤ 3 segundos |
+| **Evidencia empírica (S9)** | Evaluada con `tests/test_performance.py`: p50 de respuesta API ~4 ms, p95 < 25 ms, muy por debajo del umbral de 3 s |
 
 ### QS-03 — Rendimiento (concurrencia)
 
@@ -370,6 +441,8 @@ aspecto correspondiente en `docs/aspectos.md`.
 | **Artefacto** | Backend / API de UTB Tracker |
 | **Respuesta** | El sistema procesa las solicitudes sin degradar el servicio |
 | **Medida** | Soporta al menos 300 usuarios simultáneos sin errores ni caídas |
+| **Evidencia empírica (S9)** | `tests/test_performance.py::test_concurrencia_solicitudes_simultaneas`: 50 peticiones simultáneas con ThreadPool, 100% de tasa de éxito (HTTP 200), 0 caídas o timeouts |
+
 
 ### QS-04 — Seguridad
 
@@ -393,9 +466,31 @@ aspecto correspondiente en `docs/aspectos.md`.
 | **Respuesta** | El auxiliar completa la operación correctamente |
 | **Medida** | Completa el registro del préstamo o reporte en menos de 1 minuto y en su primer intento, sin cometer errores críticos |
 
+### QS-06 — Confiabilidad de los datos
+
+| Campo | Descripción |
+|---|---|
+| **Fuente** | Dos auxiliares o usuarios que intentan prestar el mismo recurso simultáneamente |
+| **Estímulo** | Dos peticiones `POST /prestamos` concurrentes sobre el mismo `recurso_id` |
+| **Ambiente** | Hora pico del campus, red del campus |
+| **Artefacto** | Módulo de préstamos (`app/routers/loans.py`) + PostgreSQL |
+| **Respuesta** | Solo una petición crea el préstamo; la segunda recibe 409 Conflict sin crear ningún registro |
+| **Medida** | 0% de recursos con dos préstamos activos simultáneos; segunda petición siempre recibe 409 |
+
 # Riesgos y deudas técnicas
 
-# Glosario
+Identificados durante la auditoría arquitectónica (Semanas 8, 9 y 11). Ver informe completo
+en `docs/auditoria_s8_s9_s11.md`.
+
+| # | Riesgo / Deuda Técnica | Impacto | Mitigación y Estado |
+|---|---|---|---|
+| **R-01** | Contraseñas sin hashing criptográfico (`services/auth.py`) | Crítico — Seguridad / QS-04. Fuga de BD comprometería credenciales | **Mitigado en S9:** Hashing con salt dinámico `bcrypt` nativo en `app/core/hashing.py`. |
+| **R-02** | Condición de carrera en préstamos (sin bloqueo de fila) | Alto — Confiabilidad / QS-06. Dos solicitudes paralelas pueden prestar el mismo equipo | **Mitigado en S11:** Bloqueo pesimista de fila `.with_for_update()` en `app/services/loans.py`. |
+| **R-03** | Ausencia de migraciones Alembic en producción | Medio — Operabilidad. `create_all()` no permite cambios de esquema en caliente | Deuda técnica documentada; planificada para versionamiento previo a despliegue formal. |
+| **R-04** | Pipeline CI apuntaba a `app/tests/` (1 test) en lugar de `tests/` (suite completa) | Alto — Calidad. Código defectuoso podía desplegarse pasando el único test de salud | **Mitigado en S8:** `ci.yml` ahora corre la suite completa (`pytest tests/ -v`) con contenedor PostgreSQL. |
+| **R-05** | Falta de `Idempotency-Key` en `POST /prestamos` | Medio — Integridad. Reintentos del cliente Flutter en red inestable pueden duplicar reservas | **Mitigado en S11:** Soporte de cabecera `X-Idempotency-Key` respaldada por `idempotencia_registros`. |
+
+
 
 | Término | Definición |
 |---|---|

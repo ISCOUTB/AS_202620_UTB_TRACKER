@@ -5,7 +5,8 @@ from pydantic import BaseModel, ConfigDict
 
 class UsuarioCreate(BaseModel):
     nombre: str
-    rol:str
+    email: str
+    rol: str
     password: str
     
 class UsuarioLogin(BaseModel):
