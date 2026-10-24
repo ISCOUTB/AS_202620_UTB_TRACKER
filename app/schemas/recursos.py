@@ -1,17 +1,12 @@
-from datetime import datetime
-from typing import Optional
+"""
+Módulo de compatibilidad para esquemas de recursos.
 
-from pydantic import BaseModel, ConfigDict
-
-class UsuarioCreate(BaseModel):
-    nombre: str
-    rol:str
-    password: str
-    
-class UsuarioLogin(BaseModel):
-    nombre: str
-    password: str
-
-class UsuarioDelete(BaseModel):
-    nombre: str
-    id: int
+Los esquemas principales se encuentran centralizados en app.schemas.schemas.
+"""
+from app.schemas.schemas import (  # noqa: F401
+    RecursoCreate,
+    RecursoOut,
+    RecursoUpdate,
+    ReporteCreate,
+    ReporteResponse,
+)

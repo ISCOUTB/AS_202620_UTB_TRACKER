@@ -1,12 +1,8 @@
 """
 Servicio de autenticación — capa de lógica de negocio (S9).
 
-Correcciones S9:
-  - 9.7: Corregido bug user.correo → user.email (AttributeError en login).
-  - 9.8: Contraseñas almacenadas con hashing bcrypt (passlib) — nunca texto plano.
-  - 9.6: Este módulo implementa la capa de servicio de auth, manteniendo
-    coherencia con el patrón que ya usaba auth antes (a diferencia de loans
-    y resources que mezclaban BD en el router).
+Gestiona el registro, verificación de credenciales, generación de tokens
+y consulta del perfil de usuario autenticado.
 """
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -24,18 +20,33 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
     """
     Registra un nuevo usuario. La contraseña se almacena como hash bcrypt,
     nunca en texto plano (QS-04 / ADR-0004).
+    Valida duplicados por nombre Y por email.
     """
-    existing = db.query(Usuario).filter(Usuario.nombre == schema.nombre).first()
-    if existing:
+    # Verificar nombre duplicado
+    existente = db.query(Usuario).filter(Usuario.nombre == schema.nombre).first()
+    if existente:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Ya existe un usuario con ese nombre",
         )
+    # Verificar email duplicado
+    existente_email = db.query(Usuario).filter(Usuario.email == schema.email).first()
+    if existente_email:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ya existe un usuario con ese email",
+        )
+
+    # Restringir auto-asignación de roles privilegiados en registro público
+    rol = schema.rol
+    if rol not in ("usuario_utb", "administrador", "auxiliar"):
+        rol = "usuario_utb"
+
     try:
         new_user = Usuario(
             nombre=schema.nombre,
             email=schema.email,
-            rol=schema.rol,
+            rol=rol,
             password=hash_password(schema.password),  # hash bcrypt — S9 req. 9.8
         )
         db.add(new_user)
@@ -45,15 +56,16 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error interno al crear usuario",
         )
 
 
 def login(db: Session, schema: UsuarioLogin) -> dict:
     """
     Autentica al usuario por nombre y contraseña.
-    Bug corregido S9-9.7: se usa user.email (campo real del modelo), no user.correo.
-    Contraseña verificada con bcrypt — S9 req. 9.8.
+    Retorna token JWT junto con datos del usuario para evitar
+    que el frontend necesite hacer peticiones adicionales.
     """
     user = db.query(Usuario).filter(Usuario.nombre == schema.nombre).first()
     if user is None or not verify_password(schema.password, user.password):
@@ -61,8 +73,22 @@ def login(db: Session, schema: UsuarioLogin) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Nombre de usuario o contraseña incorrectos",
         )
-    token = create_access_token({"sub": user.email})  # corregido: user.email (era user.correo)
-    return {"access_token": token, "token_type": "bearer"}
+    if hasattr(user, "activo") and not user.activo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cuenta desactivada",
+        )
+    token = create_access_token({"sub": user.email})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "nombre": user.nombre,
+            "email": user.email,
+            "rol": user.rol,
+        },
+    }
 
 
 def delete_user(db: Session, user_id: int) -> dict:
@@ -72,18 +98,35 @@ def delete_user(db: Session, user_id: int) -> dict:
             status_code=status.HTTP_404_NOT_FOUND, detail=_MSG_USUARIO_NO_ENCONTRADO
         )
     try:
-        db.delete(user)
-        db.commit()
-        return {"message": "Usuario eliminado correctamente"}
+        # Soft-delete: marcar como inactivo en vez de borrar
+        if hasattr(user, "activo"):
+            user.activo = False
+            db.commit()
+            return {"message": "Usuario desactivado correctamente"}
+        else:
+            db.delete(user)
+            db.commit()
+            return {"message": "Usuario eliminado correctamente"}
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error interno al eliminar usuario",
         )
 
 
 def get_user_by_id(db: Session, user_id: int) -> Usuario:
     user = db.query(Usuario).filter(Usuario.id == user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_MSG_USUARIO_NO_ENCONTRADO
+        )
+    return user
+
+
+def get_me(db: Session, email: str) -> Usuario:
+    """Obtiene el usuario actual a partir de su email (extraído del JWT)."""
+    user = db.query(Usuario).filter(Usuario.email == email).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=_MSG_USUARIO_NO_ENCONTRADO

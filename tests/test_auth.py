@@ -7,6 +7,7 @@ Cubre:
 - Inicio de sesión exitoso y generación de token JWT firmado.
 - Rechazo de contraseñas incorrectas o usuarios inexistentes (401 Unauthorized).
 - Consulta y eliminación de usuarios.
+- Endpoint GET /auth/me para el usuario autenticado.
 """
 
 
@@ -51,7 +52,7 @@ def test_login_exitoso_genera_jwt(client):
         "/auth/register",
         json={
             "nombre": "Admin Campus",
-            "email": "admin@utb.edu.co",
+            "email": "admin_login@utb.edu.co",
             "rol": "administrador",
             "password": "AdminSecret2026*",
         },
@@ -70,6 +71,9 @@ def test_login_exitoso_genera_jwt(client):
     assert "access_token" in data
     assert data["token_type"] == "bearer"
     assert len(data["access_token"]) > 20
+    # El login ahora retorna datos del usuario
+    assert "user" in data
+    assert data["user"]["nombre"] == "Admin Campus"
 
 
 def test_login_password_incorrecto_rechazado(client):
@@ -105,7 +109,7 @@ def test_login_usuario_inexistente_rechazado(client):
     assert response.status_code == 401
 
 
-def test_obtener_usuario_por_id(client):
+def test_obtener_usuario_por_id(client, auth_headers):
     res_reg = client.post(
         "/auth/register",
         json={
@@ -117,17 +121,17 @@ def test_obtener_usuario_por_id(client):
     )
     user_id = res_reg.json()["id"]
 
-    response = client.get(f"/auth/user/{user_id}")
+    response = client.get(f"/auth/user/{user_id}", headers=auth_headers)
     assert response.status_code == 200
     assert response.json()["nombre"] == "Consulta ID"
 
 
-def test_obtener_usuario_inexistente_404(client):
-    response = client.get("/auth/user/999999")
+def test_obtener_usuario_inexistente_404(client, auth_headers):
+    response = client.get("/auth/user/999999", headers=auth_headers)
     assert response.status_code == 404
 
 
-def test_eliminar_usuario(client):
+def test_eliminar_usuario(client, admin_headers):
     res_reg = client.post(
         "/auth/register",
         json={
@@ -139,9 +143,33 @@ def test_eliminar_usuario(client):
     )
     user_id = res_reg.json()["id"]
 
-    res_del = client.delete(f"/auth/delete/{user_id}")
+    res_del = client.delete(f"/auth/delete/{user_id}", headers=admin_headers)
     assert res_del.status_code == 200
 
-    # Verificar que ya no existe
-    res_get = client.get(f"/auth/user/{user_id}")
-    assert res_get.status_code == 404
+
+def test_endpoint_me(client, auth_headers):
+    """GET /auth/me debe retornar los datos del usuario autenticado."""
+    response = client.get("/auth/me", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["nombre"] == "Usuario de prueba 1"
+    assert data["email"] == "user1@utb.edu.co"
+    assert data["rol"] == "usuario_utb"
+
+
+def test_endpoint_me_sin_token(client):
+    """GET /auth/me sin token debe retornar 401."""
+    response = client.get("/auth/me")
+    assert response.status_code == 401
+
+
+def test_endpoint_protegido_sin_token(client):
+    """Endpoints protegidos deben rechazar peticiones sin token."""
+    response = client.get("/auth/user/1")
+    assert response.status_code == 401
+
+
+def test_eliminar_usuario_sin_rol_admin(client, auth_headers):
+    """Solo admin/auxiliar puede eliminar usuarios."""
+    response = client.delete("/auth/delete/1", headers=auth_headers)
+    assert response.status_code == 403

@@ -2,14 +2,17 @@
   "openapi": "3.1.0",
   "info": {
     "title": "UTB Tracker",
-    "description": "API de inventario y préstamos de equipos electrónicos de la UTB.",
+    "description": "API REST para gestión de salones, préstamos de equipos electrónicos y horarios — UTB.",
     "version": "1.0.0"
   },
   "paths": {
     "/salud": {
       "get": {
+        "tags": [
+          "salud"
+        ],
         "summary": "Health Check",
-        "description": "Endpoint minimo para confirmar que el esqueleto arranca correctamente.\nNo es logica de negocio: es fontaneria para la siguiente entrega.",
+        "description": "Health check profundo: verifica conectividad real contra la base de datos (S8).\nUn check que solo devuelve 'ok' sin tocar la BD no detecta caídas del motor\nde persistencia — este endpoint ejecuta SELECT 1 para confirmar que el pool\nde conexiones está activo y PostgreSQL responde.",
         "operationId": "health_check_salud_get",
         "responses": {
           "200": {
@@ -23,41 +26,59 @@
         }
       }
     },
-    "/recursos": {
-      "get": {
+    "/auth/login": {
+      "post": {
         "tags": [
-          "recursos"
+          "auth"
         ],
-        "summary": "Listar Recursos",
-        "operationId": "listar_recursos_recursos_get",
+        "summary": "Login Endpoint",
+        "operationId": "login_endpoint_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioLogin"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/RecursoOut"
-                  },
-                  "type": "array",
-                  "title": "Response Listar Recursos Recursos Get"
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
         }
-      },
+      }
+    },
+    "/auth/register": {
       "post": {
         "tags": [
-          "recursos"
+          "auth"
         ],
-        "summary": "Crear Recurso",
-        "operationId": "crear_recurso_recursos_post",
+        "summary": "Register Endpoint",
+        "operationId": "register_endpoint_auth_register_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RecursoCreate"
+                "$ref": "#/components/schemas/UsuarioCreate"
               }
             }
           },
@@ -69,7 +90,305 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me Endpoint",
+        "description": "Retorna los datos del usuario autenticado a partir del token JWT.",
+        "operationId": "me_endpoint_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/delete/{user_id}": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Delete User Endpoint",
+        "description": "Elimina (soft-delete) un usuario. Requiere rol admin/auxiliar.",
+        "operationId": "delete_user_endpoint_auth_delete__user_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/user/{user_id}": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get User Endpoint",
+        "operationId": "get_user_endpoint_auth_user__user_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recursos": {
+      "post": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Crear Recurso",
+        "description": "Crea un recurso nuevo. Requiere rol admin/auxiliar.",
+        "operationId": "crear_recurso_recursos_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecursoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
                   "$ref": "#/components/schemas/RecursoOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe un recurso con ese serial"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Listar Recursos",
+        "description": "Lista recursos con filtros opcionales y paginación.",
+        "operationId": "listar_recursos_recursos_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Salon Id"
+            }
+          },
+          {
+            "name": "categoria",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Categoria"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "busqueda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Busqueda"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecursoOut"
+                  },
+                  "title": "Response Listar Recursos Recursos Get"
                 }
               }
             }
@@ -94,6 +413,11 @@
         ],
         "summary": "Obtener Recurso",
         "operationId": "obtener_recurso_recursos__recurso_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "recurso_id",
@@ -116,6 +440,225 @@
               }
             }
           },
+          "404": {
+            "description": "Recurso no encontrado"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Actualizar Recurso",
+        "description": "Actualiza un recurso existente. Requiere rol admin/auxiliar.",
+        "operationId": "actualizar_recurso_recursos__recurso_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recurso_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recurso Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecursoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecursoOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso no encontrado"
+          },
+          "409": {
+            "description": "Ya existe un recurso con ese serial"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Eliminar Recurso",
+        "description": "Soft-delete de un recurso. Requiere rol admin/auxiliar.",
+        "operationId": "eliminar_recurso_recursos__recurso_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recurso_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recurso Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recursos/{recurso_id}/reportar": {
+      "post": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Reportar Recurso",
+        "description": "Reporta el estado de un recurso (daño, mantenimiento, etc.).\nCrea un registro de reporte y actualiza el estado del recurso.",
+        "operationId": "reportar_recurso_recursos__recurso_id__reportar_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recurso_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recurso Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReporteCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReporteResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recursos/{recurso_id}/reportes": {
+      "get": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Listar Reportes Recurso",
+        "description": "Historial de reportes de un recurso.",
+        "operationId": "listar_reportes_recurso_recursos__recurso_id__reportes_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recurso_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recurso Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReporteResponse"
+                  },
+                  "title": "Response Listar Reportes Recurso Recursos  Recurso Id  Reportes Get"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -130,40 +673,743 @@
       }
     },
     "/prestamos": {
-      "get": {
-        "tags": [
-          "prestamos"
-        ],
-        "summary": "Listar Prestamos",
-        "operationId": "listar_prestamos_prestamos_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PrestamoOut"
-                  },
-                  "type": "array",
-                  "title": "Response Listar Prestamos Prestamos Get"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": [
           "prestamos"
         ],
         "summary": "Crear Prestamo",
         "operationId": "crear_prestamo_prestamos_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/PrestamoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestamoOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso o usuario no encontrado"
+          },
+          "409": {
+            "description": "El recurso no está disponible"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "prestamos"
+        ],
+        "summary": "Listar Prestamos",
+        "description": "Lista préstamos de recursos.\nAdmin/auxiliar ve todos; usuario normal solo ve los suyos.",
+        "operationId": "listar_prestamos_prestamos_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PrestamoOut"
+                  },
+                  "title": "Response Listar Prestamos Prestamos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prestamos/{prestamo_id}/devolver": {
+      "patch": {
+        "tags": [
+          "prestamos"
+        ],
+        "summary": "Devolver Prestamo",
+        "description": "Registra la devolución de un préstamo.\nMarca fecha_devolucion_real y restaura el recurso a 'disponible'.",
+        "operationId": "devolver_prestamo_prestamos__prestamo_id__devolver_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "prestamo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Prestamo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestamoOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Préstamo no encontrado"
+          },
+          "409": {
+            "description": "Préstamo ya devuelto"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salones": {
+      "post": {
+        "tags": [
+          "salones"
+        ],
+        "summary": "Crear Salon",
+        "description": "Crea un nuevo salón. Requiere rol administrador o auxiliar.",
+        "operationId": "crear_salon_salones_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalonCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "salones"
+        ],
+        "summary": "Listar Salones",
+        "description": "Lista salones con filtros opcionales y paginación.",
+        "operationId": "listar_salones_salones_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "edificio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Edificio"
+            }
+          },
+          {
+            "name": "busqueda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Busqueda"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SalonResponse"
+                  },
+                  "title": "Response Listar Salones Salones Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salones/{salon_id}": {
+      "get": {
+        "tags": [
+          "salones"
+        ],
+        "summary": "Obtener Salon",
+        "description": "Obtiene un salón por ID.",
+        "operationId": "obtener_salon_salones__salon_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "salones"
+        ],
+        "summary": "Actualizar Salon",
+        "description": "Actualiza un salón existente. Requiere rol admin/auxiliar.",
+        "operationId": "actualizar_salon_salones__salon_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalonUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "salones"
+        ],
+        "summary": "Eliminar Salon",
+        "description": "Soft-delete de un salón. Requiere rol admin/auxiliar.",
+        "operationId": "eliminar_salon_salones__salon_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salones/{salon_id}/disponibilidad": {
+      "get": {
+        "tags": [
+          "salones"
+        ],
+        "summary": "Obtener Disponibilidad",
+        "description": "Consulta las franjas horarias disponibles de un salón en un día dado.\nCruza los horarios académicos fijos con los préstamos de salón existentes.",
+        "operationId": "obtener_disponibilidad_salones__salon_id__disponibilidad_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          },
+          {
+            "name": "dia_semana",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 7,
+              "minimum": 1,
+              "description": "1=Lunes, 7=Domingo",
+              "title": "Dia Semana"
+            },
+            "description": "1=Lunes, 7=Domingo"
+          },
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fecha"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/horarios": {
+      "post": {
+        "tags": [
+          "horarios"
+        ],
+        "summary": "Crear Horario",
+        "description": "Crea un horario académico. Valida conflictos temporales.",
+        "operationId": "crear_horario_horarios_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HorarioCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorarioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "horarios"
+        ],
+        "summary": "Listar Horarios",
+        "description": "Lista horarios con filtros opcionales por salón, día y semestre.",
+        "operationId": "listar_horarios_horarios_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Salon Id"
+            }
+          },
+          {
+            "name": "dia_semana",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 7,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dia Semana"
+            }
+          },
+          {
+            "name": "semestre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Semestre"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HorarioResponse"
+                  },
+                  "title": "Response Listar Horarios Horarios Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/horarios/bulk": {
+      "post": {
+        "tags": [
+          "horarios"
+        ],
+        "summary": "Crear Horarios Bulk",
+        "description": "Carga masiva de horarios para un semestre completo.",
+        "operationId": "crear_horarios_bulk_horarios_bulk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HorarioBulkCreate"
               }
             }
           },
@@ -175,7 +1421,365 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PrestamoOut"
+                  "items": {
+                    "$ref": "#/components/schemas/HorarioResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Crear Horarios Bulk Horarios Bulk Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/horarios/{horario_id}": {
+      "get": {
+        "tags": [
+          "horarios"
+        ],
+        "summary": "Obtener Horario",
+        "description": "Obtiene un horario por ID.",
+        "operationId": "obtener_horario_horarios__horario_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "horario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Horario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorarioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "horarios"
+        ],
+        "summary": "Actualizar Horario",
+        "description": "Actualiza un horario existente. Valida conflictos si cambian las horas.",
+        "operationId": "actualizar_horario_horarios__horario_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "horario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Horario Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HorarioUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorarioResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "horarios"
+        ],
+        "summary": "Eliminar Horario",
+        "description": "Soft-delete de un horario.",
+        "operationId": "eliminar_horario_horarios__horario_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "horario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Horario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prestamos-salon": {
+      "post": {
+        "tags": [
+          "prestamos-salon"
+        ],
+        "summary": "Crear Prestamo Salon",
+        "description": "Solicita un préstamo de salón.\nValida conflictos con horarios académicos y otros préstamos existentes.\nEl usuario autenticado queda asociado como solicitante.",
+        "operationId": "crear_prestamo_salon_prestamos_salon_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrestamoSalonCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestamoSalonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "prestamos-salon"
+        ],
+        "summary": "Listar Prestamos Salon",
+        "description": "Lista préstamos de salón con filtros.\nAdmin/auxiliar ve todos; usuario normal solo ve los suyos.",
+        "operationId": "listar_prestamos_salon_prestamos_salon_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Salon Id"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PrestamoSalonResponse"
+                  },
+                  "title": "Response Listar Prestamos Salon Prestamos Salon Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prestamos-salon/{prestamo_id}": {
+      "patch": {
+        "tags": [
+          "prestamos-salon"
+        ],
+        "summary": "Actualizar Estado Prestamo Salon",
+        "description": "Actualiza el estado de un préstamo de salón.\nSolo admin/auxiliar puede aprobar, rechazar o cambiar estados.\nValida transiciones: pendiente→aprobado/rechazado/cancelado,\naprobado→en_uso/cancelado, en_uso→finalizado.",
+        "operationId": "actualizar_estado_prestamo_salon_prestamos_salon__prestamo_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "prestamo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Prestamo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrestamoSalonUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestamoSalonResponse"
                 }
               }
             }
@@ -196,6 +1800,28 @@
   },
   "components": {
     "schemas": {
+      "CategoriaRecurso": {
+        "type": "string",
+        "enum": [
+          "video_beam",
+          "computador",
+          "aire_ac",
+          "tv",
+          "audio",
+          "otro"
+        ],
+        "title": "CategoriaRecurso"
+      },
+      "EstadoRecurso": {
+        "type": "string",
+        "enum": [
+          "disponible",
+          "prestado",
+          "dañado",
+          "mantenimiento"
+        ],
+        "title": "EstadoRecurso"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -208,6 +1834,265 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HorarioBulkCreate": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HorarioCreate"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "HorarioBulkCreate",
+        "description": "Permite cargar múltiples horarios de un semestre en una sola petición."
+      },
+      "HorarioCreate": {
+        "properties": {
+          "salon_id": {
+            "type": "integer",
+            "title": "Salon Id"
+          },
+          "dia_semana": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Dia Semana",
+            "description": "1=Lunes, 7=Domingo"
+          },
+          "hora_inicio": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Inicio"
+          },
+          "hora_fin": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Fin"
+          },
+          "profesor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profesor"
+          },
+          "materia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Materia"
+          },
+          "semestre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semestre",
+            "examples": [
+              "2026-2"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "salon_id",
+          "dia_semana",
+          "hora_inicio",
+          "hora_fin"
+        ],
+        "title": "HorarioCreate"
+      },
+      "HorarioResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "salon_id": {
+            "type": "integer",
+            "title": "Salon Id"
+          },
+          "dia_semana": {
+            "type": "integer",
+            "title": "Dia Semana"
+          },
+          "hora_inicio": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Inicio"
+          },
+          "hora_fin": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Fin"
+          },
+          "profesor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profesor"
+          },
+          "materia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Materia"
+          },
+          "semestre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semestre"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo",
+            "default": true
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "salon_id",
+          "dia_semana",
+          "hora_inicio",
+          "hora_fin"
+        ],
+        "title": "HorarioResponse"
+      },
+      "HorarioUpdate": {
+        "properties": {
+          "dia_semana": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dia Semana"
+          },
+          "hora_inicio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hora Inicio"
+          },
+          "hora_fin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hora Fin"
+          },
+          "profesor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profesor"
+          },
+          "materia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Materia"
+          },
+          "semestre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semestre"
+          },
+          "activo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activo"
+          }
+        },
+        "type": "object",
+        "title": "HorarioUpdate"
       },
       "PrestamoCreate": {
         "properties": {
@@ -268,6 +2153,11 @@
               }
             ],
             "title": "Fecha Devolucion Real"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado",
+            "default": "activo"
           }
         },
         "type": "object",
@@ -281,25 +2171,168 @@
         ],
         "title": "PrestamoOut"
       },
+      "PrestamoSalonCreate": {
+        "properties": {
+          "salon_id": {
+            "type": "integer",
+            "title": "Salon Id"
+          },
+          "fecha_inicio": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Inicio"
+          },
+          "fecha_fin": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Fin"
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "salon_id",
+          "fecha_inicio",
+          "fecha_fin"
+        ],
+        "title": "PrestamoSalonCreate"
+      },
+      "PrestamoSalonResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "salon_id": {
+            "type": "integer",
+            "title": "Salon Id"
+          },
+          "usuario_id": {
+            "type": "integer",
+            "title": "Usuario Id"
+          },
+          "fecha_inicio": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Inicio"
+          },
+          "fecha_fin": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Fin"
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "salon_id",
+          "usuario_id",
+          "fecha_inicio",
+          "fecha_fin",
+          "estado"
+        ],
+        "title": "PrestamoSalonResponse"
+      },
+      "PrestamoSalonUpdate": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "title": "Estado",
+            "description": "pendiente | aprobado | rechazado | en_uso | finalizado | cancelado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado"
+        ],
+        "title": "PrestamoSalonUpdate"
+      },
       "RecursoCreate": {
         "properties": {
           "categoria": {
-            "type": "string",
-            "title": "Categoria"
+            "$ref": "#/components/schemas/CategoriaRecurso"
           },
           "salon_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Salon Id"
           },
           "serial": {
             "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
             "title": "Serial"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
           }
         },
         "type": "object",
         "required": [
           "categoria",
-          "salon_id",
           "serial"
         ],
         "title": "RecursoCreate"
@@ -315,7 +2348,14 @@
             "title": "Categoria"
           },
           "salon_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Salon Id"
           },
           "serial": {
@@ -325,17 +2365,600 @@
           "estado": {
             "type": "string",
             "title": "Estado"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo",
+            "default": true
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           }
         },
         "type": "object",
         "required": [
           "id",
           "categoria",
-          "salon_id",
           "serial",
           "estado"
         ],
         "title": "RecursoOut"
+      },
+      "RecursoUpdate": {
+        "properties": {
+          "categoria": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoriaRecurso"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "salon_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salon Id"
+          },
+          "serial": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serial"
+          },
+          "estado": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EstadoRecurso"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          }
+        },
+        "type": "object",
+        "title": "RecursoUpdate"
+      },
+      "ReporteCreate": {
+        "properties": {
+          "estado_reportado": {
+            "$ref": "#/components/schemas/EstadoRecurso"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado_reportado"
+        ],
+        "title": "ReporteCreate"
+      },
+      "ReporteResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "recurso_id": {
+            "type": "integer",
+            "title": "Recurso Id"
+          },
+          "usuario_id": {
+            "type": "integer",
+            "title": "Usuario Id"
+          },
+          "estado_reportado": {
+            "type": "string",
+            "title": "Estado Reportado"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "imagen_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen Url"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "recurso_id",
+          "usuario_id",
+          "estado_reportado"
+        ],
+        "title": "ReporteResponse"
+      },
+      "SalonCreate": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Nombre",
+            "examples": [
+              "A-301"
+            ]
+          },
+          "ubicacion": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Ubicacion",
+            "examples": [
+              "Edificio A, Piso 3"
+            ]
+          },
+          "edificio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edificio"
+          },
+          "piso": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piso"
+          },
+          "capacidad": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Capacidad",
+            "examples": [
+              40
+            ]
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado",
+            "default": "disponible"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "ubicacion",
+          "capacidad"
+        ],
+        "title": "SalonCreate"
+      },
+      "SalonResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "ubicacion": {
+            "type": "string",
+            "title": "Ubicacion"
+          },
+          "edificio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edificio"
+          },
+          "piso": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piso"
+          },
+          "capacidad": {
+            "type": "integer",
+            "title": "Capacidad"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo",
+            "default": true
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "ubicacion",
+          "capacidad",
+          "estado"
+        ],
+        "title": "SalonResponse"
+      },
+      "SalonUpdate": {
+        "properties": {
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "ubicacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ubicacion"
+          },
+          "edificio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edificio"
+          },
+          "piso": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piso"
+          },
+          "capacidad": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacidad"
+          },
+          "estado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estado"
+          }
+        },
+        "type": "object",
+        "title": "SalonUpdate"
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserMeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "token_type"
+        ],
+        "title": "TokenResponse"
+      },
+      "UserMeResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "rol": {
+            "type": "string",
+            "title": "Rol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "email",
+          "rol"
+        ],
+        "title": "UserMeResponse",
+        "description": "Respuesta para GET /auth/me — datos del usuario autenticado."
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "fecha_registro": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Registro"
+          },
+          "rol": {
+            "type": "string",
+            "title": "Rol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "email",
+          "fecha_registro",
+          "rol"
+        ],
+        "title": "UserResponse"
+      },
+      "UsuarioCreate": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Nombre"
+          },
+          "email": {
+            "type": "string",
+            "minLength": 5,
+            "title": "Email"
+          },
+          "rol": {
+            "type": "string",
+            "title": "Rol",
+            "default": "usuario_utb"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "email",
+          "password"
+        ],
+        "title": "UsuarioCreate"
+      },
+      "UsuarioLogin": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "password"
+        ],
+        "title": "UsuarioLogin"
       },
       "ValidationError": {
         "properties": {
@@ -360,13 +2983,6 @@
           "type": {
             "type": "string",
             "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
           }
         },
         "type": "object",
@@ -376,6 +2992,17 @@
           "type"
         ],
         "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/auth/login"
+          }
+        }
       }
     }
   }

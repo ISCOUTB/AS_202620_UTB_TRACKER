@@ -1,11 +1,11 @@
 """
-Mecanismos de resiliencia del sistema (S11 — req. 11.2 y 11.4).
+Mecanismos de resiliencia y tolerancia a fallos.
 
 Provee:
 1. with_retry: decorador de reintentos con retroceso exponencial (backoff)
    y perturbación aleatoria (jitter) para operaciones transitorias.
 2. CircuitBreaker: patrón cortacircuitos para proteger el sistema ante caídas
-   prolongadas en dependencias o servicios externos (CLOSED -> OPEN -> HALF_OPEN).
+   prolongadas en dependencias externas (CLOSED -> OPEN -> HALF_OPEN).
 """
 import functools
 import logging
@@ -70,7 +70,7 @@ class CircuitBreakerOpenException(Exception):
 
 class CircuitBreaker:
     """
-    Implementación del patrón Circuit Breaker (S11 — req. 11.4).
+    Implementación del patrón Circuit Breaker.
     Evita saturar recursos caídos fallando rápidamente sin esperar timeouts.
     """
 

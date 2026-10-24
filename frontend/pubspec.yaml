@@ -1,0 +1,29 @@
+name: utb_tracker_app
+description: App móvil de UTB Tracker (Flutter). Cliente del API FastAPI del repositorio.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+# Dependencias externas (restricción del curso: cada librería nueva se valida antes de adoptarla).
+#  - http:        cliente HTTP oficial del equipo de Dart (lo usa el Blueprint FastAPI+Flutter).
+#  - get_it:      inyección de dependencias (lo nombra el Blueprint, patrón Repositorio).
+#  - flutter_svg: dibuja las figuras SVG de assets/figuras/. Es la única que NO está en el Blueprint;
+#                 si el profesor no la aprueba, se reemplaza convirtiendo las figuras a PNG.
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  get_it: ^7.6.0
+  flutter_svg: ^2.0.9
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/figuras/

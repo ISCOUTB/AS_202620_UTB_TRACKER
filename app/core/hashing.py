@@ -1,10 +1,5 @@
 """
-Utilidades de hashing de contraseñas (S9 — req. 9.8).
-
-Usa bcrypt nativo directamente, garantizando compatibilidad y eliminando
-la dependencia de passlib (que presenta problemas con bcrypt >= 4.0).
-Seguridad: las contraseñas NUNCA se almacenan en texto plano — ver ADR-0004
-y el escenario QS-04 en arc42 sección 10.
+Utilidades de cifrado y verificación de contraseñas mediante bcrypt.
 """
 import bcrypt
 

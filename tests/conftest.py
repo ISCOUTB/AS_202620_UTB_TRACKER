@@ -8,6 +8,11 @@ Estrategia:
 - En local: el desarrollador crea la BD una sola vez (ver README).
 - Cada test arranca con drop_all → create_all: aislamiento total,
   sin contaminación entre corridas ni entre tests.
+
+Mejoras:
+- Fixture auth_headers para tests que requieren autenticación JWT.
+- Fixture admin_headers para tests que requieren rol admin.
+- Soporte para SQLite en local si no hay TEST_DATABASE_URL.
 """
 import os
 
@@ -18,8 +23,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base, get_db
+from app.core.hashing import hash_password
 from app.main import app
 from app.models.auth_models import Usuario
+
+# Importar todos los modelos para que Base.metadata los registre
+from app.models import recurso_models, salon_models  # noqa: F401
 
 load_dotenv()
 
@@ -27,15 +36,19 @@ TEST_DATABASE_URL = (os.environ.get("TEST_DATABASE_URL") or "").strip()
 if not TEST_DATABASE_URL:
     TEST_DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip()
 
+# Fallback a SQLite para ejecución local sin configuración
 if not TEST_DATABASE_URL:
-    raise RuntimeError(
-        "Debe configurar TEST_DATABASE_URL o DATABASE_URL en las variables de entorno."
-    )
+    TEST_DATABASE_URL = "sqlite:///./test_utb_tracker.db"
 
 
 @pytest.fixture
 def client():
-    engine = create_engine(TEST_DATABASE_URL)
+    if TEST_DATABASE_URL.startswith("sqlite"):
+        engine = create_engine(
+            TEST_DATABASE_URL, connect_args={"check_same_thread": False}
+        )
+    else:
+        engine = create_engine(TEST_DATABASE_URL)
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     # Tablas limpias antes de cada test → aislamiento total
@@ -45,8 +58,24 @@ def client():
     # Datos base reutilizables (sin IDs explícitos — la secuencia PK no se desfasa)
     db = TestingSessionLocal()
     db.add_all([
-        Usuario(nombre="Usuario de prueba 1", email="user1@utb.edu.co", password="hashed_password", rol="usuario_utb"),
-        Usuario(nombre="Usuario de prueba 2", email="user2@utb.edu.co", password="hashed_password", rol="usuario_utb"),
+        Usuario(
+            nombre="Usuario de prueba 1",
+            email="user1@utb.edu.co",
+            password=hash_password("TestPassword1"),
+            rol="usuario_utb",
+        ),
+        Usuario(
+            nombre="Usuario de prueba 2",
+            email="user2@utb.edu.co",
+            password=hash_password("TestPassword2"),
+            rol="usuario_utb",
+        ),
+        Usuario(
+            nombre="Admin prueba",
+            email="admin@utb.edu.co",
+            password=hash_password("AdminPassword1"),
+            rol="administrador",
+        ),
     ])
     db.commit()
     db.close()
@@ -63,3 +92,27 @@ def client():
         yield test_client
     app.dependency_overrides.clear()
     engine.dispose()
+
+
+def _get_token(client, nombre: str, password: str) -> str:
+    """Helper: hace login y devuelve el token JWT."""
+    response = client.post(
+        "/auth/login",
+        json={"nombre": nombre, "password": password},
+    )
+    assert response.status_code == 200, f"Login falló: {response.json()}"
+    return response.json()["access_token"]
+
+
+@pytest.fixture
+def auth_headers(client) -> dict:
+    """Headers con token JWT de un usuario regular (usuario_utb)."""
+    token = _get_token(client, "Usuario de prueba 1", "TestPassword1")
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def admin_headers(client) -> dict:
+    """Headers con token JWT de un usuario administrador."""
+    token = _get_token(client, "Admin prueba", "AdminPassword1")
+    return {"Authorization": f"Bearer {token}"}

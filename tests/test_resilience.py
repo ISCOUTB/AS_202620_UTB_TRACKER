@@ -17,26 +17,26 @@ from app.core.resilience import (
 )
 
 
-def _crear_recurso(client, serial="RESIL-001"):
+def _crear_recurso(client, admin_headers, serial="RESIL-001"):
     response = client.post(
         "/recursos",
         json={
             "categoria": "computador",
-            "salon_id": "L-201",
             "serial": serial,
         },
+        headers=admin_headers,
     )
     return response.json()["id"]
 
 
-def test_idempotencia_prestamo_con_misma_clave(client):
+def test_idempotencia_prestamo_con_misma_clave(client, admin_headers, auth_headers):
     """
     Verifica que al enviar la misma cabecera X-Idempotency-Key repetidamente:
     1. La primera petición crea el préstamo (201).
     2. La segunda petición (reintento del móvil) retorna el mismo préstamo sin 409.
     3. Una petición diferente sobre el mismo recurso falla con 409 (recurso ya prestado).
     """
-    recurso_id = _crear_recurso(client, serial="IDEM-999")
+    recurso_id = _crear_recurso(client, admin_headers, serial="IDEM-999")
     idempotency_key = "req-uuid-test-12345"
 
     payload = {
@@ -44,7 +44,7 @@ def test_idempotencia_prestamo_con_misma_clave(client):
         "usuario_id": 1,
         "fecha_devolucion_esperada": "2026-10-25T18:00:00",
     }
-    headers = {"X-Idempotency-Key": idempotency_key}
+    headers = {**auth_headers, "X-Idempotency-Key": idempotency_key}
 
     # Primera petición: creación normal
     res1 = client.post("/prestamos", json=payload, headers=headers)
@@ -57,12 +57,9 @@ def test_idempotencia_prestamo_con_misma_clave(client):
     assert res2.json()["id"] == prestamo_id_1
     assert res2.json()["recurso_id"] == recurso_id
 
-    # Tercera petición SIN la clave o con otra clave: debe ser rechazada con 409
-    res3 = client.post(
-        "/prestamos",
-        json=payload,
-        headers={"X-Idempotency-Key": "otra-clave-diferente"},
-    )
+    # Tercera petición con otra clave: debe ser rechazada con 409
+    headers_otra = {**auth_headers, "X-Idempotency-Key": "otra-clave-diferente"}
+    res3 = client.post("/prestamos", json=payload, headers=headers_otra)
     assert res3.status_code == 409
     assert "no esta disponible" in res3.json()["detail"]
 

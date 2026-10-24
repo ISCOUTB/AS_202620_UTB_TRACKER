@@ -1,22 +1,14 @@
 """
-Configuración de base de datos y pool de conexiones (S8 / S11).
+Configuración del motor de base de datos y gestión de sesiones.
 
-Resiliencia (S11 — req. 11.1):
-- pool_size=10, max_overflow=20: maneja hasta 30 conexiones simultáneas bajo picos.
-- pool_timeout=30: tiempo máximo de espera para obtener una conexión del pool.
-- pool_recycle=1800: renueva conexiones cada 30 minutos para evitar conexiones muertas.
-- pool_pre_ping=True: sondea la conexión antes de entregarla al request, descartando
-  conexiones caídas por timeouts del firewall o reinicios del servidor Postgres.
-- Compatibilidad condicional: SQLite en desarrollo local / PostgreSQL en CI y producción.
+Configura el pool de conexiones según el motor:
+- SQLite para entornos locales o pruebas sin servidor externo.
+- PostgreSQL con sondeo previo y reciclaje de conexiones para entornos de producción.
 """
-import os
-
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-load_dotenv()
-DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip() or "sqlite:///./utb_tracker.db"
+from app.core.config import DATABASE_URL
 
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
@@ -24,7 +16,6 @@ if DATABASE_URL.startswith("sqlite"):
         connect_args={"check_same_thread": False},
     )
 else:
-    # Configuración de alta resiliencia para PostgreSQL (S11 req. 11.1)
     engine = create_engine(
         DATABASE_URL,
         pool_size=10,
@@ -40,6 +31,7 @@ Base = declarative_base()
 
 
 def get_db():
+    """Generador de sesiones de base de datos para inyección de dependencias."""
     db = SessionLocal()
     try:
         yield db
