@@ -23,7 +23,14 @@ from app.models.auth_models import Usuario
 
 load_dotenv()
 
-TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
+TEST_DATABASE_URL = (os.environ.get("TEST_DATABASE_URL") or "").strip()
+if not TEST_DATABASE_URL:
+    TEST_DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip()
+
+if not TEST_DATABASE_URL:
+    raise RuntimeError(
+        "Debe configurar TEST_DATABASE_URL o DATABASE_URL en las variables de entorno."
+    )
 
 
 @pytest.fixture

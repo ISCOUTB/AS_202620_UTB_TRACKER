@@ -13,9 +13,8 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-def test_rendimiento_latencia_p95_salud():
+def test_rendimiento_latencia_p95_salud(client):
     """Mide la latencia p95 del endpoint de salud y recursos con 100 peticiones."""
-    client = TestClient(app)
     latencias = []
 
     for _ in range(100):
@@ -35,10 +34,8 @@ def test_rendimiento_latencia_p95_salud():
     assert p50 < 100, f"Latencia p50 demasiado alta: {p50:.2f} ms"
 
 
-def test_concurrencia_solicitudes_simultaneas():
+def test_concurrencia_solicitudes_simultaneas(client):
     """Ejecuta 50 peticiones simultáneas con un ThreadPool para evaluar concurrencia."""
-    client = TestClient(app)
-
     def tarea_request(_):
         res = client.get("/salud")
         return res.status_code

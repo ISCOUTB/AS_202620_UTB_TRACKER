@@ -9,15 +9,13 @@ jobs:
     runs-on: ubuntu-latest
 
     # Servicio de PostgreSQL para las pruebas de integración (S8 — req. 8.2)
-    # Contenedor EFÍMERO: vive solo durante el pipeline, no guarda datos reales.
-    # Usa el usuario 'postgres' (siempre existe en la imagen oficial) con trust auth.
-    # Solo se configura el nombre de la BD de test (var no sensible).
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: ${{ vars.POSTGRES_TEST_DB }}
-          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         ports:
           - 5432:5432
         options: >-
