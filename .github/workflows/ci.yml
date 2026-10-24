@@ -42,7 +42,7 @@ jobs:
           cache: "pip"
 
       - name: Instalar dependencias
-        run: pip install --require-hashes --only-binary :all: -r requirements.txt
+        run: "pip install --require-hashes --only-binary :all: -r requirements.txt"
 
       # Suite completa de pruebas (S8 — req. 8.2: corregido de app/tests/ a tests/)
       - name: Ejecutar pruebas (Pytest — suite completa)
