@@ -32,10 +32,10 @@ jobs:
       DATABASE_URL: postgresql://postgres@localhost:5432/utb_tracker_test
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0aecbe5b88e95578de1f3f5e8f8c83abc3c9e14f  # v5.3.0
         with:
           python-version: "3.12"
           cache: "pip"
