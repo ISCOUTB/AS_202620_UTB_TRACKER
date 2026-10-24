@@ -92,7 +92,7 @@ def obtener_disponibilidad(
     Cruza los horarios académicos fijos con los préstamos de salón existentes
     para determinar qué horas están libres.
     """
-    salon = obtener_salon(db, salon_id)
+    obtener_salon(db, salon_id)
 
     # Obtener horarios académicos ocupados para ese día
     horarios_ocupados = (

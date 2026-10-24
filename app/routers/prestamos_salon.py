@@ -42,8 +42,8 @@ def listar_prestamos_salon(
     current_user: CurrentUser,
     salon_id: Optional[int] = None,
     estado: Optional[str] = None,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ):
     """
     Lista préstamos de salón con filtros.

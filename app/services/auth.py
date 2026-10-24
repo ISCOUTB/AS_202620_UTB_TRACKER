@@ -53,7 +53,7 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
         db.commit()
         db.refresh(new_user)
         return new_user
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -107,7 +107,7 @@ def delete_user(db: Session, user_id: int) -> dict:
             db.delete(user)
             db.commit()
             return {"message": "Usuario eliminado correctamente"}
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -32,8 +32,8 @@ def crear_salon(
 def listar_salones(
     db: Annotated[Session, Depends(get_db)],
     current_user: CurrentUser,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
     estado: Optional[str] = None,
     edificio: Optional[str] = None,
     busqueda: Optional[str] = None,
@@ -77,10 +77,10 @@ def eliminar_salon(
 @router.get("/{salon_id}/disponibilidad")
 def obtener_disponibilidad(
     salon_id: int,
-    dia_semana: int = Query(..., ge=1, le=7, description="1=Lunes, 7=Domingo"),
+    dia_semana: Annotated[int, Query(ge=1, le=7, description="1=Lunes, 7=Domingo")],
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
     fecha: Optional[date] = None,
-    db: Annotated[Session, Depends(get_db)] = None,
-    current_user: CurrentUser = None,
 ):
     """
     Consulta las franjas horarias disponibles de un salón en un día dado.

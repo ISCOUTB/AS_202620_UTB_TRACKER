@@ -42,8 +42,8 @@ def listar_recursos(
     categoria: Optional[str] = None,
     estado: Optional[str] = None,
     busqueda: Optional[str] = None,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ):
     """Lista recursos con filtros opcionales y paginación."""
     items, _ = resources_service.listar_recursos(

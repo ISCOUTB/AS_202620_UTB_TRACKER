@@ -47,7 +47,7 @@ def listar_horarios(
     db: Annotated[Session, Depends(get_db)],
     current_user: CurrentUser,
     salon_id: Optional[int] = None,
-    dia_semana: Optional[int] = Query(default=None, ge=1, le=7),
+    dia_semana: Annotated[Optional[int], Query(ge=1, le=7)] = None,
     semestre: Optional[str] = None,
 ):
     """Lista horarios con filtros opcionales por salón, día y semestre."""
