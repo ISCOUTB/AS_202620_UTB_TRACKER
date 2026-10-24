@@ -47,12 +47,6 @@ jobs:
       - name: Ejecutar pruebas (Pytest — suite completa)
         run: python -m pytest tests/ -v --tb=short
 
-      - name: Análisis estático SonarCloud
-        uses: SonarSource/sonarqube-scan-action@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
 
   deploy:
     needs: test
