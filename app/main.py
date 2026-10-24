@@ -5,7 +5,7 @@ import uuid
 from fastapi import FastAPI, Request
 
 from app.routers import auth
-from app.core.database import Base, engine
+from app.core.database import Base  # noqa: F401  — Base expuesto para que conftest pueda usarlo
 from app.routers import health, resources, loans
 
 # ---------------------------------------------------------------------------
@@ -19,7 +19,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("utb_tracker")
 
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="UTB Tracker",
