@@ -25,9 +25,9 @@ jobs:
           --health-retries 5
 
     env:
-      # Fallback a credenciales de CI cuando los secretos no están configurados
-      TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/utb_tracker_test' }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/utb_tracker_test' }}
+      # URLs fijas de CI — siempre apuntan al contenedor postgres del runner.
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/utb_tracker_test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/utb_tracker_test
 
     steps:
       - uses: actions/checkout@v4
