@@ -16,7 +16,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./utb_tracker.db")
+DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip() or "sqlite:///./utb_tracker.db"
 
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
