@@ -42,3 +42,6 @@ coverage.xml
 # Base de datos local (desarrollo)
 *.sqlite3
 *.db
+
+# graphify (grafo local, se regenera con `graphify update .`)
+graphify-out/

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./venv/**)",
+      "Read(./.venv/**)",
+      "Read(./graphify-out/cache/**)",
+      "Read(./graphify-out/graph.json)",
+      "Read(./docs/arc42/images/**)",
+      "Read(./**/__pycache__/**)",
+      "Read(./.env*)"
+    ]
+  }
+}
