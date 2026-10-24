@@ -10,4 +10,4 @@ def test_health_check():
     """
     response = client.get("/salud/")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "proyecto": "UTB Tracker"}
+    assert response.json() == {"status": "ok", "proyecto": "UTB Tracker", "database": "connected"}
