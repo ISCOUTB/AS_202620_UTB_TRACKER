@@ -52,3 +52,10 @@ coverage.xml
 # SonarCloud / Herramientas de análisis
 .scannerwork/
 .sonarlint/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
