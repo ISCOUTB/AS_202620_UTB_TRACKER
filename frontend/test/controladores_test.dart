@@ -34,6 +34,14 @@ class _RecursosFalso implements RecursosRepository {
       estadoCodigo: 'disponible',
     );
   }
+
+  @override
+  Future<void> reportar({
+    required int recursoId,
+    required String estadoReportado,
+    String? descripcion,
+    String? imagenUrl,
+  }) async {}
 }
 
 class _PrestamosFalso implements PrestamosRepository {
@@ -57,6 +65,19 @@ class _PrestamosFalso implements PrestamosRepository {
       usuarioId: usuarioId,
       fechaPrestamo: DateTime.now(),
       fechaDevolucionEsperada: fechaDevolucionEsperada,
+    );
+  }
+
+  @override
+  Future<Prestamo> devolver(int prestamoId) async {
+    if (fallo != null) throw fallo!;
+    return Prestamo(
+      id: prestamoId,
+      recursoId: 1,
+      usuarioId: 1,
+      fechaPrestamo: DateTime.now(),
+      fechaDevolucionEsperada: DateTime.now().add(const Duration(hours: 1)),
+      fechaDevolucionReal: DateTime.now(),
     );
   }
 }

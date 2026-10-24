@@ -22,10 +22,11 @@ Backend en otra terminal (desde la raíz del repo): `./run.sh`
 
 | Cliente | Dirección que usa la app |
 |---|---|
-| Simulador iOS | `http://127.0.0.1:8000` |
-| Emulador Android | `http://10.0.2.2:8000` (automática) |
-| Celular real | `flutter run --dart-define=API_BASE_URL=http://<IP-de-tu-PC>:8000` y el backend con `--host 0.0.0.0` |
-| Flutter Web | `127.0.0.1:8000`, pero el backend aún no tiene CORS (brecha B-9) |
+| Servidor Producción (nube) | `https://129-80-171-141.nip.io` |
+| Simulador iOS local | `http://127.0.0.1:8000` |
+| Emulador Android local | `http://10.0.2.2:8000` |
+| Celular real en LAN local | `flutter run --dart-define=API_BASE_URL=http://<IP-de-tu-PC>:8000` |
+| Flutter Web local | `http://127.0.0.1:8000` |
 
 Android bloquea HTTP sin cifrar desde la API 28: para desarrollo agrega
 `android:usesCleartextTraffic="true"` en `<application>` de `android/app/src/main/AndroidManifest.xml`.

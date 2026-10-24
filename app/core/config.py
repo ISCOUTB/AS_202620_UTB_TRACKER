@@ -20,5 +20,15 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(
 FORGET_PWD_SECRET_KEY = os.getenv(
     "FORGET_PWD_SECRET_KEY", "change-me-in-production"
 )
-# CORS origins (separados por coma)
-CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
+# CORS origins (separados por coma; por defecto orígenes locales seguros si no se define)
+_cors_env = os.getenv("CORS_ORIGINS", "").strip()
+if _cors_env:
+    CORS_ORIGINS = [o.strip() for o in _cors_env.split(",") if o.strip()]
+else:
+    CORS_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ]
+

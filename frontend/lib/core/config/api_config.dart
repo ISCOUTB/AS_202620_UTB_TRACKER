@@ -11,8 +11,8 @@ class ApiConfig {
 
   static const String _override = String.fromEnvironment('API_BASE_URL');
 
-  /// Servidor UTB Tracker en la nube (IP pública configurada).
-  static const String servidorProduccion = 'http://129.80.171.141';
+  /// Servidor UTB Tracker en la nube (dominio HTTPS con certificado).
+  static const String servidorProduccion = 'https://129-80-171-141.nip.io';
 
   static String get baseUrl {
     if (_override.isNotEmpty) return _override;
