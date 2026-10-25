@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 /// Configuración del puente con el backend FastAPI.
 ///
 /// Dirección por plataforma (Blueprint FastAPI + Flutter, "El laberinto de la red local"):
@@ -21,12 +19,6 @@ class ApiConfig {
 
   /// Tiempo máximo de espera por petición (el auxiliar tiene conexión intermitente en el campus).
   static const Duration timeout = Duration(seconds: 10);
-
-  /// Mientras el backend siga aceptando cualquier `rol` en /auth/register (brecha B-5 de
-  /// docs/brechas_backend.md), la app deja elegir el rol para poder crear auxiliares en demos.
-  /// Para una entrega/producción: --dart-define=PERMITIR_ELEGIR_ROL=false.
-  static const bool permitirElegirRol =
-      bool.fromEnvironment('PERMITIR_ELEGIR_ROL', defaultValue: true);
 
   /// Reintentos de lecturas (GET) ante fallo de red o 5xx, con backoff exponencial y jitter
   /// (misma idea que `with_retry` del backend, S11 req. 11.2).

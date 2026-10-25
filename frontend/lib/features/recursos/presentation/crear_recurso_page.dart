@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/di/injection.dart';
+import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets.dart';
+import '../../salones/presentation/salones_controller.dart';
 import '../domain/entities/recurso.dart';
 import 'recursos_controller.dart';
 
@@ -16,17 +18,23 @@ class CrearRecursoPage extends StatefulWidget {
 
 class _CrearRecursoPageState extends State<CrearRecursoPage> {
   final _form = GlobalKey<FormState>();
-  final _salon = TextEditingController();
   final _serial = TextEditingController();
   final RecursosController _recursos = sl<RecursosController>();
+  final SalonesController _salones = sl<SalonesController>();
 
+  int? _salonIdSeleccionado;
   CategoriaRecurso _categoria = CategoriaRecurso.videoBeam;
   bool _guardando = false;
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    _salones.cargar(silencioso: true);
+  }
+
+  @override
   void dispose() {
-    _salon.dispose();
     _serial.dispose();
     super.dispose();
   }
@@ -40,7 +48,7 @@ class _CrearRecursoPageState extends State<CrearRecursoPage> {
     });
     final error = await _recursos.crear(
       categoria: _categoria.codigo,
-      salonId: _salon.text,
+      salonId: _salonIdSeleccionado,
       serial: _serial.text,
     );
     if (!mounted) return;
@@ -103,16 +111,76 @@ class _CrearRecursoPageState extends State<CrearRecursoPage> {
                   ],
                 ),
                 const SizedBox(height: 22),
-                TextFormField(
-                  controller: _salon,
-                  textInputAction: TextInputAction.next,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: const InputDecoration(
-                    labelText: 'Salón',
-                    hintText: 'A1-304',
-                  ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Indica el salón' : null,
+                ListenableBuilder(
+                  listenable: _salones,
+                  builder: (context, _) {
+                    final salones = _salones.todos;
+                    final estaCargando =
+                        _salones.carga == Carga.cargando && salones.isEmpty;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DropdownButtonFormField<int>(
+                          initialValue: _salonIdSeleccionado,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: 'Salón',
+                            hintText: estaCargando
+                                ? 'Cargando salones...'
+                                : 'Selecciona un salón',
+                            suffixIcon: estaCargando
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: Padding(
+                                      padding: EdgeInsets.all(14),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.textoSuave,
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          dropdownColor: AppColors.superficie,
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down,
+                            color: AppColors.textoSuave,
+                          ),
+                          items: [
+                            for (final s in salones)
+                              DropdownMenuItem<int>(
+                                value: s.id,
+                                child: Text(
+                                  '${s.nombre} · ${s.ubicacion}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 15),
+                                ),
+                              ),
+                          ],
+                          onChanged: estaCargando
+                              ? null
+                              : (val) {
+                                  setState(() => _salonIdSeleccionado = val);
+                                },
+                          validator: (v) =>
+                              v == null ? 'Selecciona un salón' : null,
+                        ),
+                        if (salones.isEmpty && _salones.carga == Carga.ok)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8, left: 4),
+                            child: Text(
+                              'No hay salones disponibles. Registra un salón primero.',
+                              style: TextStyle(
+                                color: AppColors.prestado,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 14),
                 TextFormField(

@@ -61,13 +61,13 @@ class RecursosController extends ChangeNotifier {
   /// Crea un recurso (auxiliar). Devuelve el mensaje de error o null si salió bien.
   Future<String?> crear({
     required String categoria,
-    required String salonId,
+    required dynamic salonId,
     required String serial,
   }) async {
     try {
       final nuevo = await _repo.crear(
         categoria: categoria,
-        salonId: salonId.trim(),
+        salonId: salonId is String ? salonId.trim() : salonId,
         serial: serial.trim(),
       );
       _todos = [..._todos, nuevo];

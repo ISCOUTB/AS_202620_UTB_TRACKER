@@ -51,6 +51,12 @@ abstract class AuthRepository {
   /// GET /auth/user/{id}
   Future<Usuario> obtenerUsuario(int id);
 
+  /// GET /auth/users (Panel administrativo — listar usuarios para gestión)
+  Future<List<Usuario>> listarUsuarios({String? busqueda, String? rol});
+
+  /// PATCH /auth/user/{id}/role (Panel administrativo — asignar o modificar rol)
+  Future<Usuario> actualizarRolUsuario(int usuarioId, String nuevoRol);
+
   /// GET /salud (health check profundo, S8)
   Future<bool> servidorSaludable();
 }

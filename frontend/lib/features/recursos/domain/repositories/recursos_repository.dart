@@ -11,7 +11,7 @@ abstract class RecursosRepository {
   /// POST /recursos (queda en estado "disponible"; 409 si el serial ya existe)
   Future<Recurso> crear({
     required String categoria,
-    required String salonId,
+    required dynamic salonId,
     required String serial,
   });
 

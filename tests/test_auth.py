@@ -173,3 +173,73 @@ def test_eliminar_usuario_sin_rol_admin(client, auth_headers):
     """Solo admin/auxiliar puede eliminar usuarios."""
     response = client.delete("/auth/delete/1", headers=auth_headers)
     assert response.status_code == 403
+
+
+def test_registro_fuerza_rol_usuario_utb(client):
+    """El registro público no permite auto-asignar rol administrador."""
+    response = client.post(
+        "/auth/register",
+        json={
+            "nombre": "Hacker Intent",
+            "email": "hacker@utb.edu.co",
+            "rol": "administrador",
+            "password": "PasswordSegura123!",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["rol"] == "usuario_utb"
+
+
+def test_admin_listar_usuarios(client, admin_headers, auth_headers):
+    """Solo admin puede consultar la lista completa de usuarios."""
+    # Usuario común no tiene permiso
+    res_comun = client.get("/auth/users", headers=auth_headers)
+    assert res_comun.status_code == 403
+
+    # Admin consulta lista exitosamente
+    res_admin = client.get("/auth/users", headers=admin_headers)
+    assert res_admin.status_code == 200
+    usuarios = res_admin.json()
+    assert len(usuarios) >= 2
+
+
+def test_admin_actualizar_rol_usuario(client, admin_headers, auth_headers):
+    """Solo admin puede actualizar roles desde el panel administrativo."""
+    # Crear usuario base
+    reg = client.post(
+        "/auth/register",
+        json={
+            "nombre": "Para Promover",
+            "email": "promover@utb.edu.co",
+            "rol": "usuario_utb",
+            "password": "Password123!",
+        },
+    )
+    user_id = reg.json()["id"]
+
+    # Usuario normal no puede cambiar rol
+    res_no_auth = client.patch(
+        f"/auth/user/{user_id}/role",
+        json={"rol": "auxiliar"},
+        headers=auth_headers,
+    )
+    assert res_no_auth.status_code == 403
+
+    # Admin actualiza rol a auxiliar
+    res_admin = client.patch(
+        f"/auth/user/{user_id}/role",
+        json={"rol": "auxiliar"},
+        headers=admin_headers,
+    )
+    assert res_admin.status_code == 200
+    assert res_admin.json()["rol"] == "auxiliar"
+
+    # Verificar rol inválido
+    res_invalido = client.patch(
+        f"/auth/user/{user_id}/role",
+        json={"rol": "super_hacker"},
+        headers=admin_headers,
+    )
+    assert res_invalido.status_code == 400
+

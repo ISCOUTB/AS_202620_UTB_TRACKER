@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/config/api_config.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
@@ -19,9 +18,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _password = TextEditingController();
   final AuthController _auth = sl<AuthController>();
 
-  /// Valores que acepta el backend (comentario de `Usuario.rol`).
-  String _rol = 'usuario_utb';
-
   @override
   void dispose() {
     _nombre.dispose();
@@ -36,7 +32,6 @@ class _RegisterPageState extends State<RegisterPage> {
     final ok = await _auth.registrar(
       nombre: _nombre.text,
       email: _email.text,
-      rol: _rol,
       password: _password.text,
     );
     if (ok && mounted) {
@@ -93,25 +88,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       validator: (v) =>
                           (v == null || v.length < 8) ? 'Mínimo 8 caracteres' : null,
                     ),
-                    if (ApiConfig.permitirElegirRol) ...[
-                      const SizedBox(height: 18),
-                      const Text('Rol', style: TextStyle(color: AppColors.textoSuave)),
-                      const SizedBox(height: 8),
-                      SegmentedButton<String>(
-                        showSelectedIcon: false,
-                        segments: const [
-                          ButtonSegment(value: 'usuario_utb', label: Text('Usuario UTB')),
-                          ButtonSegment(value: 'administrador', label: Text('Auxiliar')),
-                        ],
-                        selected: {_rol},
-                        onSelectionChanged: (s) => setState(() => _rol = s.first),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'En producción el rol de auxiliar debe asignarlo un administrador.',
-                        style: TextStyle(color: AppColors.textoTenue, fontSize: 12),
-                      ),
-                    ],
                     if (_auth.error != null) ...[
                       const SizedBox(height: 16),
                       Text(_auth.error!, style: const TextStyle(color: AppColors.danado)),

@@ -58,7 +58,7 @@ class AuthController extends ChangeNotifier {
   Future<bool> registrar({
     required String nombre,
     required String email,
-    required String rol,
+    String rol = 'usuario_utb',
     required String password,
   }) async {
     final ok = await _ejecutar(() async {

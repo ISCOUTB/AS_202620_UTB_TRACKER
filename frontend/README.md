@@ -34,7 +34,6 @@ Android bloquea HTTP sin cifrar desde la API 28: para desarrollo agrega
 ### Banderas útiles
 
 - `--dart-define=API_BASE_URL=...` cambia el servidor.
-- `--dart-define=PERMITIR_ELEGIR_ROL=false` oculta el selector de rol en el registro (usar cuando se cierre la brecha B-5).
 
 ## Figuras
 

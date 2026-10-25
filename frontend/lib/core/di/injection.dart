@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 
+import '../../features/admin/presentation/admin_usuarios_controller.dart';
 import '../../features/auth/data/auth_data.dart';
 import '../../features/auth/domain/auth_domain.dart';
 import '../../features/auth/presentation/auth_controller.dart';
@@ -37,6 +38,7 @@ Future<void> configurarDependencias({ApiClient? api}) async {
 
   // Controladores de estado (uno por sesión de app)
   sl.registerLazySingleton(() => AuthController(sl(), sl()));
+  sl.registerLazySingleton(() => AdminUsuariosController(sl()));
   sl.registerLazySingleton(() => RecursosController(sl()));
   sl.registerLazySingleton(() => PrestamosController(sl()));
   sl.registerLazySingleton(() => SalonesController(sl()));

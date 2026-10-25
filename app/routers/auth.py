@@ -5,14 +5,21 @@ Endpoints para registro, login (emisión de JWT), consulta del perfil
 del usuario autenticado (GET /auth/me), y gestión de usuarios.
 Delega toda la lógica de negocio y hashing seguro (bcrypt) a app.services.auth.
 """
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import AdminUser, CurrentUser
-from app.schemas.auth import TokenResponse, UserMeResponse, UserResponse, UsuarioCreate, UsuarioLogin
+from app.schemas.auth import (
+    TokenResponse,
+    UserMeResponse,
+    UserResponse,
+    UsuarioCreate,
+    UsuarioLogin,
+    UsuarioRoleUpdate,
+)
 from app.services import auth as auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -57,3 +64,31 @@ def get_user_endpoint(
     current_user: CurrentUser,
 ):
     return auth_service.get_user_by_id(db, user_id)
+
+
+@router.get("/users", response_model=list[UserResponse])
+def get_users_endpoint(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: AdminUser,
+    search: Optional[str] = None,
+    rol: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+):
+    """Lista todos los usuarios para el panel administrativo. Requiere rol admin/auxiliar."""
+    return auth_service.get_all_users(
+        db, skip=skip, limit=limit, search=search, rol=rol
+    )
+
+
+@router.patch("/user/{user_id}/role", response_model=UserResponse)
+@router.put("/user/{user_id}/role", response_model=UserResponse)
+def update_user_role_endpoint(
+    user_id: int,
+    body: UsuarioRoleUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: AdminUser,
+):
+    """Asigna o actualiza el rol de un usuario desde el panel administrativo. Requiere rol admin/auxiliar."""
+    return auth_service.update_user_role(db, user_id, body.rol)
+

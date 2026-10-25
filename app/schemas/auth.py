@@ -19,6 +19,16 @@ class UsuarioCreate(BaseModel):
     password: str = Field(..., min_length=6)
 
 
+class UsuarioRoleUpdate(BaseModel):
+    """Esquema para asignar o actualizar el rol desde el panel administrativo."""
+    rol: str = Field(
+        ...,
+        min_length=3,
+        max_length=50,
+        description="Nuevo rol: usuario_utb, auxiliar, administrador",
+    )
+
+
 class UsuarioLogin(BaseModel):
     nombre: str
     password: str

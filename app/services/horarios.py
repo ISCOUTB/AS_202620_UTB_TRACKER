@@ -6,6 +6,7 @@ soporte para carga masiva por semestre.
 """
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import cast, String
 
 from app.models.salon_models import Horario, Salon
 from app.schemas.horarios import HorarioCreate, HorarioUpdate
@@ -28,7 +29,7 @@ def _detectar_conflicto(db: Session, salon_id: int, dia_semana: int, hora_inicio
     h_inicio_str = hora_inicio.isoformat() if hasattr(hora_inicio, "isoformat") else str(hora_inicio)
     h_fin_str = hora_fin.isoformat() if hasattr(hora_fin, "isoformat") else str(hora_fin)
 
-    from sqlalchemy import cast, String
+    
     query = db.query(Horario).filter(
         Horario.salon_id == salon_id,
         Horario.dia_semana == dia_semana,

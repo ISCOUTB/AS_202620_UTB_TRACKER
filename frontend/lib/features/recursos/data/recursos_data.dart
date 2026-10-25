@@ -33,12 +33,20 @@ class RecursosRemoteDataSource {
 
   Future<Recurso> crear({
     required String categoria,
-    required String salonId,
+    required dynamic salonId,
     required String serial,
   }) async {
+    final int? parsedId = salonId is int
+        ? salonId
+        : (salonId != null ? int.tryParse(salonId.toString()) : null);
+
     final cuerpo = await _api.post(
       '/recursos',
-      cuerpo: {'categoria': categoria, 'salon_id': salonId, 'serial': serial},
+      cuerpo: {
+        'categoria': categoria,
+        if (parsedId != null || salonId != null) 'salon_id': parsedId ?? salonId,
+        'serial': serial,
+      },
     ) as Map<String, dynamic>;
     return RecursoModel.desdeJson(cuerpo);
   }
@@ -73,7 +81,7 @@ class RecursosRepositoryImpl implements RecursosRepository {
   @override
   Future<Recurso> crear({
     required String categoria,
-    required String salonId,
+    required dynamic salonId,
     required String serial,
   }) =>
       _remoto.crear(categoria: categoria, salonId: salonId, serial: serial);

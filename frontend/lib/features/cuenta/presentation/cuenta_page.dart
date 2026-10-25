@@ -4,6 +4,7 @@ import '../../../core/config/api_config.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets.dart';
+import '../../admin/presentation/panel_administrativo_page.dart';
 import '../../auth/presentation/auth_controller.dart';
 
 class CuentaPage extends StatefulWidget {
@@ -73,6 +74,58 @@ class _CuentaPageState extends State<CuentaPage> {
                 ],
               ),
               const SizedBox(height: 28),
+              if (u.esAdministrador) ...[
+                TarjetaBorde(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PanelAdministrativoPage(),
+                      ),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.mantenimiento.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.admin_panel_settings_rounded,
+                          color: AppColors.mantenimiento,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Panel Administrativo',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Gestionar usuarios y asignación de roles',
+                              style: TextStyle(
+                                color: AppColors.textoSuave,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: AppColors.textoSuave),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               TarjetaBorde(
                 onTap: _auth.comprobarServidor,
                 child: Row(

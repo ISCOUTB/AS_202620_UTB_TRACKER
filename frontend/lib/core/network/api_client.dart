@@ -32,14 +32,27 @@ class ApiClient {
         ...?extra,
       };
 
-  Uri _uri(String ruta) => Uri.parse('$_baseUrl$ruta');
+  Uri _uri(String ruta, [Map<String, dynamic>? parametros]) {
+    final base = Uri.parse('$_baseUrl$ruta');
+    if (parametros == null || parametros.isEmpty) return base;
+    return base.replace(
+      queryParameters: {
+        ...base.queryParameters,
+        ...parametros.map((k, v) => MapEntry(k, v.toString())),
+      },
+    );
+  }
 
   String? get token => _token;
 
-  Future<dynamic> get(String ruta, {int? reintentos}) {
+  Future<dynamic> get(
+    String ruta, {
+    Map<String, dynamic>? parametros,
+    int? reintentos,
+  }) {
     final max = reintentos ?? ApiConfig.reintentosLectura;
     return _conReintentos(
-      () => _enviar(() => _client.get(_uri(ruta), headers: _cabeceras())),
+      () => _enviar(() => _client.get(_uri(ruta, parametros), headers: _cabeceras())),
       max,
     );
   }

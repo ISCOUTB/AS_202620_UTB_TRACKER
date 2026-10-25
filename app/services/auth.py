@@ -4,6 +4,8 @@ Servicio de autenticación — capa de lógica de negocio (S9).
 Gestiona el registro, verificación de credenciales, generación de tokens
 y consulta del perfil de usuario autenticado.
 """
+from typing import Optional
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -37,10 +39,10 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
             detail="Ya existe un usuario con ese email",
         )
 
-    # Restringir auto-asignación de roles privilegiados en registro público
-    rol = schema.rol
-    if rol not in ("usuario_utb", "administrador", "auxiliar"):
-        rol = "usuario_utb"
+    # El registro público SIEMPRE asigna el rol base 'usuario_utb'.
+    # La asignación de roles privilegiados (auxiliar, administrador) solo es permitida
+    # desde el panel administrativo.
+    rol = "usuario_utb"
 
     try:
         new_user = Usuario(
@@ -141,3 +143,56 @@ def logout(db: Session, user_id: int) -> dict:
             status_code=status.HTTP_404_NOT_FOUND, detail=_MSG_USUARIO_NO_ENCONTRADO
         )
     return {"message": "Cierre de sesión exitoso"}
+
+
+def get_all_users(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    search: Optional[str] = None,
+    rol: Optional[str] = None,
+) -> list[Usuario]:
+    """
+    Lista usuarios registrados para el panel administrativo.
+    Permite filtrar por texto de búsqueda (nombre o correo) y por rol.
+    """
+    query = db.query(Usuario)
+    if search:
+        termino = f"%{search.strip()}%"
+        query = query.filter(
+            (Usuario.nombre.ilike(termino)) | (Usuario.email.ilike(termino))
+        )
+    if rol:
+        query = query.filter(Usuario.rol == rol.strip().lower())
+    return query.order_by(Usuario.id.asc()).offset(skip).limit(limit).all()
+
+
+def update_user_role(db: Session, user_id: int, new_role: str) -> Usuario:
+    """
+    Actualiza el rol de un usuario desde el panel administrativo.
+    Roles válidos: usuario_utb, auxiliar, administrador.
+    """
+    user = db.query(Usuario).filter(Usuario.id == user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_MSG_USUARIO_NO_ENCONTRADO
+        )
+
+    rol_normalizado = new_role.strip().lower()
+    if rol_normalizado not in ("usuario_utb", "administrador", "auxiliar"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Rol no permitido. Roles válidos: usuario_utb, auxiliar, administrador",
+        )
+
+    try:
+        user.rol = rol_normalizado
+        db.commit()
+        db.refresh(user)
+        return user
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error interno al actualizar rol de usuario",
+        )

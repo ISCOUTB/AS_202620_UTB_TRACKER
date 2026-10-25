@@ -55,6 +55,27 @@ class AuthRemoteDataSource {
     return UsuarioModel.desdeJson(r as Map<String, dynamic>);
   }
 
+  Future<List<Usuario>> listarUsuarios({String? search, String? rol}) async {
+    final query = <String, String>{};
+    if (search != null && search.trim().isNotEmpty) {
+      query['search'] = search.trim();
+    }
+    if (rol != null && rol.trim().isNotEmpty) {
+      query['rol'] = rol.trim();
+    }
+    final r = await _api.get('/auth/users', parametros: query.isEmpty ? null : query);
+    if (r is! List) return [];
+    return r.map((e) => UsuarioModel.desdeJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<Usuario> actualizarRolUsuario(int id, String rol) async {
+    final r = await _api.patch(
+      '/auth/user/$id/role',
+      cuerpo: {'rol': rol},
+    );
+    return UsuarioModel.desdeJson(r as Map<String, dynamic>);
+  }
+
   Future<bool> salud() async {
     try {
       final r = await _api.get('/salud', reintentos: 0);
@@ -171,6 +192,14 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Usuario> obtenerUsuario(int id) => _remoto.obtenerUsuario(id);
+
+  @override
+  Future<List<Usuario>> listarUsuarios({String? busqueda, String? rol}) =>
+      _remoto.listarUsuarios(search: busqueda, rol: rol);
+
+  @override
+  Future<Usuario> actualizarRolUsuario(int usuarioId, String nuevoRol) =>
+      _remoto.actualizarRolUsuario(usuarioId, nuevoRol);
 
   @override
   Future<bool> servidorSaludable() => _remoto.salud();
