@@ -9,6 +9,8 @@ sys.path.append(os.getcwd())
 
 from app.core.database import Base
 from app.models import auth_models, recurso_models, salon_models  # noqa: F401
+from app.messaging import models as messaging_models  # noqa: F401
+
 
 config = context.config
 

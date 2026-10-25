@@ -29,6 +29,7 @@ from app.models.auth_models import Usuario
 
 # Importar todos los modelos para que Base.metadata los registre
 from app.models import recurso_models, salon_models  # noqa: F401
+from app.messaging import models as messaging_models  # noqa: F401
 
 load_dotenv()
 
@@ -116,3 +117,29 @@ def admin_headers(client) -> dict:
     """Headers con token JWT de un usuario administrador."""
     token = _get_token(client, "Admin prueba", "AdminPassword1")
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def db_session(client):
+    """Provee una sesión de base de datos aislada para aserciones en pruebas."""
+    override = app.dependency_overrides.get(get_db)
+    if override:
+        gen = override()
+        db = next(gen)
+        try:
+            yield db
+        finally:
+            try:
+                next(gen)
+            except StopIteration:
+                pass
+    else:
+        gen = get_db()
+        db = next(gen)
+        try:
+            yield db
+        finally:
+            try:
+                next(gen)
+            except StopIteration:
+                pass
