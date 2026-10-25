@@ -246,6 +246,63 @@ sequenceDiagram
 
 **Aspectos notables:** este es el escenario de calidad QS-06, el sistema nunca permite dos préstamos activos sobre el mismo recurso.
 
+### Escenario 3 — Notificación asíncrona de préstamo (Transactional Outbox + Worker)
+
+Tras registrar exitosamente un préstamo, el sistema desacopla la notificación al usuario mediante el patrón Transactional Outbox para no comprometer la latencia ni la disponibilidad del endpoint ante caídas del servicio de correo ([ADR-0006](../adr/0006-mensajeria-asincrona-outbox.md)).
+
+```mermaid
+sequenceDiagram
+    actor Auxiliar
+    participant API as UTB Tracker (FastAPI)
+    participant DB as PostgreSQL (ACID)
+    participant Worker as Worker Outbox
+    participant Mail as Notificador Externo
+
+    Auxiliar->>API: POST /prestamos {recurso_id, usuario_id, fecha}
+    Note over API,DB: Transacción ACID local única
+    API->>DB: INSERT INTO prestamos
+    API->>DB: UPDATE recursos SET estado = 'prestado'
+    API->>DB: INSERT INTO mensajes_outbox (estado = 'pendiente')
+    API->>DB: COMMIT
+    API-->>Auxiliar: 201 Created {prestamo} (Respuesta inmediata)
+
+    loop Polling cada 5s (WORKER_POLL_INTERVAL)
+        Worker->>DB: SELECT * FROM mensajes_outbox WHERE estado = 'pendiente' AND siguiente_intento <= NOW()
+        DB-->>Worker: [mensaje]
+        Worker->>DB: SELECT email FROM usuarios WHERE id = usuario_id
+        DB-->>Worker: email
+        Worker->>Mail: enviar(email, asunto, cuerpo)
+        alt Envío Exitoso
+            Mail-->>Worker: OK
+            Worker->>DB: INSERT INTO notificaciones_procesadas (message_id)
+            Worker->>DB: UPDATE mensajes_outbox SET estado = 'enviado'
+            Worker->>DB: COMMIT
+        else Fallo Transitorio (Reintento)
+            Mail-->>Worker: Error / Timeout
+            Note over Worker: Backoff exponencial (retrasos de 4s, 8s, 16s, 32s + jitter, sin sleep)
+            Worker->>DB: UPDATE mensajes_outbox SET siguiente_intento = NOW() + delay, intentos += 1
+            Worker->>DB: COMMIT
+        else Intentos Agotados (>= 5)
+            Worker->>DB: UPDATE mensajes_outbox SET estado = 'muerto', ultimo_error = err
+            Worker->>DB: COMMIT
+        end
+    end
+```
+
+**Ciclo de Estados del Mensaje Outbox:**
+
+```mermaid
+stateDiagram-v2
+    [*] --> pendiente : crear_prestamo (Transacción ACID con el préstamo)
+    pendiente --> pendiente : Fallo en envío (intentos < 5)<br/>Recalcula siguiente_intento con backoff
+    pendiente --> enviado : Entrega exitosa al notificador<br/>(Registrado en notificaciones_procesadas)
+    pendiente --> enviado : Reentrega detectada<br/>(Deduplicado por message_id)
+    pendiente --> muerto : Intentos >= 5 superados<br/>o versión de contrato no soportada
+    enviado --> [*]
+    muerto --> [*] : Intervención / DLQ
+```
+
+
 
 ## Infrastructure Level 1
 
@@ -287,10 +344,11 @@ gestionados. La decisión de no usar microservicios está formalizada en
 **Características de calidad y rendimiento:**
 - **TLS terminado en Nginx:** todo el tráfico entre el cliente móvil y el servidor
   viaja cifrado (HTTPS), cumpliendo QS-04 y la Ley 1581 de 2012.
-- **Proceso Uvicorn gestionado por systemd:** el servicio se reinicia automáticamente
-  si el proceso cae (`Restart=always`), contribuyendo a la disponibilidad QS-01.
+- **Proceso Uvicorn (API) gestionado por systemd:** el servicio web de la API se reinicia automáticamente
+  si el proceso cae (`Restart=always`), contribuyendo a la disponibilidad QS-01. (Nota: el despliegue
+  actual no arranca el worker de mensajería; este se ejecuta manualmente vía CLI cuando se requiere).
 - **PostgreSQL local (mismo host):** la latencia de red entre el backend y la base de
-  datos es prácticamente cero (loopback), favoreciendo QS-02 (tiempo de respuesta).
+  datos es prácticamente despreciable (loopback local), favoreciendo QS-02 (tiempo de respuesta).
 - **Despliegue automatizado vía CI:** los cambios en `main` se despliegan sin
   intervención manual después de pasar las pruebas y el Quality Gate de SonarCloud.
 
@@ -300,7 +358,8 @@ gestionados. La decisión de no usar microservicios está formalizada en
 |---|---|
 | `routers/health.py` — `GET /salud` | Uvicorn → PostgreSQL (`SELECT 1` activo) |
 | `routers/resources.py` — `/recursos` | Uvicorn → PostgreSQL (tabla `recurso`) |
-| `routers/loans.py` — `/prestamos` | Uvicorn → PostgreSQL (tablas `recurso` + `prestamo`, transacción ACID) |
+| `routers/loans.py` — `/prestamos` | Uvicorn → PostgreSQL (tablas `recurso`, `prestamo`, `mensajes_outbox`, transacción ACID) |
+| `messaging/worker.py` — Worker Outbox | Ejecución manual CLI (`python -m app.messaging.worker`); no arrancado en el despliegue actual |
 | `routers/auth.py` — `/auth` | Uvicorn → PostgreSQL (tabla `usuario`) |
 
 ## Infrastructure Level 2
@@ -354,9 +413,10 @@ Se evaluó la posible integración de modelos de IA generativa (LLMs) dentro del
 - **Idempotencia de Préstamos (`app/routers/loans.py`, `app/services/loans.py`):** Soporte para la cabecera `X-Idempotency-Key`. Los clientes móviles reintentan peticiones de forma transparente ante fluctuaciones de Wi-Fi; el backend registra la clave en `idempotencia_registros` y devuelve el préstamo original sin duplicar registros ni emitir falsos errores 409.
 - **Bloqueo Pesimista de Fila (QS-06):** Para evitar la condición de carrera identificada en R-02, la consulta del recurso en `crear_prestamo` aplica bloqueo pesimista `.with_for_update()`, serializando solicitudes que intenten prestar el mismo equipo simultáneamente.
 
-## 8.7 Descomposición: Sagas, Patrón Outbox y Circuit Breakers (S11 — req. 11.4, 11.5 y 11.6)
-- **Evaluación de Sagas y Outbox: NO APLICAN (Justificado):** En una arquitectura de Monolito Modular con base de datos relacional única, todas las operaciones de negocio (cambio de estado del recurso y registro del préstamo) se ejecutan bajo una **única transacción ACID local**. El uso de Sagas u Outbox implicaría consistencia eventual y riesgo de partición innecesarios para esta etapa.
-- **Circuit Breaker (`app/core/resilience.py`):** Se provee la clase `CircuitBreaker` para aislar fallos en integraciones externas futuras (ej. SMTP o pasarelas de notificaciones push), alternando estados CLOSED, OPEN y HALF_OPEN para evitar caídas en cascada.
+## 8.7 Descomposición: Sagas, Patrón Outbox y Circuit Breakers (S11/S12 — req. 11.4, 11.5 y 11.6)
+- **Regla central de negocio (Préstamos): Transacción ACID local:** La validación de disponibilidad y asignación del préstamo ocurren en un único `db.commit()` atómico local, garantizando consistencia inmediata (QS-06). Las Sagas no aplican para la reserva del recurso.
+- **Transactional Outbox para Notificaciones Desacopladas (S12 / ADR-0006):** Para los efectos colaterales secundarios (notificación por correo al usuario), se implementó el patrón Transactional Outbox ([ADR-0006](../adr/0006-mensajeria-asincrona-outbox.md)). La inserción en `mensajes_outbox` comparte la transacción del préstamo; un proceso consumidor (`app/messaging/worker.py`) entrega las notificaciones de forma asíncrona con semántica *at-least-once*, deduplicación en `notificaciones_procesadas` y reintentos con backoff exponencial.
+- **Circuit Breaker (`app/core/resilience.py`):** Se provee la clase `CircuitBreaker` para aislar fallos en integraciones externas directas, alternando estados CLOSED, OPEN y HALF_OPEN para evitar caídas en cascada.
 - **Decisión de Microservicios:** Formalizada en [ADR-0005](../adr/0005-monolito-vs-microservicios.md), donde se fundamenta el rechazo de microservicios para maximizar la consistencia transaccional y simplicidad operativa del equipo.
 
 
@@ -370,6 +430,7 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0003](../adr/0003-integracion-sincrona.md) — Integración entre módulos: llamadas directas síncronas (S4)
 - [ADR-0004](../adr/0004-seguridad-jwt.md) — Seguridad y Autenticación: JWT HS256 + bcrypt (S8)
 - [ADR-0005](../adr/0005-monolito-vs-microservicios.md) — Preservación del Monolito Modular: rechazo de microservicios (S8)
+- [ADR-0006](../adr/0006-mensajeria-asincrona-outbox.md) — Mensajería Asíncrona: Transactional Outbox para notificaciones de préstamos (S12)
 
 # Requisitos de calidad
 
@@ -486,7 +547,7 @@ en `docs/auditoria_s8_s9_s11.md`.
 |---|---|---|---|
 | **R-01** | Contraseñas sin hashing criptográfico (`services/auth.py`) | Crítico — Seguridad / QS-04. Fuga de BD comprometería credenciales | **Mitigado en S9:** Hashing con salt dinámico `bcrypt` nativo en `app/core/hashing.py`. |
 | **R-02** | Condición de carrera en préstamos (sin bloqueo de fila) | Alto — Confiabilidad / QS-06. Dos solicitudes paralelas pueden prestar el mismo equipo | **Mitigado en S11:** Bloqueo pesimista de fila `.with_for_update()` en `app/services/loans.py`. |
-| **R-03** | Ausencia de migraciones Alembic en producción | Medio — Operabilidad. `create_all()` no permite cambios de esquema en caliente | Deuda técnica documentada; planificada para versionamiento previo a despliegue formal. |
+| **R-03** | Ausencia de migraciones Alembic en producción | Medio — Operabilidad. `create_all()` no permite cambios de esquema en caliente | **Parcialmente mitigado en S12:** Se creó la migración `6c7d8e9f0a1b` para las tablas de mensajería outbox (verificada únicamente en SQLite, no en PostgreSQL). Persiste la deuda técnica de que la migración previa `5b652dd28f00` falla desde una base vacía. |
 | **R-04** | Pipeline CI apuntaba a `app/tests/` (1 test) en lugar de `tests/` (suite completa) | Alto — Calidad. Código defectuoso podía desplegarse pasando el único test de salud | **Mitigado en S8:** `ci.yml` ahora corre la suite completa (`pytest tests/ -v`) con contenedor PostgreSQL. |
 | **R-05** | Falta de `Idempotency-Key` en `POST /prestamos` | Medio — Integridad. Reintentos del cliente Flutter en red inestable pueden duplicar reservas | **Mitigado en S11:** Soporte de cabecera `X-Idempotency-Key` respaldada por `idempotencia_registros`. |
 

@@ -7,13 +7,15 @@ Resiliencia y Concurrencia (S11):
   mediante '.with_for_update()' para control de concurrencia.
 """
 from datetime import datetime, timezone
+import json
 from typing import Optional
+import uuid
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.resilience import with_retry
-
+from app.messaging.models import MensajeOutbox
 from app.models.auth_models import Usuario
 from app.models import recurso_models
 from app.schemas import schemas
@@ -23,6 +25,7 @@ def crear_prestamo(
     db: Session,
     datos: schemas.PrestamoCreate,
     idempotency_key: str | None = None,
+    correlation_id: str | None = None,
 ) -> recurso_models.Prestamo:
     """
     Crea un préstamo aplicando:
@@ -66,7 +69,7 @@ def crear_prestamo(
             detail=f"El recurso no esta disponible (estado actual: {recurso.estado})",
         )
 
-    # 4. Transacción atómica ACID local
+    # 4. Transacción atómica ACID local: Préstamo + Recurso + Idempotencia + Outbox
     nuevo = recurso_models.Prestamo(**datos.model_dump(), estado="activo")
     recurso.estado = "prestado"
     db.add(nuevo)
@@ -78,6 +81,44 @@ def crear_prestamo(
             prestamo=nuevo,
         )
         db.add(registro_idem)
+
+    # 5. Outbox: registrar evento 'prestamo.creado' en la misma transacción ACID
+    db.flush()  # Asigna ID a nuevo préstamo sin confirmar aún
+
+    cid = correlation_id
+    if not cid:
+        try:
+            from app.main import request_id_ctx
+            cid = request_id_ctx.get()
+        except Exception:
+            cid = "system"
+    if not cid or cid == "system":
+        cid = str(uuid.uuid4())[:8]
+
+    ahora_utc = datetime.now(timezone.utc)
+    payload_evento = {
+        "prestamo_id": nuevo.id,
+        "usuario_id": nuevo.usuario_id,
+        "recurso_id": nuevo.recurso_id,
+        "fecha_devolucion_esperada": (
+            nuevo.fecha_devolucion_esperada.isoformat()
+            if nuevo.fecha_devolucion_esperada
+            else None
+        ),
+    }
+
+    outbox_msg = MensajeOutbox(
+        message_id=str(uuid.uuid4()),
+        tipo="prestamo.creado",
+        version=1,
+        payload=json.dumps(payload_evento),
+        correlation_id=cid,
+        estado="pendiente",
+        intentos=0,
+        siguiente_intento=ahora_utc.replace(tzinfo=None),
+        creado_en=ahora_utc.replace(tzinfo=None),
+    )
+    db.add(outbox_msg)
 
     db.commit()
     db.refresh(nuevo)

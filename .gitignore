@@ -59,3 +59,50 @@ coverage.xml
 .flutter-plugins-dependencies
 .packages
 build/
+
+# ==============================================================================
+# Endurecimiento de seguridad y reglas adicionales
+# ==============================================================================
+
+# Certificados, claves privadas y secretos
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+id_rsa*
+id_ed25519*
+secrets/
+credentials*.json
+service-account*.json
+google-services.json
+key.properties
+
+# Python adicional (empaquetado y linters/typecheckers)
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+
+# Bases de datos y logs (WAL y directorios de logs)
+*.db-wal
+*.db-shm
+logs/
+
+# Flutter / Android adicional
+*.iml
+local.properties
+
+# Sistema operativo y archivos temporales
+Thumbs.db
+desktop.ini
+
+# Agentes de IA y directorios temporales de trabajo
+.gemini/
+.antigravity/
+scratch/
+tmp/
+*.tmp

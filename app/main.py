@@ -1,3 +1,4 @@
+from contextvars import ContextVar
 import logging
 import time
 import uuid
@@ -13,6 +14,9 @@ from app.routers import salones, horarios, prestamos_salon
 
 # Importar todos los modelos para que Base.metadata los registre
 from app.models import auth_models, recurso_models, salon_models  # noqa: F401
+from app.messaging import models as messaging_models  # noqa: F401
+
+request_id_ctx: ContextVar[str] = ContextVar("request_id_ctx", default="system")
 
 # ---------------------------------------------------------------------------
 # Logging estructurado (S8 — req. 8.5)
@@ -52,6 +56,7 @@ async def logging_middleware(request: Request, call_next):
     en cada petición, permitiendo correlacionar logs por request_id.
     """
     request_id = str(uuid.uuid4())[:8]
+    token = request_id_ctx.set(request_id)
     start = time.perf_counter()
 
     logger.info(
@@ -59,15 +64,17 @@ async def logging_middleware(request: Request, call_next):
         request_id, request.method, request.url.path,
     )
 
-    response = await call_next(request)
-
-    elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
-    logger.info(
-        'request_id=%s status=%d latency_ms=%s',
-        request_id, response.status_code, elapsed_ms,
-    )
-    response.headers["X-Request-ID"] = request_id
-    return response
+    try:
+        response = await call_next(request)
+        elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
+        logger.info(
+            'request_id=%s status=%d latency_ms=%s',
+            request_id, response.status_code, elapsed_ms,
+        )
+        response.headers["X-Request-ID"] = request_id
+        return response
+    finally:
+        request_id_ctx.reset(token)
 
 
 # ---------------------------------------------------------------------------
