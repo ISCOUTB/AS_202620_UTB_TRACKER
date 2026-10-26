@@ -419,6 +419,12 @@ Se evaluó la posible integración de modelos de IA generativa (LLMs) dentro del
 - **Circuit Breaker (`app/core/resilience.py`):** Se provee la clase `CircuitBreaker` para aislar fallos en integraciones externas directas, alternando estados CLOSED, OPEN y HALF_OPEN para evitar caídas en cascada.
 - **Decisión de Microservicios:** Formalizada en [ADR-0005](../adr/0005-monolito-vs-microservicios.md), donde se fundamenta el rechazo de microservicios para maximizar la consistencia transaccional y simplicidad operativa del equipo.
 
+## 8.8 Estrategia de Consistencia de Datos
+El sistema define garantías explícitas por cada operación de lectura y escritura. La regla de oro establece que las operaciones de escritura validan invariantes exclusivamente contra la base de datos primaria bajo transacciones ACID locales (con bloqueo pesimista en préstamos y restricciones declarativas en modelos). Para el detalle exhaustivo por operación, garantías del flujo por eventos y análisis de brechas de concurrencia, consultar [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md).
+
+## 8.9 Estrategia de Caché (Diseño Propuesto)
+Para mitigar la sobrecarga en horas pico (QS-02, QS-03) sin comprometer la consistencia de inventario (QS-06), se diseña una capa de caché en memoria de proceso acotada por TTL (60 s para recursos, 120 s para salones) con invalidación por grupos de versión ante eventos de escritura. Ninguna operación de modificación lee de la caché. Especificación técnica completa en [`docs/datos/diseno-cache.md`](../datos/diseno-cache.md) *(DISEÑO PROPUESTO — NO IMPLEMENTADO)*.
+
 
 # Decisiones arquitectónicas
 
@@ -431,6 +437,7 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0004](../adr/0004-seguridad-jwt.md) — Seguridad y Autenticación: JWT HS256 + bcrypt (S8)
 - [ADR-0005](../adr/0005-monolito-vs-microservicios.md) — Preservación del Monolito Modular: rechazo de microservicios (S8)
 - [ADR-0006](../adr/0006-mensajeria-asincrona-outbox.md) — Mensajería Asíncrona: Transactional Outbox para notificaciones de préstamos (S12)
+- [ADR-0007](../adr/0007-identificadores-enteros-autoincrementales.md) — Identificadores enteros autoincrementales en claves primarias (S12)
 
 # Requisitos de calidad
 
@@ -550,6 +557,12 @@ en `docs/auditoria_s8_s9_s11.md`.
 | **R-03** | Ausencia de migraciones Alembic en producción | Medio — Operabilidad. `create_all()` no permite cambios de esquema en caliente | **Parcialmente mitigado en S12:** Se creó la migración `6c7d8e9f0a1b` para las tablas de mensajería outbox (verificada únicamente en SQLite, no en PostgreSQL). Persiste la deuda técnica de que la migración previa `5b652dd28f00` falla desde una base vacía. |
 | **R-04** | Pipeline CI apuntaba a `app/tests/` (1 test) en lugar de `tests/` (suite completa) | Alto — Calidad. Código defectuoso podía desplegarse pasando el único test de salud | **Mitigado en S8:** `ci.yml` ahora corre la suite completa (`pytest tests/ -v`) con contenedor PostgreSQL. |
 | **R-05** | Falta de `Idempotency-Key` en `POST /prestamos` | Medio — Integridad. Reintentos del cliente Flutter en red inestable pueden duplicar reservas | **Mitigado en S11:** Soporte de cabecera `X-Idempotency-Key` respaldada por `idempotencia_registros`. |
+| **R-06** | Doble reserva concurrente de salones (`services/prestamos_salon.py:114`) | Alto — Confiabilidad / QS-06. Validación en Python sin bloqueo permite reservas solapadas | **Abierto / Deuda técnica:** Propuesta de restricción de exclusión GiST o `with_for_update` en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
+| **R-07** | Inserción de horarios solapados (`services/horarios.py:89`) | Medio — Integridad / QS-06. Falta de restricción de exclusión en BD permite superposición horaria | **Abierto / Deuda técnica:** Propuesta de restricción PostgreSQL en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
+| **R-08** | Doble devolución de préstamo por falta de bloqueo (`services/loans.py:146`) | Medio — Confiabilidad / QS-06. Peticiones simultáneas marcan devolución doblemente | **Abierto / Deuda técnica:** Propuesta de `.with_for_update()` en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
+| **R-09** | Nombres de usuario duplicados por omisión de `unique=True` (`models/auth_models.py:19`) | Alto — Seguridad / QS-04. Nombres idénticos rompen el flujo de login (`auth.py:70`) | **Abierto / Deuda técnica:** Propuesta de restricción única en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
+| **R-10** | Inoperancia de bloqueo pesimista en SQLite (`services/loans.py:54-60`) | Medio — Confiabilidad / QS-06. Pruebas locales en SQLite no validan aislamiento de concurrencia | **Abierto / Deuda técnica:** Propuesta de estandarizar PostgreSQL local en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
+| **R-11** | Enumeración de usuarios por clave entera expuesta (`routers/auth.py:53-59`) | Alto — Seguridad / QS-04. Falta de chequeo de autorización permite enumerar usuarios | **Abierto / Deuda técnica:** Documentado en [`docs/adr/0007-identificadores-enteros-autoincrementales.md`](../adr/0007-identificadores-enteros-autoincrementales.md). |
 
 
 
