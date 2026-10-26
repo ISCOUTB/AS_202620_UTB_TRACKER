@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "docs/arc42/arc42.md": {
-    "mtime": 1792971476.89922,
-    "seen": 1792971506.7932608,
-    "ast_hash": "6dcabc5aa9d5cde99a8e2d699ccd7101",
+    "mtime": 1792994566.3709986,
+    "seen": 1792994569.9083717,
+    "ast_hash": "1d09f53f7c7185f0fea80faabb22d08a",
     "semantic_hash": ""
   },
   "docs/aspectos.md": {
@@ -132,9 +132,9 @@
     "semantic_hash": ""
   },
   "docs/c4/C2.md": {
-    "mtime": 1791065410.15237,
-    "seen": 1792822294.748685,
-    "ast_hash": "014a655cb86e6d83f4ed711ae1db3295",
+    "mtime": 1792994566.3730035,
+    "seen": 1792994569.908378,
+    "ast_hash": "08e4f4993e3a7d1381e82ddafc094c38",
     "semantic_hash": ""
   },
   "docs/c4/c4_nivel1.md": {
@@ -1161,6 +1161,30 @@
     "mtime": 1792994408.957445,
     "seen": 1792994482.3270247,
     "ast_hash": "2eb0f144667efeb25ddd3319a6087eb0",
+    "semantic_hash": ""
+  },
+  "docs/adr/0007-identificadores-enteros-autoincrementales.md": {
+    "mtime": 1792994566.368912,
+    "seen": 1792994576.2858002,
+    "ast_hash": "0d0eed8b85dbf40ce5c7c2e5ae2510e3",
+    "semantic_hash": ""
+  },
+  "docs/datos/README.md": {
+    "mtime": 1792994566.3750093,
+    "seen": 1792994576.2858388,
+    "ast_hash": "0927454ada2344c8412a23ad121f1efc",
+    "semantic_hash": ""
+  },
+  "docs/datos/consistencia-por-operacion.md": {
+    "mtime": 1792994566.3750093,
+    "seen": 1792994576.2858443,
+    "ast_hash": "d143524394361b83d2054790b6b833b4",
+    "semantic_hash": ""
+  },
+  "docs/datos/diseno-cache.md": {
+    "mtime": 1792994566.3770173,
+    "seen": 1792994576.2858493,
+    "ast_hash": "91a07554ac76d8655ed091c2aca00ef5",
     "semantic_hash": ""
   }
 }

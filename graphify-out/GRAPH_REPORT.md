@@ -1,17 +1,17 @@
 # Graph Report - AS_202620_UTB_TRACKER  (2026-10-26)
 
 ## Corpus Check
-- 166 files · ~75,056 words
+- 170 files · ~81,094 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 27 file(s) not represented in the graph (top: (none) 7, .xml 7, .properties 3)
 
 ## Summary
-- 2197 nodes · 3601 edges · 143 communities (111 shown, 32 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 129 edges (avg confidence: 0.93)
+- 2252 nodes · 3666 edges · 146 communities (117 shown, 29 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 132 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bf1debcd`
+- Built from commit: `ea2a0306`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -22,16 +22,16 @@
 - routers/salones_admin.py
 - with
 - 0003 - Estrategia de integración: síncrona (REST sobre HTTP)
-- NotificadorSimulado
+- demo_mensajeria.py
 - UTB Tracker
 - Escenarios de calidad
 - logging_middleware
 - Ficha del problema — UTB Tracker
 - arc42.md
-- routers/auth.py
+- services/auth.py
 - test_loans.py
 - routers/horarios.py
-- resilience.py
+- CircuitBreaker
 - test_resources.py
 - salon_detalle_page.dart
 - test_messaging.py
@@ -39,19 +39,19 @@
 - run.sh
 - widgets.dart
 - crear_recurso_page.dart
-- worker.py
+- Diseño de Estrategia de Caché e Invalidación — UTB Tracker
 - app_theme.dart
 - home_page.dart
 - actividad_page.dart
 - salon.dart
 - controladores_test.dart
 - recursos_controller.dart
-- panel_administrativo_page.dart
+- package:flutter/material.dart
 - equipos_page.dart
 - solicitar_prestamo_sheet.dart
 - recurso_detalle_page.dart
 - main.py
-- demo_mensajeria.py
+- update_user_role_endpoint
 - obtener_disponibilidad
 - salones_page.dart
 - test_auth.py
@@ -69,7 +69,7 @@
 - pubspec.yaml
 - api_client_test.dart
 - injection.dart
-- services/salones.py
+- routers/auth.py
 - salones_controller.dart
 - admin_usuarios_controller.dart
 - prestamos_controller.dart
@@ -86,7 +86,7 @@
 - panel_salones_page.dart
 - prestamo.dart
 - test_horarios.py
-- routers/salones.py
+- conftest.py
 - token_storage.dart
 - mensajeria/README.md
 - salon_control_page.dart
@@ -110,7 +110,7 @@
 - salones_admin_controller.dart
 - salones_admin_test.dart
 - StatelessWidget
-- services/auth.py
+- test_resilience.py
 - salones_admin_data.dart
 - win32_window.cpp
 - FlutterWindow
@@ -119,26 +119,29 @@
 - filtros_sheet.dart
 - uber_widgets.dart
 - test_salones_admin.py
-- health_check
 - plano_salones.dart
 - reporte_salon_sheet.dart
 - utils.cpp
 - salones_admin_estilos.dart
-- Win32Window
+- ADR-0007: Uso de Identificadores Enteros Autoincrementales en Claves Primarias
 - NotificadorBase
-- test_performance.py
+- get_user_endpoint
 - salones_admin_repository.dart
 - manifest.json
-- test_main.py
+- time
 - Cómo ejecutar UTB Tracker en Windows (PowerShell)
 - .MessageHandler
 - Aspectos — UTB Tracker
 - security.py
 - flutter_window.cpp
-- require_role
-- SalonesAdminRepository
+- Conceptos transversales (Cross-cutting Concepts)
+- 3. Garantías del Flujo por Eventos (Transactional Outbox)
+- test_circuit_breaker_transiciones_de_estado
 - Point
-- Size
+- resilience.py
+- devolver_prestamo
+- 4. Brechas Conocidas y Mejoras Propuestas
+- SalonesAdminRepository
 
 ## God Nodes (most connected - your core abstractions)
 1. `get_db()` - 54 edges
@@ -149,41 +152,41 @@
 6. `Horario` - 18 edges
 7. `NotificadorSimulado` - 17 edges
 8. `Salon` - 17 edges
-9. `_procesar_un_mensaje()` - 15 edges
-10. `PrestamoSalon` - 15 edges
+9. `PrestamoSalon` - 16 edges
+10. `_procesar_un_mensaje()` - 15 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `8.7 Descomposición: Sagas, Patrón Outbox y Circuit Breakers (S11/S12 — req. 11.4, 11.5 y 11.6)` --references--> `CircuitBreaker`  [INFERRED]
   docs/arc42/arc42.md → app/core/resilience.py
+- `2. Matriz de Operaciones y Garantías de Consistencia` --references--> `PrestamoSalon`  [INFERRED]
+  docs/datos/consistencia-por-operacion.md → app/models/salon_models.py
 - `2.2 Campos del Payload (`PayloadPrestamoCreado`)` --references--> `PayloadPrestamoCreado`  [INFERRED]
   docs/mensajeria/contrato-prestamo-creado.md → app/messaging/events.py
 - `4. Requisitos para Transición a Producción` --references--> `NotificadorBase`  [INFERRED]
   docs/mensajeria/limites-del-experimento.md → app/messaging/worker.py
 - `1. Simplificaciones Asumidas en el Diseño` --references--> `NotificadorSimulado`  [INFERRED]
   docs/mensajeria/limites-del-experimento.md → app/messaging/worker.py
-- `2. Aspectos No Probados, Riesgos Técnicos y Verificación Parcial` --references--> `_calcular_siguiente_intento()`  [INFERRED]
-  docs/mensajeria/limites-del-experimento.md → app/messaging/worker.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (143 total, 32 thin omitted)
+## Communities (146 total, 29 thin omitted)
 
 ### Community 0 - "Runtime View"
 Cohesion: 0.25
 Nodes (8): Escenario 1 — Préstamo exitoso, Escenario 2 — Préstamo rechazado (recurso no disponible), Escenario 3 — Notificación asíncrona de préstamo (Transactional Outbox + Worker), Estimación de costos mensuales (S8 — req. 8.10), Infrastructure Level 1, Infrastructure Level 2, Runtime View, Vista de ejecución
 
 ### Community 1 - "Usuario"
-Cohesion: 0.12
-Nodes (13): Usuario, IdempotenciaRegistro, Prestamo, Recurso, Reporte, Riesgos y deudas técnicas, main(), utc() (+5 more)
+Cohesion: 0.18
+Nodes (9): require_role(), Usuario, IdempotenciaRegistro, Prestamo, Recurso, Reporte, Riesgos y deudas técnicas, main() (+1 more)
 
 ### Community 2 - "Recurso"
 Cohesion: 0.25
 Nodes (8): Estructura del sistema, Level 3, Nivel 2, prestamos, recursos, Vista general del sistema, White Box *prestamos*, White Box *recursos*
 
 ### Community 3 - "routers/salones_admin.py"
-Cohesion: 0.06
-Nodes (35): actualizar_reporte(), crear_reporte(), listar_ocupacion(), listar_reportes(), obtener_ocupacion(), registrar_presencia(), CategoriaRecurso, DiaSemana (+27 more)
+Cohesion: 0.11
+Nodes (17): actualizar_reporte(), crear_reporte(), listar_ocupacion(), listar_reportes(), obtener_ocupacion(), registrar_presencia(), EstadoReporteSalon, ClaseActual (+9 more)
 
 ### Community 4 - "with"
 Cohesion: 0.06
@@ -193,9 +196,9 @@ Nodes (34): needs, runs-on, steps, DATABASE_URL, POSTGRES_DB, POSTGRES_HOST_AUTH
 Cohesion: 0.33
 Nodes (6): 0003 - Estrategia de integración: síncrona (REST sobre HTTP), Alternativas consideradas, Consecuencias, Contexto, Decisión, Estado
 
-### Community 6 - "NotificadorSimulado"
+### Community 6 - "demo_mensajeria.py"
 Cohesion: 0.13
-Nodes (10): NotificadorSimulado, _cargar_contrato_congelado(), _resolver_ref(), test_campos_requeridos_de_los_schemas_no_desaparecieron(), test_todos_los_paths_del_contrato_siguen_existiendo(), test_mensaje_muerto_al_superar_max_intentos(), test_rechazo_explicito_si_version_de_contrato_no_soportada(), test_reintentos_backoff_exponencial_sin_sleep() (+2 more)
+Nodes (10): MensajeOutbox, NotificacionProcesada, _marcar_muerto(), procesar_pendientes(), _procesar_un_mensaje(), _resolver_email(), _run_loop(), crear_prestamo() (+2 more)
 
 ### Community 7 - "UTB Tracker"
 Cohesion: 0.22
@@ -205,17 +208,21 @@ Nodes (8): Base de datos, Corte vertical ejecutable (S4), Cómo arrancar (un sol
 Cohesion: 0.17
 Nodes (10): Descripción general de los requisitos de calidad, Escenarios de calidad, QS-01 — Disponibilidad, QS-02 — Rendimiento (tiempo de respuesta), QS-03 — Rendimiento (concurrencia), QS-04 — Seguridad, QS-05 — Usabilidad, QS-06 — Confiabilidad de los datos (+2 more)
 
+### Community 9 - "logging_middleware"
+Cohesion: 0.20
+Nodes (3): logging_middleware(), health_check(), Tabla de trazabilidad
+
 ### Community 10 - "Ficha del problema — UTB Tracker"
 Cohesion: 0.29
 Nodes (6): A quién afecta, Alcance de esta entrega, Ficha del problema — UTB Tracker, Por qué importa ahora, Problema, Qué se propone
 
 ### Community 11 - "arc42.md"
-Cohesion: 0.20
+Cohesion: 0.19
 Nodes (5): Decisiones arquitectónicas, Restricciones arquitectónicas, Diagrama de Contenedores (C4 - Nivel 2) - UTB Tracker, Conclusión, Matriz comparativa de estilos arquitectónicos — UTB Tracker
 
-### Community 12 - "routers/auth.py"
-Cohesion: 0.11
-Nodes (15): delete_user_endpoint(), get_user_endpoint(), get_users_endpoint(), login_endpoint(), me_endpoint(), register_endpoint(), update_user_role_endpoint(), TokenResponse (+7 more)
+### Community 12 - "services/auth.py"
+Cohesion: 0.17
+Nodes (9): verify_password(), delete_user(), get_all_users(), get_me(), get_user_by_id(), login(), logout(), update_user_role() (+1 more)
 
 ### Community 13 - "test_loans.py"
 Cohesion: 0.29
@@ -225,29 +232,29 @@ Nodes (5): _crear_recurso(), test_devolver_prestamo(), test_devolver_prestamo_ya
 Cohesion: 0.08
 Nodes (19): Horario, actualizar_horario(), crear_horario(), crear_horarios_bulk(), eliminar_horario(), listar_horarios(), obtener_horario(), HorarioBulkCreate (+11 more)
 
-### Community 15 - "resilience.py"
-Cohesion: 0.06
-Nodes (23): CircuitBreaker, wrapper(), CircuitBreakerOpenException, CircuitBreakerState, with_retry(), decorator(), wrapper(), 8.1 Patrón de Capas y Control de Erosión Arquitectónica (+15 more)
+### Community 15 - "CircuitBreaker"
+Cohesion: 0.19
+Nodes (7): CircuitBreaker, wrapper(), decorator(), wrapper(), Formato, Registro, Uso de IA - Tractar
 
 ### Community 17 - "salon_detalle_page.dart"
 Cohesion: 0.06
 Nodes (34): _abrirAgregarHorario, _abrirSolicitudPrestamo, _auth, build, _cambiarDia, _cargandoDatos, _cargarTodo, createState (+26 more)
 
 ### Community 18 - "test_messaging.py"
-Cohesion: 0.14
-Nodes (11): MensajeOutbox, _crear_recurso(), test_consumidor_idempotente_ante_reentrega(), test_desacoplamiento_temporal_sin_worker(), test_idempotencia_http_con_x_idempotency_key(), test_outbox_se_inserta_en_misma_transaccion_que_prestamo(), test_rollback_no_deja_mensaje_en_outbox(), test_rollback_real_forzando_fallo_en_commit() (+3 more)
+Cohesion: 0.07
+Nodes (20): NotificadorSimulado, _cargar_contrato_congelado(), _resolver_ref(), test_campos_requeridos_de_los_schemas_no_desaparecieron(), test_todos_los_paths_del_contrato_siguen_existiendo(), _crear_recurso(), test_consumidor_idempotente_ante_reentrega(), test_desacoplamiento_temporal_sin_worker() (+12 more)
 
 ### Community 23 - "widgets.dart"
 Cohesion: 0.07
 Nodes (22): accion, build, child, color, colorDeEstado, colorDePrestamo, detalle, figura (+14 more)
 
 ### Community 24 - "crear_recurso_page.dart"
-Cohesion: 0.09
-Nodes (21): AdminUsuariosController, PrestamosController, build, _categoria, CrearRecursoPage, _CrearRecursoPageState, createState, dispose (+13 more)
+Cohesion: 0.11
+Nodes (15): build, _categoria, CrearRecursoPage, _CrearRecursoPageState, createState, dispose, _error, _form (+7 more)
 
-### Community 25 - "worker.py"
-Cohesion: 0.18
-Nodes (7): _calcular_siguiente_intento(), _marcar_muerto(), procesar_pendientes(), _procesar_un_mensaje(), _resolver_email(), _run_loop(), 2. Aspectos No Probados, Riesgos Técnicos y Verificación Parcial
+### Community 25 - "Diseño de Estrategia de Caché e Invalidación — UTB Tracker"
+Cohesion: 0.11
+Nodes (18): 1.1 Regla Central de Oro (Aislamiento de Invariantes), 1.2 Endpoints Incluidos en Caché, 1.3 Endpoints Excluidos de Caché, 1. Alcance y Reglas de Integridad, 2.1 En Proceso vs. Redis Distribuido, 2.2 Comportamiento Multi-Proceso y Límite de Obsolescencia, 2. Topología de Caché y Decisión de Ubicación, 3.1 Formato Canónico de Claves (+10 more)
 
 ### Community 26 - "app_theme.dart"
 Cohesion: 0.06
@@ -273,9 +280,9 @@ Nodes (18): actualizarRolUsuario, crear, datos, devolver, fallo, iniciarSesion, 
 Cohesion: 0.08
 Nodes (23): _busqueda, _carga, cargar, _categoria, crear, disponiblesDe, _error, _estado (+15 more)
 
-### Community 32 - "panel_administrativo_page.dart"
+### Community 32 - "package:flutter/material.dart"
 Cohesion: 0.09
-Nodes (16): _abrirCambiarRol, _auth, build, _busquedaCtrl, _controller, createState, dispose, initState (+8 more)
+Nodes (14): AdminUsuariosController, _abrirCambiarRol, _auth, build, _busquedaCtrl, _controller, createState, dispose (+6 more)
 
 ### Community 33 - "equipos_page.dart"
 Cohesion: 0.09
@@ -289,13 +296,17 @@ Nodes (24): _auth, _authRepo, build, _buscando, _buscarPrestatario, _clave, _con
 Cohesion: 0.09
 Nodes (22): build, createState, _Dato, _descCtrl, dispose, _enviando, _enviar, _estado (+14 more)
 
-### Community 37 - "demo_mensajeria.py"
-Cohesion: 0.22
-Nodes (5): NotificacionProcesada, PrestamoCreate, crear_prestamo(), main(), setup_logger()
+### Community 36 - "main.py"
+Cohesion: 0.14
+Nodes (3): PrestamoSalonCreate, PrestamoSalonResponse, PrestamoSalonUpdate
+
+### Community 37 - "update_user_role_endpoint"
+Cohesion: 0.20
+Nodes (5): delete_user_endpoint(), get_users_endpoint(), login_endpoint(), register_endpoint(), update_user_role_endpoint()
 
 ### Community 38 - "obtener_disponibilidad"
-Cohesion: 0.13
-Nodes (6): actualizar_salon(), crear_salon(), eliminar_salon(), listar_salones(), obtener_disponibilidad(), obtener_salon()
+Cohesion: 0.08
+Nodes (16): get_db(), actualizar_salon(), crear_salon(), eliminar_salon(), listar_salones(), obtener_disponibilidad(), obtener_salon(), FranjaDisponible (+8 more)
 
 ### Community 39 - "salones_page.dart"
 Cohesion: 0.09
@@ -306,12 +317,12 @@ Cohesion: 0.08
 Nodes (7): test_admin_actualizar_rol_usuario(), test_admin_listar_usuarios(), test_eliminar_usuario_sin_rol_admin(), test_endpoint_me(), test_endpoint_me_sin_token(), test_endpoint_protegido_sin_token(), test_registro_fuerza_rol_usuario_utb()
 
 ### Community 41 - "shell_page.dart"
-Cohesion: 0.09
-Nodes (15): _BarraPildora, build, createState, _filtroActividad, _indice, initState, _ir, _items (+7 more)
+Cohesion: 0.07
+Nodes (19): AuthController, _BarraPildora, build, createState, _filtroActividad, _indice, initState, _ir (+11 more)
 
 ### Community 42 - "listar_prestamos"
-Cohesion: 0.12
-Nodes (5): crear_prestamo(), devolver_prestamo(), listar_prestamos(), devolver_prestamo(), listar_prestamos()
+Cohesion: 0.16
+Nodes (3): crear_prestamo(), devolver_prestamo(), listar_prestamos()
 
 ### Community 43 - "with"
 Cohesion: 0.09
@@ -343,7 +354,7 @@ Nodes (14): _azar, _baseUrl, _cabeceras, cerrar, _client, _conReintentos, delete
 
 ### Community 50 - "login_page.dart"
 Cohesion: 0.06
-Nodes (29): accion, _auth, autofill, build, _cambiarModo, clave, _continuar, controller (+21 more)
+Nodes (31): accion, _auth, autofill, build, _cambiarModo, clave, _continuar, controller (+23 more)
 
 ### Community 51 - "salones_data.dart"
 Cohesion: 0.10
@@ -361,45 +372,45 @@ Nodes (6): ApiException, _json, main, _json, main, main
 Cohesion: 0.09
 Nodes (3): configurarDependencias, reset, sl
 
-### Community 55 - "services/salones.py"
-Cohesion: 0.18
-Nodes (7): Salon, actualizar_salon(), crear_salon(), eliminar_salon(), listar_salones(), obtener_disponibilidad(), obtener_salon()
+### Community 55 - "routers/auth.py"
+Cohesion: 0.27
+Nodes (7): TokenResponse, UserMeResponse, UserResponse, UsuarioCreate, UsuarioDelete, UsuarioLogin, UsuarioRoleUpdate
 
 ### Community 56 - "salones_controller.dart"
 Cohesion: 0.12
-Nodes (13): agregarHorario, _busqueda, _carga, cargar, crear, _error, fijarBusqueda, obtenerDisponibilidad (+5 more)
+Nodes (14): Carga, agregarHorario, _busqueda, _carga, cargar, crear, _error, fijarBusqueda (+6 more)
 
 ### Community 57 - "admin_usuarios_controller.dart"
-Cohesion: 0.11
+Cohesion: 0.13
 Nodes (12): _busqueda, cambiarRol, _cargando, cargar, _error, fijarBusqueda, fijarFiltroRol, _filtroRol (+4 more)
 
 ### Community 58 - "prestamos_controller.dart"
-Cohesion: 0.10
-Nodes (18): Carga, _carga, cargar, deUsuario, devolver, error, exito, fallo (+10 more)
+Cohesion: 0.11
+Nodes (17): _carga, cargar, deUsuario, devolver, error, exito, fallo, filtrarPorEstado (+9 more)
 
 ### Community 59 - "auth_domain.dart"
 Cohesion: 0.10
 Nodes (18): AuthRepositoryImpl, actualizarRolUsuario, AuthRepository, email, id, iniciarSesion, listarUsuarios, nombre (+10 more)
 
 ### Community 60 - "PayloadPrestamoCreado"
-Cohesion: 0.13
+Cohesion: 0.16
 Nodes (12): EventoPrestamoCreado, PayloadPrestamoCreado, 1. Identificación del Evento, 2.1 Campos del Sobre (`EventoPrestamoCreado`), 2.2 Campos del Payload (`PayloadPrestamoCreado`), 2. Estructura Canónica del Mensaje, 3. Ejemplo Real de Mensaje JSON, 4.1 Cambios Compatibles hacia Atrás (Aditivos) (+4 more)
 
 ### Community 61 - "services/prestamos_salon.py"
-Cohesion: 0.23
-Nodes (8): PrestamoSalon, actualizar_estado_prestamo_salon(), crear_prestamo_salon(), _detectar_conflicto_horario(), _detectar_conflicto_prestamo(), listar_prestamos_salon(), _validar_salon(), _validar_usuario()
+Cohesion: 0.19
+Nodes (9): PrestamoSalon, Salon, actualizar_estado_prestamo_salon(), crear_prestamo_salon(), _detectar_conflicto_horario(), _detectar_conflicto_prestamo(), listar_prestamos_salon(), _validar_salon() (+1 more)
 
 ### Community 62 - "listar_prestamos_salon"
-Cohesion: 0.11
-Nodes (6): actualizar_estado_prestamo_salon(), crear_prestamo_salon(), listar_prestamos_salon(), PrestamoSalonCreate, PrestamoSalonResponse, PrestamoSalonUpdate
+Cohesion: 0.15
+Nodes (3): actualizar_estado_prestamo_salon(), crear_prestamo_salon(), listar_prestamos_salon()
 
 ### Community 63 - "prestamos_data.dart"
 Cohesion: 0.15
 Nodes (9): ApiClient, _api, crear, desdeJson, devolver, listar, PrestamoModel, PrestamosRemoteDataSource (+1 more)
 
 ### Community 64 - "StatefulWidget"
-Cohesion: 0.13
-Nodes (9): _auth, build, createState, initState, _Raiz, _RaizState, UtbTrackerApp, configurarDependencias (+1 more)
+Cohesion: 0.20
+Nodes (5): _auth, build, createState, initState, UtbTrackerApp
 
 ### Community 65 - "recursos_data.dart"
 Cohesion: 0.15
@@ -419,7 +430,7 @@ Nodes (11): ADR-0006: Mensajería Asíncrona con Transactional Outbox para Notif
 
 ### Community 69 - "panel_salones_page.dart"
 Cohesion: 0.07
-Nodes (22): _abrir, _actualizado, _auth, _Aviso, build, _c, _Cabecera, _cargar (+14 more)
+Nodes (24): _abrir, _actualizado, _auth, build, _c, _cargar, controller, createState (+16 more)
 
 ### Community 70 - "prestamo.dart"
 Cohesion: 0.17
@@ -429,21 +440,21 @@ Nodes (10): devuelto, estadoEn, EstadoPrestamo, fechaDevolucionEsperada, fechaDe
 Cohesion: 0.31
 Nodes (8): _crear_salon(), test_carga_masiva_horarios(), test_conflicto_horario_rechazado(), test_crear_horario(), test_disponibilidad_con_horarios(), test_eliminar_horario(), test_horario_mismo_dia_sin_cruce_acepta(), test_listar_horarios_filtrados()
 
-### Community 72 - "routers/salones.py"
-Cohesion: 0.39
-Nodes (5): FranjaDisponible, SalonConDisponibilidad, SalonCreate, SalonResponse, SalonUpdate
+### Community 72 - "conftest.py"
+Cohesion: 0.12
+Nodes (7): hash_password(), create_user(), admin_headers(), auth_headers(), client(), db_session(), _get_token()
 
 ### Community 73 - "token_storage.dart"
 Cohesion: 0.20
 Nodes (6): _archivo, borrarToken, guardarToken, leerToken, _memoriaToken, TokenStorage
 
 ### Community 74 - "mensajeria/README.md"
-Cohesion: 0.25
+Cohesion: 0.22
 Nodes (7): 1.1 Pruebas del Módulo de Mensajería (`tests/test_messaging.py`), 1.2 Verificación del Ciclo de Vida de Alembic (`6c7d8e9f0a1b`), 1.3 Demostración de Punta a Punta (`scripts/demo_mensajeria.py`), 1.4 Resumen de la Suite Completa del Repositorio, 1. Salidas Crudas de Comandos, 2. Matriz de Cumplimiento de Puntos del Taller, Evidencia de Ejecución: Mensajería Asíncrona (Taller)
 
 ### Community 76 - "salon_control_page.dart"
 Cohesion: 0.07
-Nodes (24): acciones, autor, build, _c, cantidad, _colorDeSolicitud, _confirmar, createState (+16 more)
+Nodes (26): acciones, autor, build, _c, cantidad, _colorDeSolicitud, _confirmar, createState (+18 more)
 
 ### Community 77 - "Cómo Ejecutar en PowerShell (Comandos Reales)"
 Cohesion: 0.22
@@ -498,15 +509,15 @@ Cohesion: 0.67
 Nodes (3): Contexto de negocio, Contexto técnico, Contexto y alcance
 
 ### Community 102 - "get_db"
-Cohesion: 0.09
-Nodes (14): actualizar_recurso(), crear_recurso(), eliminar_recurso(), listar_recursos(), listar_reportes_recurso(), obtener_recurso(), reportar_recurso(), actualizar_recurso() (+6 more)
+Cohesion: 0.05
+Nodes (35): actualizar_recurso(), crear_recurso(), eliminar_recurso(), listar_recursos(), listar_reportes_recurso(), obtener_recurso(), reportar_recurso(), CategoriaRecurso (+27 more)
 
 ### Community 103 - "salon_control_controller.dart"
 Cohesion: 0.08
 Nodes (21): _accion, _auth, _carga, cargar, confirmarProfesor, decidirSolicitud, _error, _fallar (+13 more)
 
 ### Community 104 - "services/salones_admin.py"
-Cohesion: 0.23
+Cohesion: 0.24
 Nodes (14): PresenciaSalon, ReporteSalon, _a_utc_naive(), actualizar_estado_reporte(), _ahora_campus(), _clase_en_curso(), crear_reporte(), listar_ocupacion() (+6 more)
 
 ### Community 105 - "salones_admin_controller.dart"
@@ -521,9 +532,9 @@ Nodes (10): _clase, fallo, _json, listarOcupacion, main, ocupaciones, _ocupacion
 Cohesion: 0.11
 Nodes (18): _CajaError, _CampoUber, _Marca, _MedidorClave, _Selector, _Buscador, _Cabecera, _Carrusel (+10 more)
 
-### Community 108 - "services/auth.py"
-Cohesion: 0.14
-Nodes (9): hash_password(), verify_password(), create_user(), get_all_users(), get_me(), get_user_by_id(), login(), logout() (+1 more)
+### Community 108 - "test_resilience.py"
+Cohesion: 0.19
+Nodes (5): with_retry(), _crear_recurso(), test_idempotencia_prestamo_con_misma_clave(), test_with_retry_exito_tras_fallo_transitorio(), test_with_retry_lanza_excepcion_al_superar_maximo()
 
 ### Community 109 - "salones_admin_data.dart"
 Cohesion: 0.11
@@ -534,12 +545,12 @@ Cohesion: 0.18
 Nodes (6): EnableNonClientDpiScaling, Scale(), Win32Window::Win32Window(), WindowClassRegistrar, class_registered_, instance_
 
 ### Community 111 - "FlutterWindow"
-Cohesion: 0.17
+Cohesion: 0.14
 Nodes (3): FlutterWindow, flutter_controller_, project_
 
 ### Community 112 - "State"
 Cohesion: 0.17
-Nodes (14): LoginPage, _LoginPageState, PanelSalonesPage, _PanelSalonesPageState, _ReporteSalonSheet, _ReporteSalonSheetState, SalonControlPage, _SalonControlPageState (+6 more)
+Nodes (14): _Raiz, _RaizState, PanelAdministrativoPage, _PanelAdministrativoPageState, CuentaPage, _CuentaPageState, ShellPage, _ShellPageState (+6 more)
 
 ### Community 113 - "sqlalchemy"
 Cohesion: 0.16
@@ -550,7 +561,7 @@ Cohesion: 0.12
 Nodes (13): build, _categoria, createState, _estado, _FiltrosSheet, _FiltrosSheetState, kTodosLosSalones, mostrarFiltros (+5 more)
 
 ### Community 115 - "uber_widgets.dart"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (15): AsaHoja, AvatarIniciales, BotonPildora, build, cargando, color, compacto, estilo (+7 more)
 
 ### Community 116 - "test_salones_admin.py"
@@ -563,23 +574,27 @@ Nodes (10): _Baldosa, build, _CuadriculaPainter, ocupacion, onTap, paint, PlanoS
 
 ### Community 119 - "reporte_salon_sheet.dart"
 Cohesion: 0.13
-Nodes (10): build, createState, _descripcion, dispose, _enviando, _enviar, _error, mostrarReporteSalonSheet (+2 more)
+Nodes (12): build, createState, _descripcion, dispose, _enviando, _enviar, _error, mostrarReporteSalonSheet (+4 more)
 
 ### Community 120 - "utils.cpp"
-Cohesion: 0.13
+Cohesion: 0.12
 Nodes (4): wWinMain(), CreateAndAttachConsole(), GetCommandLineArguments(), Utf8FromUtf16()
 
 ### Community 121 - "salones_admin_estilos.dart"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (9): colorDeSituacion, _colorPrestado, d, _dos, etiquetaDeSituacion, formatearHora, h12, haceCuanto (+1 more)
 
-### Community 122 - "Win32Window"
-Cohesion: 0.21
-Nodes (4): Win32Window, child_content_, quit_on_close_, window_handle_
+### Community 122 - "ADR-0007: Uso de Identificadores Enteros Autoincrementales en Claves Primarias"
+Cohesion: 0.18
+Nodes (11): ADR-0007: Uso de Identificadores Enteros Autoincrementales en Claves Primarias, Alternativas Evaluadas, Comparativa de Costo de Reversión frente a otras decisiones de datos, Consecuencias, Contexto, Costo de Revertir Cuantificado (Por qué es la Decisión Más Costosa), Decisión, Estado (+3 more)
 
 ### Community 123 - "NotificadorBase"
+Cohesion: 0.17
+Nodes (7): _calcular_siguiente_intento(), NotificadorBase, 1. Simplificaciones Asumidas en el Diseño, 2. Aspectos No Probados, Riesgos Técnicos y Verificación Parcial, 3. Hallazgo Técnico: Cadena de Migraciones Alembic Previa, 4. Requisitos para Transición a Producción, Límites del Experimento: Mensajería Asíncrona
+
+### Community 124 - "get_user_endpoint"
 Cohesion: 0.22
-Nodes (5): NotificadorBase, 1. Simplificaciones Asumidas en el Diseño, 3. Hallazgo Técnico: Cadena de Migraciones Alembic Previa, 4. Requisitos para Transición a Producción, Límites del Experimento: Mensajería Asíncrona
+Nodes (7): get_user_endpoint(), me_endpoint(), 1. Resumen Ejecutivo (5 Líneas), 2. Índice de Documentos, 3. Metodología de Verificación en el Repositorio, 4. Enlace al Commit, Estrategia de Datos y Eventos — UTB Tracker
 
 ### Community 125 - "salones_admin_repository.dart"
 Cohesion: 0.18
@@ -593,45 +608,57 @@ Nodes (10): background_color, description, display, icons, name, orientation, pr
 Cohesion: 0.17
 Nodes (11): 0. Requisitos (una sola vez), 1. Preparar el backend (una sola vez), 2. Terminal 1 — Backend, 3. Terminal 2 — App Flutter, 4. Cuentas de ejemplo (el login pide NOMBRE + clave), 5. Datos de ejemplo que crea `scripts/seed_demo.py`, 6. Pruebas, 7. Problemas comunes (+3 more)
 
+### Community 129 - ".MessageHandler"
+Cohesion: 0.19
+Nodes (5): EnableFullDpiSupportIfAvailable(), Win32Window, child_content_, quit_on_close_, window_handle_
+
 ### Community 130 - "Aspectos — UTB Tracker"
 Cohesion: 0.25
 Nodes (8): A-01 · Declarar, A-02 · Declarar, A-03 · Declarar, A-04 · Declarar, A-05 · Declarar, A-06 · Declarar, Aspectos — UTB Tracker, Especificar (escenarios medibles)
 
 ### Community 131 - "security.py"
-Cohesion: 0.19
+Cohesion: 0.25
 Nodes (5): get_current_user(), create_access_token(), create_reset_password_token(), verify_reset_password_token(), verify_token()
 
-### Community 135 - "SalonesAdminRepository"
+### Community 133 - "Conceptos transversales (Cross-cutting Concepts)"
+Cohesion: 0.20
+Nodes (10): 8.1 Patrón de Capas y Control de Erosión Arquitectónica, 8.2 Seguridad, Hashing y Autenticación, 8.3 Observabilidad y Logging Estructurado, 8.4 Evaluación de Inteligencia Artificial Generativa en el Producto (req. 9.9), 8.5 Resiliencia, Timeouts y Reintentos (S11 — req. 11.1 y 11.2), 8.6 Idempotencia y Prevención de Condiciones de Carrera (S11 — req. 11.3 y R-02), 8.7 Descomposición: Sagas, Patrón Outbox y Circuit Breakers (S11/S12 — req. 11.4, 11.5 y 11.6), 8.8 Estrategia de Consistencia de Datos (+2 more)
+
+### Community 134 - "3. Garantías del Flujo por Eventos (Transactional Outbox)"
+Cohesion: 0.22
+Nodes (9): 1. Niveles de Consistencia y Definiciones, 2. Matriz de Operaciones y Garantías de Consistencia, 3.1 Entrega (At-Least-Once), 3.2 Duplicados, 3.3 Orden de Entrega: SIN GARANTÍA DE ORDEN, 3.4 Concurrencia entre Múltiples Workers: AUSENCIA DE `SKIP LOCKED`, 3.5 Despliegue del Worker en el Entorno Real, 3. Garantías del Flujo por Eventos (Transactional Outbox) (+1 more)
+
+### Community 136 - "Point"
+Cohesion: 0.21
+Nodes (6): Point, x, y, Size, height, width
+
+### Community 144 - "4. Brechas Conocidas y Mejoras Propuestas"
+Cohesion: 0.40
+Nodes (5): 4. Brechas Conocidas y Mejoras Propuestas, Brecha B-01: Doble Reserva Concurrente de Salones, Brecha B-02: Inserción de Horarios Solapados, Brecha B-03: Doble Devolución de Préstamo (*Race Condition*), Brecha B-05: Inoperancia de Bloqueo Pesimista en Entornos SQLite
+
+### Community 145 - "SalonesAdminRepository"
 Cohesion: 0.50
 Nodes (3): SalonesAdminRepositoryImpl, SalonesAdminRepository, _RepoFalso
 
-### Community 136 - "Point"
-Cohesion: 0.50
-Nodes (3): Point, x, y
-
-### Community 137 - "Size"
-Cohesion: 0.50
-Nodes (3): Size, height, width
-
 ## Knowledge Gaps
 - **766 isolated node(s):** `_auth`, `build`, `createState`, `initState`, `Figuras` (+761 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1386 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **32 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1421 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **29 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `get_db()` connect `main.py` to `Usuario`, `security.py`, `routers/salones_admin.py`, `get_db`, `obtener_disponibilidad`, `listar_prestamos`, `routers/auth.py`, `routers/horarios.py`, `test_messaging.py`, `health_check`, `listar_prestamos_salon`?**
-  _High betweenness centrality (0.068) - this node is a cross-community bridge._
+- **Why does `Riesgos y deudas técnicas` connect `Usuario` to `arc42.md`?**
+  _High betweenness centrality (0.094) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `get_db()` (e.g. with `db_session()` and `test_rollback_real_forzando_fallo_en_commit()`) actually correct?**
   _`get_db()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `_auth`, `build`, `createState` to the rest of the system?**
   _766 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Usuario` be split into smaller, more focused modules?**
-  _Cohesion score 0.12043010752688173 - nodes in this community are weakly interconnected._
-- **Why does `Riesgos y deudas técnicas` connect `Usuario` to `arc42.md`?**
-  _High betweenness centrality (0.065) - this node is a cross-community bridge._
+- **Should `routers/salones_admin.py` be split into smaller, more focused modules?**
+  _Cohesion score 0.10931174089068826 - nodes in this community are weakly interconnected._
+- **Why does `Usuario` connect `Usuario` to `security.py`, `main.py`, `demo_mensajeria.py`, `get_db`, `conftest.py`, `services/salones_admin.py`, `services/auth.py`, `services/prestamos_salon.py`?**
+  _High betweenness centrality (0.067) - this node is a cross-community bridge._
 - **Are the 15 inferred relationships involving `Usuario` (e.g. with `get_current_user()` and `require_role()`) actually correct?**
   _`Usuario` has 15 INFERRED edges - model-reasoned connections that need verification._
-- **Should `routers/salones_admin.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.0642243328810493 - nodes in this community are weakly interconnected._
+- **Should `with` be split into smaller, more focused modules?**
+  _Cohesion score 0.06218487394957983 - nodes in this community are weakly interconnected._
