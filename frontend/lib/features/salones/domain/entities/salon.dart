@@ -1,4 +1,5 @@
 /// Entidades del módulo de Salones, Horarios y Préstamos de Salón (UTB Tracker).
+library;
 
 class Salon {
   const Salon({

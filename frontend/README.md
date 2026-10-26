@@ -53,6 +53,9 @@ lib/
     prestamos/ solicitar préstamo, actividad       (domain / data / presentation)
     home/      inicio y barra inferior
     cuenta/    perfil y cierre de sesión
+    salones/        consulta y solicitud de salones (usuario UTB)
+    salones_admin/  panel del auxiliar: quién tiene cada salón, profesor presente, reportes
+    admin/          gestión de usuarios y roles
   shared/      widgets reutilizables
 ```
 
@@ -61,9 +64,7 @@ conoce JSON y HTTP. Estado con `ChangeNotifier` + `ListenableBuilder`, sin paque
 
 ## Qué usa del backend
 
-`POST /auth/login`, `POST /auth/register`, `GET /auth/user/{id}`, `GET /salud`,
-`GET|POST /recursos`, `GET /recursos/{id}`, `GET|POST /prestamos` (con `X-Idempotency-Key`).
-
-Lo que el backend aún no ofrece (devolución, cambio de estado/daño, token obligatorio, filtros por usuario,
-notificaciones…) está en [`../docs/brechas_backend.md`](../docs/brechas_backend.md). La app trae rodeos
-documentados para B-1, B-7 y B-5, y no inventa endpoints.
+Autenticación (`/auth/login`, `/auth/register`, `/auth/me`, `/auth/users`), `/recursos` (con reportes),
+`/prestamos` (con `X-Idempotency-Key` y devolución), `/salones`, `/horarios`, `/prestamos-salon` y, para el
+panel del auxiliar, `/salones/ocupacion`, `/salones/{id}/presencia` y `/salones/{id}/reportes`
+(ver [ADR-0007](../docs/adr/0007-administracion-de-salones.md)). La app no inventa endpoints.

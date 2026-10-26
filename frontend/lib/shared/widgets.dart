@@ -142,7 +142,7 @@ class Insignia extends StatelessWidget {
       decoration: BoxDecoration(
         // withOpacity existe en todas las versiones de Flutter (en las más nuevas solo avisa
         // de deprecación; migrar a withValues(alpha:) cuando el equipo suba de versión).
-        color: color.withOpacity(0.14),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

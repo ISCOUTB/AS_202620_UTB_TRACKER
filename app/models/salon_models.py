@@ -5,17 +5,21 @@ Entidades:
 - Salon: aulas y laboratorios de la universidad.
 - Horario: franjas horarias asignadas a profesores/materias por semestre.
 - PrestamoSalon: solicitudes de préstamo de salón en horarios libres.
+- PresenciaSalon: confirmación del auxiliar de que el profesor llegó a su clase.
+- ReporteSalon: novedades del salón (limpieza, equipo, infraestructura…).
 """
 from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
     String,
     Time,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -79,3 +83,41 @@ class PrestamoSalon(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     salon = relationship("Salon", back_populates="prestamos_salon")
+
+
+class PresenciaSalon(Base):
+    """Un registro por clase (horario) y fecha: ¿llegó el profesor?"""
+
+    __tablename__ = "presencias_salon"
+    __table_args__ = (
+        UniqueConstraint("horario_id", "fecha", name="uq_presencia_horario_fecha"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    salon_id = Column(Integer, ForeignKey("salones.id"), nullable=False, index=True)
+    horario_id = Column(Integer, ForeignKey("horarios.id"), nullable=False)
+    fecha = Column(Date, nullable=False)
+    profesor_presente = Column(Boolean, nullable=False)
+    nota = Column(String, nullable=True)
+    registrado_por = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class ReporteSalon(Base):
+    __tablename__ = "reportes_salon"
+
+    id = Column(Integer, primary_key=True, index=True)
+    salon_id = Column(Integer, ForeignKey("salones.id"), nullable=False, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    tipo = Column(String, nullable=False)
+    # valores válidos: limpieza | equipo | infraestructura | seguridad | otro
+    descripcion = Column(String, nullable=False)
+    estado = Column(String, nullable=False, default="abierto")
+    # valores válidos: abierto | resuelto
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    resuelto_en = Column(DateTime, nullable=True)

@@ -76,9 +76,9 @@ class _PanelAdministrativoPageState extends State<PanelAdministrativoPage> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.prestado.withOpacity(0.15),
+                          color: AppColors.prestado.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.prestado.withOpacity(0.4)),
+                          border: Border.all(color: AppColors.prestado.withValues(alpha: 0.4)),
                         ),
                         child: const Row(
                           children: [

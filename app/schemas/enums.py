@@ -52,6 +52,19 @@ class RolUsuario(str, Enum):
     AUXILIAR = "auxiliar"
 
 
+class TipoReporteSalon(str, Enum):
+    LIMPIEZA = "limpieza"
+    EQUIPO = "equipo"
+    INFRAESTRUCTURA = "infraestructura"
+    SEGURIDAD = "seguridad"
+    OTRO = "otro"
+
+
+class EstadoReporteSalon(str, Enum):
+    ABIERTO = "abierto"
+    RESUELTO = "resuelto"
+
+
 class DiaSemana(int, Enum):
     LUNES = 1
     MARTES = 2

@@ -8,7 +8,9 @@ import '../../prestamos/presentation/prestamos_controller.dart';
 import '../../recursos/domain/entities/recurso.dart';
 import '../../recursos/presentation/equipos_page.dart';
 import '../../recursos/presentation/recursos_controller.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../salones/presentation/salones_page.dart';
+import '../../salones_admin/presentation/panel_salones_page.dart';
 import 'home_page.dart';
 
 /// Contenedor con la barra inferior flotante en forma de píldora (Inicio · Equipos · Salones · Actividad · Cuenta).
@@ -69,7 +71,10 @@ class _ShellPageState extends State<ShellPage> {
             onVerActividad: _verActividad,
           ),
           const EquiposPage(),
-          const SalonesPage(),
+          // El auxiliar administra los salones; el usuario UTB los consulta y solicita.
+          sl<AuthController>().esAdministrador
+              ? const PanelSalonesPage()
+              : const SalonesPage(),
           ActividadPage(filtroInicial: _filtroActividad),
           const CuentaPage(),
         ],
@@ -101,7 +106,7 @@ class _BarraPildora extends StatelessWidget {
           height: 74,
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: AppColors.fondo.withOpacity(0.96),
+            color: AppColors.fondo.withValues(alpha: 0.96),
             borderRadius: BorderRadius.circular(40),
             border: Border.all(color: AppColors.borde),
           ),

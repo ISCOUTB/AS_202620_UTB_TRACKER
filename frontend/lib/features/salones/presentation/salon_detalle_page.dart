@@ -228,7 +228,7 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                     backgroundColor: AppColors.superficieAlta,
-                    side: BorderSide(color: AppColors.disponible.withOpacity(0.5)),
+                    side: BorderSide(color: AppColors.disponible.withValues(alpha: 0.5)),
                   ),
               ],
             ),
@@ -558,7 +558,7 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<int>(
-            value: _diaSemana,
+            initialValue: _diaSemana,
             decoration: const InputDecoration(labelText: 'Día de la semana'),
             items: const [
               DropdownMenuItem(value: 1, child: Text('Lunes')),

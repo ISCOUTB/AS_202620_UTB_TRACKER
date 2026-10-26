@@ -10,7 +10,7 @@ from app.core.config import CORS_ORIGINS
 from app.routers import auth
 from app.core.database import Base  # noqa: F401  — Base expuesto para que conftest pueda usarlo
 from app.routers import health, resources, loans
-from app.routers import salones, horarios, prestamos_salon
+from app.routers import salones, salones_admin, horarios, prestamos_salon
 
 # Importar todos los modelos para que Base.metadata los registre
 from app.models import auth_models, recurso_models, salon_models  # noqa: F401
@@ -84,6 +84,8 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(resources.router, prefix="/recursos", tags=["recursos"])
 app.include_router(loans.router, prefix="/prestamos", tags=["prestamos"])
+# Va antes que `salones`: /salones/ocupacion no debe caer en /salones/{salon_id}.
+app.include_router(salones_admin.router, prefix="/salones", tags=["salones-admin"])
 app.include_router(salones.router, prefix="/salones", tags=["salones"])
 app.include_router(horarios.router, prefix="/horarios", tags=["horarios"])
 app.include_router(prestamos_salon.router, prefix="/prestamos-salon", tags=["prestamos-salon"])

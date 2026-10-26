@@ -6,7 +6,6 @@ soporte para carga masiva por semestre.
 """
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, String
 
 from app.models.salon_models import Horario, Salon
 from app.schemas.horarios import HorarioCreate, HorarioUpdate
@@ -25,17 +24,15 @@ def _validar_salon_existe(db: Session, salon_id: int) -> Salon:
 
 def _detectar_conflicto(db: Session, salon_id: int, dia_semana: int, hora_inicio, hora_fin, excluir_id: int | None = None):
     """Verifica que no exista un horario que se cruce en el mismo salón y día."""
-    # Convertir a string ISO para compatibilidad con SQLite (almacena Time como texto)
-    h_inicio_str = hora_inicio.isoformat() if hasattr(hora_inicio, "isoformat") else str(hora_inicio)
-    h_fin_str = hora_fin.isoformat() if hasattr(hora_fin, "isoformat") else str(hora_fin)
-
-    
+    # Se compara Time contra Time: SQLAlchemy serializa ambos lados con el mismo formato
+    # (en SQLite "HH:MM:SS.ffffff"). Comparar contra isoformat() ("HH:MM:SS") hacía que
+    # "10:00:00.000000" > "10:00:00" y dos franjas contiguas se vieran como cruce.
     query = db.query(Horario).filter(
         Horario.salon_id == salon_id,
         Horario.dia_semana == dia_semana,
         Horario.activo.is_(True),
-        cast(Horario.hora_inicio, String) < h_fin_str,
-        cast(Horario.hora_fin, String) > h_inicio_str,
+        Horario.hora_inicio < hora_fin,
+        Horario.hora_fin > hora_inicio,
     )
     if excluir_id:
         query = query.filter(Horario.id != excluir_id)

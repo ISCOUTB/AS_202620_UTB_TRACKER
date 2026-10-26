@@ -1,6 +1,8 @@
 from app.models.auth_models import Usuario
 from app.models.recurso_models import Recurso, Prestamo, IdempotenciaRegistro, Reporte
-from app.models.salon_models import Salon, Horario, PrestamoSalon
+from app.models.salon_models import (
+    Salon, Horario, PrestamoSalon, PresenciaSalon, ReporteSalon,
+)
 
 __all__ = [
     "Usuario",
@@ -11,4 +13,6 @@ __all__ = [
     "Salon",
     "Horario",
     "PrestamoSalon",
+    "PresenciaSalon",
+    "ReporteSalon",
 ]

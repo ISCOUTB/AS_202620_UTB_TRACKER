@@ -13,6 +13,9 @@ import '../../features/recursos/presentation/recursos_controller.dart';
 import '../../features/salones/data/salones_data.dart';
 import '../../features/salones/domain/repositories/salones_repository.dart';
 import '../../features/salones/presentation/salones_controller.dart';
+import '../../features/salones_admin/data/salones_admin_data.dart';
+import '../../features/salones_admin/domain/repositories/salones_admin_repository.dart';
+import '../../features/salones_admin/presentation/salones_admin_controller.dart';
 import '../network/api_client.dart';
 
 final GetIt sl = GetIt.instance;
@@ -29,12 +32,14 @@ Future<void> configurarDependencias({ApiClient? api}) async {
   sl.registerLazySingleton(() => RecursosRemoteDataSource(sl()));
   sl.registerLazySingleton(() => PrestamosRemoteDataSource(sl()));
   sl.registerLazySingleton(() => SalonesRemoteDataSource(sl()));
+  sl.registerLazySingleton(() => SalonesAdminRemoteDataSource(sl()));
 
   // Repositorios (se registran como su interfaz de dominio)
   sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(sl(), sl()));
   sl.registerLazySingleton<RecursosRepository>(() => RecursosRepositoryImpl(sl()));
   sl.registerLazySingleton<PrestamosRepository>(() => PrestamosRepositoryImpl(sl()));
   sl.registerLazySingleton<SalonesRepository>(() => SalonesRepositoryImpl(sl()));
+  sl.registerLazySingleton<SalonesAdminRepository>(() => SalonesAdminRepositoryImpl(sl()));
 
   // Controladores de estado (uno por sesión de app)
   sl.registerLazySingleton(() => AuthController(sl(), sl()));
@@ -42,4 +47,5 @@ Future<void> configurarDependencias({ApiClient? api}) async {
   sl.registerLazySingleton(() => RecursosController(sl()));
   sl.registerLazySingleton(() => PrestamosController(sl()));
   sl.registerLazySingleton(() => SalonesController(sl()));
+  sl.registerLazySingleton(() => SalonesAdminController(sl()));
 }
