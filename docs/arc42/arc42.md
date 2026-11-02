@@ -426,6 +426,13 @@ El sistema define garantías explícitas por cada operación de lectura y escrit
 Para mitigar la sobrecarga en horas pico (QS-02, QS-03) sin comprometer la consistencia de inventario (QS-06), se diseña una capa de caché en memoria de proceso acotada por TTL (60 s para recursos, 120 s para salones) con invalidación por grupos de versión ante eventos de escritura. Ninguna operación de modificación lee de la caché. Especificación técnica completa en [`docs/datos/diseno-cache.md`](../datos/diseno-cache.md) *(DISEÑO PROPUESTO — NO IMPLEMENTADO)*.
 
 
+## 8.10 Arquitectura de Seguridad y Privacidad (S13)
+En la Semana 13 se formalizó el análisis integral de seguridad y privacidad del sistema:
+- **Modelado de Amenazas ([`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md)):** Aplicación de la metodología STRIDE sobre las 6 fronteras de confianza del C4 (Nivel 2), priorizando 22 amenazas por riesgo técnico ($P \times I$). Se identificaron como riesgos críticos la auto-asignación de roles en el registro público (T-01, riesgo 25), la falsificación potencial de tokens por claves por defecto (T-02, riesgo 20) y la enumeración de usuarios (T-03, riesgo 20).
+- **Análisis de Dependencias y SBOM ([`docs/seguridad/analisis-dependencias.md`](../seguridad/analisis-dependencias.md)):** Integración de `pip-audit` en el pipeline de CI (`.github/workflows/ci.yml:51-55`), identificación de 29 vulnerabilidades en `starlette` y `pyjwt`, auditoría del cliente Flutter con `flutter pub outdated`, y generación del SBOM formal CycloneDX v1.5 en [`docs/seguridad/sbom/bom.json`](../seguridad/sbom/bom.json).
+- **Privacidad y Protección de Datos ([`docs/seguridad/privacidad.md`](../seguridad/privacidad.md)):** Inventario de datos personales bajo la Ley 1581 de 2012 de Colombia, bases jurídicas de tratamiento, evaluación del principio de minimización y roadmap de gobernanza de datos.
+- **Control de Acceso Granular por Recurso:** Formalizado en el [ADR-0008](../adr/0008-control-acceso-granular-recurso.md) para resolver brechas BOLA/IDOR mediante políticas de titularidad de recursos en la capa de servicios.
+
 # Decisiones arquitectónicas
 
 Las decisiones de arquitectura se documentan como ADR individuales en `docs/adr/`, no en esta
@@ -438,6 +445,7 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0005](../adr/0005-monolito-vs-microservicios.md) — Preservación del Monolito Modular: rechazo de microservicios (S8)
 - [ADR-0006](../adr/0006-mensajeria-asincrona-outbox.md) — Mensajería Asíncrona: Transactional Outbox para notificaciones de préstamos (S12)
 - [ADR-0007](../adr/0007-identificadores-enteros-autoincrementales.md) — Identificadores enteros autoincrementales en claves primarias (S12)
+- [ADR-0008](../adr/0008-control-acceso-granular-recurso.md) — Control de acceso granular por recurso (mitigación BOLA/IDOR) (S13)
 
 # Requisitos de calidad
 
@@ -563,6 +571,15 @@ en `docs/auditoria_s8_s9_s11.md`.
 | **R-09** | Nombres de usuario duplicados por omisión de `unique=True` (`models/auth_models.py:19`) | Alto — Seguridad / QS-04. Nombres idénticos rompen el flujo de login (`auth.py:70`) | **Abierto / Deuda técnica:** Propuesta de restricción única en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
 | **R-10** | Inoperancia de bloqueo pesimista en SQLite (`services/loans.py:54-60`) | Medio — Confiabilidad / QS-06. Pruebas locales en SQLite no validan aislamiento de concurrencia | **Abierto / Deuda técnica:** Propuesta de estandarizar PostgreSQL local en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
 | **R-11** | Enumeración de usuarios por clave entera expuesta (`routers/auth.py:53-59`) | Alto — Seguridad / QS-04. Falta de chequeo de autorización permite enumerar usuarios | **Abierto / Deuda técnica:** Documentado en [`docs/adr/0007-identificadores-enteros-autoincrementales.md`](../adr/0007-identificadores-enteros-autoincrementales.md). |
+| **R-12** | Auto-asignación de roles privilegiados en registro público (`services/auth.py:40-44`) | Crítico — Seguridad / QS-04. Atacante puede enviar `{"rol": "administrador"}` y ganar control total | **Abierto / Deuda técnica:** Propuesta de forzar `rol = "usuario_utb"` en registro público en [`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md). |
+| **R-13** | Creación de préstamos a nombre de terceros por falta de validación de titularidad (`services/loans.py:46-48`) | Alto — Seguridad / Integridad. Estudiantes pueden comprometer a otros asignándoles equipos | **Abierto / Deuda técnica:** Propuesta de autorización a nivel de recurso en [`docs/adr/0008-control-acceso-granular-recurso.md`](../adr/0008-control-acceso-granular-recurso.md). |
+| **R-14** | Secretos de JWT y firmas criptográficas con valores débiles por defecto (`core/config.py:14,21`) | Crítico — Seguridad / QS-04. Si falta variable de entorno, permite falsificar tokens con clave `"change-me-in-production"` | **Abierto / Deuda técnica:** Propuesta de validación estricta y fallo al inicio del backend en [`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md). |
+| **R-15** | Ausencia de Rate Limiting en API y Login (`routers/auth.py:21-26`) | Alto — Disponibilidad / QS-03. Ataques de fuerza bruta y agotamiento de CPU por hashing `bcrypt` | **Abierto / Deuda técnica:** Propuesta de middleware de limitación de tasa en [`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md). |
+| **R-16** | Vulnerabilidades conocidas en dependencias externas Starlette y PyJWT (`requirements.txt`) | Alto — Seguridad. PYSEC-2026-161 y GHSA-pxh4-856f-4h89 detectados por `pip-audit` | **Abierto / En proceso:** Actualización de paquetes y bloqueo en CI en [`docs/seguridad/analisis-dependencias.md`](../seguridad/analisis-dependencias.md). |
+| **R-17** | Almacenamiento de tokens de sesión en archivo plano sin cifrar en Flutter (`frontend/lib/core/storage/token_storage.dart:18-19`) | Medio — Privacidad / Seguridad. Exposición de tokens en `.utb_sesion.json` | **Abierto / Deuda técnica:** Propuesta de migrar a `flutter_secure_storage` en [`docs/seguridad/privacidad.md`](../seguridad/privacidad.md). |
+| **R-18** | Entrega at-least-once con potenciales duplicados y orden no garantizado en Outbox (`messaging/worker.py:145-153, 250-291`) | Bajo — Calidad / Usabilidad. Mensajes pueden entregarse fuera de orden o duplicarse si el worker cae | **Amenaza aceptada (S13):** Se asume por diseño para mantener desacoplamiento sin 2PC ni colas FIFO complejas ([`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md)). |
+| **R-19** | Vulnerabilidad de bypass y forja de tokens JWT por omisión de lista de revocación (T-17) | Medio — Seguridad / QS-04. Cierre de sesión declarativo mantiene tokens válidos hasta su expiración | **Amenaza aceptada (S13 / A-03):** Se preserva diseño stateless; ventana de riesgo acotada por `ACCESS_TOKEN_EXPIRE_MINUTES`. |
+| **R-20** | Vulnerabilidades en cadena de suministro de paquetes backend (T-22) | Medio — Seguridad / Integridad. CVEs en starlette 0.50.0 y pyjwt 2.12.1 | **Abierto / En proceso:** Mitigado parcialmente con `pip-audit` en CI (`ci.yml:51-55`); pendiente actualización de versiones a starlette >= 1.0.1 y pyjwt >= 2.14.0. |
 
 
 
