@@ -48,6 +48,12 @@ jobs:
       - name: Ejecutar pruebas (Pytest — suite completa)
         run: python -m pytest tests/ -v --tb=short
 
+      # Análisis de seguridad de dependencias (S13 — pip-audit)
+      - name: Análisis de dependencias (pip-audit)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
+
 
   deploy:
     needs: test

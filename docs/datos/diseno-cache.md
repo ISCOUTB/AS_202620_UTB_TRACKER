@@ -12,7 +12,7 @@
 **Ninguna operación de escritura lee jamás de la capa de caché.**  
 Toda operación que altere el estado (`POST /prestamos`, `PATCH /prestamos/{id}/devolver`, `POST /resources/{id}/reportar`, `POST /prestamos-salon`, etc.) ejecuta sus comprobaciones de invariantes directamente sobre la base de datos primaria en una transacción ACID con bloqueo pesimista o restricciones relacionales (`docs/datos/consistencia-por-operacion.md`).
 
-*Consecuencia ante obsolescencia:* Si un usuario consulta una lista de recursos en caché que muestra un equipo como `"disponible"` cuando acaba de ser prestado, la interfaz móvil le permitirá presionar el botón de solicitud, pero la petición `POST /prestamos` fallará atómicamente en la API devolviendo `409 Conflict` (`app/services/loans.py:65`). La obsolescencia en la lectura solo degrada temporalmente la experiencia de usuario con un rechazo controlado, pero **nunca corrompe los datos ni genera sobre-préstamos** (QS-06).
+*Consecuencia ante obsolescencia:* Si un usuario consulta una lista de recursos en caché que muestra un equipo como `"disponible"` cuando acaba de ser prestado, la interfaz móvil le permitirá presionar el botón de solicitud, pero la petición `POST /prestamos` fallará atómicamente en la API devolviendo `409 Conflict` (`app/services/loans.py:66-70`). La obsolescencia en la lectura solo degrada temporalmente la experiencia de usuario con un rechazo controlado, pero **nunca corrompe los datos ni genera sobre-préstamos** (QS-06).
 
 ### 1.2 Endpoints Incluidos en Caché
 Se seleccionan exclusivamente endpoints de lectura de alta demanda y bajo ritmo de mutación:
@@ -26,7 +26,7 @@ Se seleccionan exclusivamente endpoints de lectura de alta demanda y bajo ritmo 
 7. `GET /horarios/salon/{salon_id}`: Listado de horarios asignados a un aula.
 
 ### 1.3 Endpoints Excluidos de Caché
-1. `GET /prestamos`: Excluido porque su contenido depende del contexto y privilegios del usuario autenticado (`CurrentUser`). Un usuario común solo ve sus préstamos activos (`app/services/loans.py:183`), mientras un auxiliar/administrador visualiza el historial general.
+1. `GET /prestamos`: Excluido porque su contenido depende del contexto y privilegios del usuario autenticado (`CurrentUser`). Un usuario común solo ve sus préstamos activos (`app/services/loans.py:128-143`), mientras un auxiliar/administrador visualiza el historial general.
 2. `GET /prestamos-salon`: Excluido por depender de la identidad y rol del usuario solicitante (`app/services/prestamos_salon.py:19`).
 3. `GET /auth/me` y `GET /auth/user/{user_id}`: Excluidos por representar información de identidad y seguridad sensible.
 4. `GET /salud`: Excluido deliberadamente porque implementa un sondeo de salud profundo (`deep health check`) que ejecuta `SELECT 1` activo sobre PostgreSQL (`app/routers/health.py:17-26`) para garantizar la medición de disponibilidad en QS-01.
@@ -36,7 +36,7 @@ Se seleccionan exclusivamente endpoints de lectura de alta demanda y bajo ritmo 
 ## 2. Topología de Caché y Decisión de Ubicación
 
 ### 2.1 En Proceso vs. Redis Distribuido
-- **Hallazgo de despliegue (V2):** En `run.sh:19`, Uvicorn corre como proceso individual en modo desarrollo. En producción, el script de CI (`.github/workflows/ci.yml:68`) ejecuta `sudo systemctl restart utb-tracker`. Dado que el repositorio no define el archivo de servicio systemd, el número de procesos en producción es **NO VERIFICADO**, pero comúnmente despliega entre 2 y 4 *workers* bajo Uvicorn/Gunicorn en máquinas virtuales (ej. Oracle Cloud Ampere A1, arc42 sección 7).
+- **Hallazgo de despliegue (V2):** En `run.sh:19`, Uvicorn corre como proceso individual en modo desarrollo. En producción, el script de CI (`.github/workflows/ci.yml:77-78`) ejecuta `sudo systemctl restart utb-tracker`. Dado que el repositorio no define el archivo de servicio systemd, el número de procesos en producción es **NO VERIFICADO**, pero comúnmente despliega entre 2 y 4 *workers* bajo Uvicorn/Gunicorn en máquinas virtuales (ej. Oracle Cloud Ampere A1, arc42 sección 7).
 - **Decisión propuesta:** Adoptar una **caché en memoria de proceso** (mediante estructuras `cachetools.TTLCache` o diccionarios con timestamps en Python), descartando el despliegue de un clúster de Redis externo.  
   *Justificación:* A la escala de UTB Tracker (máximo 300 usuarios simultáneos, QS-03), incorporar Redis añadiría costos operativos, monitoreo de infraestructura y puntos únicos de fallo que contradicen la decisión de mantener el sistema como un monolito simple y económico (ADR-0005).
 
@@ -98,8 +98,8 @@ Toda operación de escritura real del sistema detona la invalidación del grupo 
 | `PUT /resources/{id}` | `app/services/resources.py:53-73` | `recursos` | Modificación de nombre, tipo o asignación de salón. |
 | `DELETE /resources/{id}` | `app/services/resources.py:78-98` | `recursos` | Desactivación lógica de un equipo. |
 | `POST /resources/{id}/reportar` | `app/services/resources.py:103-128` | `recursos` | **El recurso cambia su estado a `'dañado'`.** Debe reflejarse en catálogo para no ofrecerlo. |
-| `POST /prestamos` | `app/services/loans.py:46-139` | `recursos` | **El recurso cambia su estado a `'prestado'`.** Invalida el listado de disponibles. |
-| `PATCH /prestamos/{id}/devolver` | `app/services/loans.py:146-172` | `recursos` | **El recurso cambia su estado a `'disponible'`.** Vuelve a habilitarse en el catálogo. |
+| `POST /prestamos` | `app/services/loans.py:24-125` | `recursos` | **El recurso cambia su estado a `'prestado'`.** Invalida el listado de disponibles. |
+| `PATCH /prestamos/{id}/devolver` | `app/services/loans.py:146-181` | `recursos` | **El recurso cambia su estado a `'disponible'`.** Vuelve a habilitarse en el catálogo. |
 | `POST /salones` | `app/services/salones.py:26-44` | `salones` | Nueva aula física agregada al campus. |
 | `PUT /salones/{id}` | `app/services/salones.py:49-74` | `salones` | Modificación de código, capacidad o torre. |
 | `DELETE /salones/{id}` | `app/services/salones.py:79-99` | `salones` | Eliminación de aula. |
