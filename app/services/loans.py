@@ -21,37 +21,25 @@ from app.models import recurso_models
 from app.schemas import schemas
 
 
-def crear_prestamo(
-    db: Session,
-    datos: schemas.PrestamoCreate,
-    idempotency_key: str | None = None,
-    correlation_id: str | None = None,
-) -> recurso_models.Prestamo:
-    """
-    Crea un préstamo aplicando:
-    1. Idempotencia (S11 req. 11.3): si la clave ya existe, retorna el préstamo previo.
-    2. Validación de usuario existente.
-    3. Bloqueo pesimista (S11 req. 11.1 / R-02): bloqueo de fila con for_update en PostgreSQL.
-    4. Regla central (QS-06): solo se presta si está disponible; cambia a 'prestado'.
-    """
-    # 1. Comprobación de idempotencia
-    if idempotency_key:
-        registro_previo = db.query(recurso_models.IdempotenciaRegistro).filter(
-            recurso_models.IdempotenciaRegistro.clave == idempotency_key
-        ).first()
-        if registro_previo and registro_previo.prestamo:
-            return registro_previo.prestamo
-
-    # 2. Validar que el usuario exista
-    usuario = db.query(Usuario).filter(Usuario.id == datos.usuario_id).first()
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    # 3. Bloqueo pesimista de fila para evitar condiciones de carrera (QS-06)
-    query = db.query(recurso_models.Recurso).filter(
-        recurso_models.Recurso.id == datos.recurso_id
+def _verificar_idempotencia(
+    db: Session, idempotency_key: str | None
+) -> recurso_models.Prestamo | None:
+    """Verifica si ya existe un préstamo creado para la clave de idempotencia dada."""
+    if not idempotency_key:
+        return None
+    registro = (
+        db.query(recurso_models.IdempotenciaRegistro)
+        .filter(recurso_models.IdempotenciaRegistro.clave == idempotency_key)
+        .first()
     )
-    # with_for_update solo se aplica si la base de datos es compatible (PostgreSQL)
+    return registro.prestamo if registro and registro.prestamo else None
+
+
+def _obtener_recurso_con_bloqueo(db: Session, recurso_id: int) -> recurso_models.Recurso:
+    """Obtiene el recurso aplicando bloqueo pesimista en motores compatibles (PostgreSQL)."""
+    query = db.query(recurso_models.Recurso).filter(
+        recurso_models.Recurso.id == recurso_id
+    )
     try:
         bind = db.get_bind()
         if bind and not bind.name.startswith("sqlite"):
@@ -68,57 +56,88 @@ def crear_prestamo(
             status_code=409,
             detail=f"El recurso no esta disponible (estado actual: {recurso.estado})",
         )
+    return recurso
 
-    # 4. Transacción atómica ACID local: Préstamo + Recurso + Idempotencia + Outbox
+
+def _resolver_correlation_id(correlation_id: str | None) -> str:
+    """Resuelve el correlation_id desde argumento, contexto HTTP o genera un fallback."""
+    if correlation_id and correlation_id != "system":
+        return correlation_id
+    try:
+        from app.main import request_id_ctx
+        cid = request_id_ctx.get()
+        if cid and cid != "system":
+            return cid
+    except Exception:
+        pass
+    return str(uuid.uuid4())[:8]
+
+
+def crear_prestamo(
+    db: Session,
+    datos: schemas.PrestamoCreate,
+    idempotency_key: str | None = None,
+    correlation_id: str | None = None,
+) -> recurso_models.Prestamo:
+    """
+    Crea un préstamo aplicando:
+    1. Idempotencia (S11 req. 11.3): si la clave ya existe, retorna el préstamo previo.
+    2. Validación de usuario existente.
+    3. Bloqueo pesimista (S11 req. 11.1 / R-02): bloqueo de fila con for_update en PostgreSQL.
+    4. Regla central (QS-06): solo se presta si está disponible; cambia a 'prestado'.
+    """
+    prestamo_previo = _verificar_idempotencia(db, idempotency_key)
+    if prestamo_previo:
+        return prestamo_previo
+
+    usuario = db.query(Usuario).filter(Usuario.id == datos.usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    recurso = _obtener_recurso_con_bloqueo(db, datos.recurso_id)
+
     nuevo = recurso_models.Prestamo(**datos.model_dump(), estado="activo")
     recurso.estado = "prestado"
     db.add(nuevo)
 
     if idempotency_key:
-        registro_idem = recurso_models.IdempotenciaRegistro(
-            clave=idempotency_key,
-            endpoint="/prestamos",
-            prestamo=nuevo,
+        db.add(
+            recurso_models.IdempotenciaRegistro(
+                clave=idempotency_key,
+                endpoint="/prestamos",
+                prestamo=nuevo,
+            )
         )
-        db.add(registro_idem)
 
-    # 5. Outbox: registrar evento 'prestamo.creado' en la misma transacción ACID
-    db.flush()  # Asigna ID a nuevo préstamo sin confirmar aún
+    db.flush()
 
-    cid = correlation_id
-    if not cid:
-        try:
-            from app.main import request_id_ctx
-            cid = request_id_ctx.get()
-        except Exception:
-            cid = "system"
-    if not cid or cid == "system":
-        cid = str(uuid.uuid4())[:8]
-
+    cid = _resolver_correlation_id(correlation_id)
     ahora_utc = datetime.now(timezone.utc)
+    fecha_esperada = (
+        nuevo.fecha_devolucion_esperada.isoformat()
+        if nuevo.fecha_devolucion_esperada
+        else None
+    )
     payload_evento = {
         "prestamo_id": nuevo.id,
         "usuario_id": nuevo.usuario_id,
         "recurso_id": nuevo.recurso_id,
-        "fecha_devolucion_esperada": (
-            nuevo.fecha_devolucion_esperada.isoformat()
-            if nuevo.fecha_devolucion_esperada
-            else None
-        ),
+        "fecha_devolucion_esperada": fecha_esperada,
     }
 
-    outbox_msg = MensajeOutbox(
-        message_id=str(uuid.uuid4()),
-        tipo="prestamo.creado",
-        version=1,
-        payload=json.dumps(payload_evento),
-        correlation_id=cid,
-        estado="pendiente",
-        intentos=0,
-        siguiente_intento=ahora_utc.replace(tzinfo=None),
-        creado_en=ahora_utc.replace(tzinfo=None),
+    db.add(
+        MensajeOutbox(
+            message_id=str(uuid.uuid4()),
+            tipo="prestamo.creado",
+            version=1,
+            payload=json.dumps(payload_evento),
+            correlation_id=cid,
+            estado="pendiente",
+            intentos=0,
+            siguiente_intento=ahora_utc.replace(tzinfo=None),
+            creado_en=ahora_utc.replace(tzinfo=None),
+        )
     )
-    db.add(outbox_msg)
 
     db.commit()
     db.refresh(nuevo)
