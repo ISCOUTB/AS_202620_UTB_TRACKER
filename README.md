@@ -1,4 +1,6 @@
 # UTB Tracker
+https://129-80-171-141.nip.io/docs#/
+Backend desplegado
 
 Sistema de inventario y préstamos de equipos electrónicos de la UTB. Ver `docs/arc42.md` para la documentación de arquitectura completa.
 
