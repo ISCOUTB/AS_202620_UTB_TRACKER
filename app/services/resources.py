@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from app.models import recurso_models
 from app.models.auth_models import Usuario
 from app.schemas import schemas
+from app.services import maintenance as maintenance_service
+from app.messaging.publisher import publicar_evento
 
 
 def crear_recurso(db: Session, datos: schemas.RecursoCreate) -> recurso_models.Recurso:
@@ -121,11 +123,33 @@ def reportar_recurso(
         imagen_url=datos.imagen_url,
     )
     db.add(reporte)
+    db.flush()
 
     # Actualizar el estado del recurso
     recurso.estado = datos.estado_reportado.value if hasattr(datos.estado_reportado, 'value') else datos.estado_reportado
     if datos.imagen_url:
         recurso.imagen_url = datos.imagen_url
+
+    # Un reporte de daño abre automáticamente una orden correctiva.  Se hace
+    # dentro de la misma transacción para no dejar estados inconsistentes.
+    estado_reportado = reporte.estado_reportado.lower()
+    if estado_reportado in ("dañado", "danado", "daño", "dano"):
+        maintenance_service.crear_mantenimiento(
+            db,
+            schemas.MantenimientoRecursoCreate(
+                recurso_id=recurso_id,
+                tipo="correctivo",
+                descripcion=datos.descripcion,
+            ),
+            reporte_id=reporte.id,
+            actualizar_estado=False,
+        )
+        publicar_evento(db, "recurso.reportado", {
+            "reporte_id": reporte.id,
+            "recurso_id": recurso_id,
+            "usuario_id": usuario_id,
+            "estado_reportado": reporte.estado_reportado,
+        })
 
     db.commit()
     db.refresh(reporte)

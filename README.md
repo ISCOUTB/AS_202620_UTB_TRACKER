@@ -1,75 +1,140 @@
 # UTB Tracker
 
-Sistema de inventario y préstamos de equipos electrónicos de la UTB. Ver `docs/arc42.md` para la documentación de arquitectura completa.
+Sistema de inventario y préstamo de equipos y salones de la Universidad
+Tecnológica de Bolívar. El backend está construido con FastAPI y el cliente
+móvil con Flutter.
 
-## Cómo arrancar (un solo comando)
+## Estado actual
+
+- Backend FastAPI modular con autenticación JWT, préstamos, recursos, salones,
+  mantenimiento, estadísticas, recuperación de contraseña y mensajería.
+- PostgreSQL 16 es la base de datos usada en CI y producción.
+- Alembic administra el esquema; la revisión actual se aplica con
+  `alembic upgrade head`.
+- Suite backend: 78 pruebas automatizadas.
+- Auditoría de dependencias con `pip-audit` como gate bloqueante del CI.
+- Despliegue por SSH con migración, reinicio de systemd y smoke test de salud.
+- Firebase Cloud Messaging está integrado en Android: la app solicita permiso,
+  registra el token en el backend y escucha su rotación. El envío automático
+  desde el worker requiere configurar Firebase Admin y una cuenta de servicio
+  fuera del repositorio.
+
+## API pública
+
+- Swagger: <https://129-80-171-141.nip.io/docs#/>
+- Salud profunda: <https://129-80-171-141.nip.io/salud>
+
+El endpoint `/salud` valida la conexión real con PostgreSQL mediante `SELECT 1`.
+No se deben publicar credenciales ni claves en el repositorio.
+
+## Desarrollo local
+
+### Requisitos
+
+- Python 3.12+
+- PostgreSQL 16 para reproducir el entorno de CI
+- Flutter/Dart para el cliente móvil
+
+Instala el backend usando el lock con hashes:
 
 ```bash
-./run.sh
+python -m venv venv
+venv\Scripts\activate
+python -m pip install --require-hashes -r requirements.txt
 ```
 
-Esto crea el entorno virtual si no existe, instala dependencias, corre las pruebas y levanta el servidor en `http://127.0.0.1:8000`. La documentación interactiva de la API (Swagger, generada sola por FastAPI) queda en `http://127.0.0.1:8000/docs`.
-
-## Corte vertical ejecutable (S4)
-
-Esta entrega incluye una funcionalidad real de punta a punta, no solo esqueleto: **registrar un préstamo respetando el estado del recurso**. Es la regla de negocio central del sistema (documento de idea, sección 6) y corresponde al escenario **QS-06** (`docs/arc42.md`, sección Requisitos de calidad) y al aspecto **A-06** (`docs/aspectos.md`).
-
-### Prueba manual (con el servidor corriendo):
+Configura `DATABASE_URL` con una base PostgreSQL de desarrollo y define
+`SECRET_KEY` y `FORGET_PWD_SECRET_KEY` como valores aleatorios distintos.
+Después aplica el esquema:
 
 ```bash
-# 1. Crear un recurso (queda en estado "disponible")
-curl -X POST http://127.0.0.1:8000/recursos \
-  -H "Content-Type: application/json" \
-  -d '{"categoria":"video_beam","salon_id":"A1-304","serial":"VB-DEMO-01"}'
-
-# 2. Prestarlo (funciona, el recurso pasa a "prestado")
-curl -X POST http://127.0.0.1:8000/prestamos \
-  -H "Content-Type: application/json" \
-  -d '{"recurso_id":1,"usuario_id":1,"fecha_devolucion_esperada":"2026-09-20T18:00:00"}'
-
-# 3. Intentar prestarlo de nuevo (falla con 409, porque ya no está disponible)
-curl -X POST http://127.0.0.1:8000/prestamos \
-  -H "Content-Type: application/json" \
-  -d '{"recurso_id":1,"usuario_id":2,"fecha_devolucion_esperada":"2026-09-21T18:00:00"}'
+alembic upgrade head
+uvicorn app.main:app --reload
 ```
 
-### Prueba automatizada (misma regla, sin necesidad de tener el servidor corriendo a mano):
+La documentación local queda disponible en
+<http://127.0.0.1:8000/docs>.
 
-```bash
-./venv/bin/python -m pytest tests/test_loans.py -v
-```
-
-## Estructura (Monolito Modular)
-
-```text
-app/
-  main.py              # arma la app FastAPI, monta los routers
-  database.py           # configuración SQLAlchemy (SQLite en dev/CI, PostgreSQL en despliegue)
-  models.py              # modelos: Usuario, Recurso, Prestamo
-  schemas.py              # contratos Pydantic de entrada/salida de la API
-  routers/
-    health.py              # endpoint de verificación (S3)
-    usuarios.py             # módulo declarado, sin lógica todavía
-    resources.py             # CRUD de recursos (S4)
-    loans.py                  # préstamos + regla de disponibilidad (S4)
-
-tests/
-  conftest.py                 # fixture de base de datos aislada por prueba
-  test_health.py                # 1 prueba (S3)
-  test_resources.py              # 3 pruebas (S4)
-  test_loans.py                   # 3 pruebas (S4) — cubre la regla de negocio central
-```
-
-Cada módulo en `app/routers/` es la frontera de un aspecto (ver `docs/aspectos.md`). La tabla de bloques completa está en la sección 5 de `docs/arc42.md`.
-
-## Base de datos
-
-En desarrollo y CI se usa SQLite (`utbtracker.db`, se crea sola al arrancar — sin configuración). En despliegue se apunta a PostgreSQL con la variable de entorno `DATABASE_URL`. Las migraciones con Alembic quedan pendientes (ver [ADR-0002](docs/adr/0002-cambio-stack-fastapi-flutter.md), "Deuda aceptada a sabiendas").
+También puede usarse `./run.sh` en entornos compatibles con POSIX; el script
+instala dependencias, ejecuta las pruebas y arranca el servidor.
 
 ## Pruebas
 
+Las pruebas usan exclusivamente `TEST_DATABASE_URL` cuando se proporciona. Si
+no existe, crean una base SQLite temporal aislada para desarrollo local; nunca
+reutilizan `DATABASE_URL` para ejecutar `drop_all`.
+
 ```bash
-./venv/bin/python -m pytest tests/ -v
+python -m pytest tests/ -v
 ```
 
-Actualmente hay 7 pruebas, todas en verde.
+Para reproducir CI con PostgreSQL:
+
+```bash
+$env:TEST_DATABASE_URL="postgresql+psycopg://postgres@localhost:5432/utb_tracker_test"
+python -m pytest tests/ -v
+```
+
+Audita exactamente el lock:
+
+```bash
+python -m pip_audit -r requirements.txt --require-hashes
+```
+
+El CI no usa `continue-on-error` ni exclusiones silenciosas. Una vulnerabilidad
+sin corregir bloquea el despliegue; cualquier excepción temporal debe quedar
+documentada con responsable, justificación y fecha de vencimiento.
+
+## Despliegue
+
+El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+
+1. Levanta PostgreSQL 16 en GitHub Actions.
+2. Instala `requirements.txt` con hashes y ejecuta las 78 pruebas.
+3. Ejecuta `pip-audit` como gate bloqueante.
+4. Actualiza el servidor, instala dependencias y ejecuta `alembic upgrade head`.
+5. Reinicia `utb-tracker` y exige `GET /salud` con `curl --fail`.
+
+El correo SMTP real es opt-in mediante `USE_REAL_MAIL=1` y variables SMTP
+configuradas fuera del repositorio. Sin esa configuración, el notificador no
+simula una entrega externa exitosa.
+
+## Funcionalidades principales
+
+- Registro, inicio de sesión, rate limiting, refresh tokens y recuperación de
+  contraseña.
+- CRUD de recursos con estados disponibles, prestados y en mantenimiento.
+- Préstamos con validación de disponibilidad, fechas, vencimiento y
+  autocancelación.
+- Solicitudes de préstamo de salones con fecha, hora y motivo.
+- Reporte y seguimiento de órdenes de mantenimiento.
+- Publicación de eventos de dominio y procesamiento de notificaciones.
+- Registro de tokens FCM y resumen de estadísticas.
+- Notificaciones Android listas para probar con Firebase Console en un
+  dispositivo real.
+
+## Estructura
+
+```text
+app/                    Backend FastAPI y módulos de dominio
+alembic/                Migraciones del esquema PostgreSQL
+tests/                  Pruebas backend
+frontend/               Aplicación Flutter
+docs/                   Arquitectura, decisiones y seguridad
+requirements.in         Dependencias fuente
+requirements.txt        Lock reproducible con hashes
+```
+
+Consulta [`docs/arc42.md`](docs/arc42.md) para la arquitectura y
+[`docs/seguridad/analisis-dependencias.md`](docs/seguridad/analisis-dependencias.md)
+para la política de auditoría.
+
+## Seguimiento de remediación
+
+La actualización del 3 de noviembre de 2026 corrigió las contradicciones
+documentales y operativas señaladas en la revisión externa: PostgreSQL y
+Alembic ya son la ruta declarada, el fallback destructivo de pruebas no usa
+`DATABASE_URL`, el audit dejó de continuar ante errores y el deploy comprueba
+salud después del reinicio. Starlette y PyJWT se fijan en versiones
+actualizadas en `requirements.in` y `requirements.txt`; la compatibilidad se
+verifica con la suite antes de desplegar.

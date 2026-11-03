@@ -37,6 +37,7 @@ class UsuarioLogin(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+    refresh_token: Optional[str] = None
     user: Optional["UserMeResponse"] = None
 
 
@@ -63,3 +64,20 @@ class UserMeResponse(BaseModel):
 class UsuarioDelete(BaseModel):
     nombre: str
     id: int
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=5)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=10)
+    new_password: str = Field(..., min_length=6)
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(..., min_length=20)
+
+
+class FcmTokenRequest(BaseModel):
+    fcm_token: str = Field(..., min_length=10, max_length=4096)

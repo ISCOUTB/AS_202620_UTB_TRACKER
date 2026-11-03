@@ -10,7 +10,17 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.hashing import hash_password, verify_password
-from app.core.security import create_access_token
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    create_reset_password_token,
+    verify_reset_password_token,
+    verify_refresh_token,
+)
+from app.messaging.models import MensajeOutbox
+from datetime import datetime, timezone
+import json
+import uuid
 from app.models.auth_models import Usuario
 from app.schemas.auth import UsuarioCreate, UsuarioLogin
 
@@ -81,9 +91,11 @@ def login(db: Session, schema: UsuarioLogin) -> dict:
             detail="Cuenta desactivada",
         )
     token = create_access_token({"sub": user.email})
+    refresh_token = create_refresh_token({"sub": user.email})
     return {
         "access_token": token,
         "token_type": "bearer",
+        "refresh_token": refresh_token,
         "user": {
             "id": user.id,
             "nombre": user.nombre,
@@ -91,6 +103,25 @@ def login(db: Session, schema: UsuarioLogin) -> dict:
             "rol": user.rol,
         },
     }
+
+
+def refresh_access_token(db: Session, refresh_token: str) -> dict:
+    email = verify_refresh_token(refresh_token)
+    if not email:
+        raise HTTPException(status_code=401, detail="Refresh token inválido o expirado")
+    user = get_me(db, email)
+    if hasattr(user, "activo") and not user.activo:
+        raise HTTPException(status_code=403, detail="Cuenta desactivada")
+    return {
+        "access_token": create_access_token({"sub": user.email}),
+        "refresh_token": create_refresh_token({"sub": user.email}),
+        "token_type": "bearer",
+    }
+
+
+def update_fcm_token(db: Session, user: Usuario, fcm_token: str) -> None:
+    user.fcm_token = fcm_token
+    db.commit()
 
 
 def delete_user(db: Session, user_id: int) -> dict:
@@ -196,3 +227,37 @@ def update_user_role(db: Session, user_id: int, new_role: str) -> Usuario:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno al actualizar rol de usuario",
         )
+
+
+def request_password_reset(db: Session, email: str) -> None:
+    """Genera un token de corta duración y lo entrega mediante el outbox.
+
+    La respuesta HTTP deliberadamente no revela si el correo existe.
+    """
+    user = db.query(Usuario).filter(Usuario.email == email).first()
+    if not user:
+        return
+    token = create_reset_password_token(user.email)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.add(MensajeOutbox(
+        message_id=str(uuid.uuid4()),
+        tipo="password.reset solicitado",
+        version=1,
+        payload=json.dumps({"email": user.email, "token": token}),
+        correlation_id=None,
+        estado="pendiente",
+        siguiente_intento=now,
+        creado_en=now,
+    ))
+    db.commit()
+
+
+def reset_password(db: Session, token: str, new_password: str) -> None:
+    email = verify_reset_password_token(token)
+    if not email:
+        raise HTTPException(status_code=400, detail="Token de recuperación inválido o expirado")
+    user = db.query(Usuario).filter(Usuario.email == email).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Token de recuperación inválido o expirado")
+    user.password = hash_password(new_password)
+    db.commit()

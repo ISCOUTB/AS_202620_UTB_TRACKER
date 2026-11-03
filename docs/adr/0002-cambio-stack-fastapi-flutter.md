@@ -22,8 +22,8 @@ FastAPI y no otra alternativa de API.
 ## Decisión
 
 Se cambia el backend de Django a **FastAPI**, expuesto como API REST/JSON consumida por un
-cliente **Flutter** separado. Persistencia en SQL vía **SQLAlchemy**, con **Alembic** pendiente
-para migraciones versionadas (ver Restricciones, arc42 sección 2).
+cliente **Flutter** separado. Persistencia en SQL vía **SQLAlchemy**, con
+**Alembic** para migraciones versionadas (ver Restricciones, arc42 sección 2).
 
 ## Alternativas consideradas
 
@@ -50,8 +50,6 @@ ofrece para servir HTML, que ya no se necesita.
 herramienta de administración para el catálogo de recursos hay que construirla como parte de la
 propia app o como endpoints adicionales, no viene incluida.
 
-**Deuda aceptada a sabiendas:** las migraciones con Alembic no están configuradas todavía; el
-esquema se crea con `Base.metadata.create_all()` al arrancar. Esto es aceptable para el corte
-vertical de esta entrega, pero antes de tener datos reales de producción, Alembic debe
-configurarse — de lo contrario, cualquier cambio de esquema futuro puede requerir borrar y
-recrear la base de datos manualmente.
+Las migraciones con Alembic están configuradas y se aplican con `alembic upgrade head`
+durante el despliegue. El backend conserva `Base.metadata.create_all()` para el arranque
+local y las pruebas aisladas; producción depende de las migraciones versionadas.

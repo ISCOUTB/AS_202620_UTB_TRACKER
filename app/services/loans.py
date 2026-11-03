@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.resilience import with_retry
 from app.messaging.models import MensajeOutbox
+from app.messaging.publisher import publicar_evento
 from app.models.auth_models import Usuario
 from app.models import recurso_models
 from app.schemas import schemas
@@ -125,19 +126,7 @@ def crear_prestamo(
         "fecha_devolucion_esperada": fecha_esperada,
     }
 
-    db.add(
-        MensajeOutbox(
-            message_id=str(uuid.uuid4()),
-            tipo="prestamo.creado",
-            version=1,
-            payload=json.dumps(payload_evento),
-            correlation_id=cid,
-            estado="pendiente",
-            intentos=0,
-            siguiente_intento=ahora_utc.replace(tzinfo=None),
-            creado_en=ahora_utc.replace(tzinfo=None),
-        )
-    )
+    publicar_evento(db, "prestamo.creado", payload_evento, cid)
 
     db.commit()
     db.refresh(nuevo)
@@ -195,6 +184,35 @@ def devolver_prestamo(db: Session, prestamo_id: int) -> recurso_models.Prestamo:
     if recurso:
         recurso.estado = "disponible"
 
+    publicar_evento(
+        db,
+        "prestamo.devuelto",
+        {
+            "prestamo_id": prestamo.id,
+            "usuario_id": prestamo.usuario_id,
+            "recurso_id": prestamo.recurso_id,
+            "fecha_devolucion_real": prestamo.fecha_devolucion_real.isoformat(),
+        },
+    )
     db.commit()
     db.refresh(prestamo)
     return prestamo
+
+
+def marcar_prestamos_vencidos(
+    db: Session, ahora: datetime | None = None
+) -> list[recurso_models.Prestamo]:
+    """Marca como vencidos los préstamos activos cuya fecha ya expiró."""
+    ahora = ahora or datetime.now(timezone.utc)
+    limite = ahora.replace(tzinfo=None) if ahora.tzinfo else ahora
+    prestamos = db.query(recurso_models.Prestamo).filter(
+        recurso_models.Prestamo.estado == "activo",
+        recurso_models.Prestamo.fecha_devolucion_esperada < limite,
+    ).all()
+    for prestamo in prestamos:
+        prestamo.estado = "vencido"
+    if prestamos:
+        db.commit()
+        for prestamo in prestamos:
+            db.refresh(prestamo)
+    return prestamos

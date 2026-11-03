@@ -88,3 +88,29 @@ class Reporte(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     recurso = relationship("Recurso", back_populates="reportes")
+
+
+class MantenimientoRecurso(Base):
+    """Orden/historial de mantenimiento asociada a un recurso."""
+    __tablename__ = "mantenimientos_recursos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recurso_id = Column(Integer, ForeignKey("recursos.id"), nullable=False, index=True)
+    reporte_id = Column(Integer, ForeignKey("reportes.id"), nullable=True, index=True)
+    tipo = Column(String, nullable=False, default="correctivo")
+    estado = Column(String, nullable=False, default="pendiente")
+    descripcion = Column(Text, nullable=True)
+    fecha_programada = Column(DateTime, nullable=True)
+    fecha_inicio = Column(DateTime, nullable=True)
+    fecha_fin = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    recurso = relationship("Recurso", back_populates="mantenimientos")
+    reporte = relationship("Reporte")
+
+
+Recurso.mantenimientos = relationship(
+    "MantenimientoRecurso", back_populates="recurso", cascade="all, delete-orphan"
+)

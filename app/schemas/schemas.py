@@ -105,6 +105,37 @@ class ReporteResponse(BaseModel):
     created_at: Optional[datetime] = None
 
 
+class MantenimientoRecursoCreate(BaseModel):
+    recurso_id: int
+    tipo: str = Field(default="correctivo", min_length=2, max_length=50)
+    descripcion: Optional[str] = Field(default=None, max_length=1000)
+    fecha_programada: Optional[datetime] = None
+
+
+class MantenimientoRecursoUpdate(BaseModel):
+    estado: Optional[str] = Field(default=None, max_length=30)
+    descripcion: Optional[str] = Field(default=None, max_length=1000)
+    fecha_programada: Optional[datetime] = None
+    fecha_inicio: Optional[datetime] = None
+    fecha_fin: Optional[datetime] = None
+
+
+class MantenimientoRecursoOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    recurso_id: int
+    reporte_id: Optional[int] = None
+    tipo: str
+    estado: str
+    descripcion: Optional[str] = None
+    fecha_programada: Optional[datetime] = None
+    fecha_inicio: Optional[datetime] = None
+    fecha_fin: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
 # ─── Paginación ──────────────────────────────────────────────────────────────
 
 class PaginatedResponse(BaseModel, Generic[T]):

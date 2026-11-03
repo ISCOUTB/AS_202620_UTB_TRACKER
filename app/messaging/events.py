@@ -53,3 +53,33 @@ class EventoPrestamoCreado(BaseModel):
 
 # Versiones soportadas por el consumidor actual
 VERSIONES_SOPORTADAS: frozenset[int] = frozenset({1})
+
+
+class EventoDominio(BaseModel):
+    """Sobre común para eventos nuevos y consumidores tolerantes."""
+    model_config = ConfigDict(extra="ignore")
+
+    message_id: UUID
+    tipo: str
+    version: int = 1
+    correlation_id: str
+    ocurrido_en: datetime
+    payload: Dict[str, Any]
+
+
+class PayloadPrestamoDevuelto(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    prestamo_id: int
+    usuario_id: int
+    recurso_id: int
+    fecha_devolucion_real: datetime
+
+
+class PayloadRecursoReportado(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    reporte_id: int
+    recurso_id: int
+    usuario_id: int
+    estado_reportado: str

@@ -35,10 +35,6 @@ load_dotenv()
 
 TEST_DATABASE_URL = (os.environ.get("TEST_DATABASE_URL") or "").strip()
 if not TEST_DATABASE_URL:
-    TEST_DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip()
-
-# Fallback a SQLite para ejecución local sin configuración
-if not TEST_DATABASE_URL:
     TEST_DATABASE_URL = "sqlite:///./test_utb_tracker.db"
 
 

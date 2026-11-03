@@ -22,6 +22,7 @@ class Usuario(Base):
     rol = Column(String, nullable=False, default="usuario_utb")
     # valores válidos: usuario_utb | administrador | auxiliar
     password = Column(String, nullable=False)
+    fcm_token = Column(String, nullable=True)
     activo = Column(Boolean, nullable=False, default=True)
     updated_at = Column(
         DateTime,

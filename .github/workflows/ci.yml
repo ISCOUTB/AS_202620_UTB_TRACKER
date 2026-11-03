@@ -51,31 +51,9 @@ jobs:
       # Análisis de seguridad de dependencias (S13 — pip-audit)
       - name: Análisis de dependencias (pip-audit)
         uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266  # v1.1.0
-        continue-on-error: true
         with:
           inputs: requirements.txt
           require-hashes: true
-          ignore-vulns: |
-            PYSEC-2026-161
-            PYSEC-2026-2281
-            PYSEC-2026-2280
-            PYSEC-2026-249
-            PYSEC-2026-248
-            PYSEC-2026-179
-            PYSEC-2026-175
-            PYSEC-2026-177
-            PYSEC-2026-178
-            PYSEC-2026-4145
-            PYSEC-2026-4146
-            PYSEC-2026-4149
-            PYSEC-2026-4152
-            PYSEC-2026-4144
-            PYSEC-2026-4148
-            PYSEC-2026-4140
-            PYSEC-2026-4141
-            PYSEC-2026-4147
-            PYSEC-2026-4183
-            GHSA-pxh4-856f-4h89
 
   deploy:
     needs: test
@@ -98,3 +76,4 @@ jobs:
             set -a; . ./.env; set +a
             alembic upgrade head
             sudo systemctl restart utb-tracker
+            curl --fail --silent --show-error --max-time 15 https://129-80-171-141.nip.io/salud

@@ -32,6 +32,8 @@ import logging
 import os
 import random
 import time
+import smtplib
+from email.message import EmailMessage
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Protocol
 
@@ -39,6 +41,9 @@ from sqlalchemy.orm import Session
 
 from app.messaging.events import VERSIONES_SOPORTADAS
 from app.messaging.models import MensajeOutbox, NotificacionProcesada
+from app.core.config import (
+    SMTP_FROM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USERNAME, USE_REAL_MAIL,
+)
 
 logger = logging.getLogger("utb_tracker.messaging.worker")
 
@@ -68,13 +73,7 @@ class NotificadorBase(Protocol):
 
 
 class NotificadorSimulado:
-    """
-    Implementación simulada del notificador: escribe en el log.
-
-    Acepta `fallos_antes_de_exito` para simular un servicio externo
-    inestable en pruebas: los primeros N llamados lanzan excepción,
-    el N+1 tiene éxito.
-    """
+    """Notificador de desarrollo que registra los env?os sin enviar correo."""
 
     def __init__(self, fallos_antes_de_exito: int = 0):
         self._fallos_restantes = fallos_antes_de_exito + WORKER_FORZAR_FALLOS
@@ -83,24 +82,39 @@ class NotificadorSimulado:
     def enviar(self, email: str, asunto: str, cuerpo: str) -> None:
         if self._fallos_restantes > 0:
             self._fallos_restantes -= 1
-            raise RuntimeError(
-                f"[NotificadorSimulado] Fallo simulado "
-                f"({self._fallos_restantes} restantes)"
-            )
+            raise RuntimeError(f"[NotificadorSimulado] Fallo simulado ({self._fallos_restantes} restantes)")
         self._envios += 1
-        logger.info(
-            "[NotificadorSimulado] Notificación enviada — "
-            "email=%s asunto=%r cuerpo=%r envio_num=%d",
-            email,
-            asunto,
-            cuerpo,
-            self._envios,
-        )
+        logger.info("[NotificadorSimulado] Notificaci?n enviada ? email=%s asunto=%r envio_num=%d", email, asunto, self._envios)
 
 
-# --------------------------------------------------------------------------
-# Cálculo del backoff (misma fórmula que resilience.py, sin sleep)
-# --------------------------------------------------------------------------
+class NotificadorSMTP:
+    """Notificador SMTP expl?cito para despliegues que opten por correo real."""
+
+    def __init__(self, host=SMTP_HOST, port=SMTP_PORT, username=SMTP_USERNAME,
+                 password=SMTP_PASSWORD, sender=SMTP_FROM):
+        if not host or not sender:
+            raise RuntimeError("SMTP_HOST y SMTP_FROM son obligatorios")
+        self.host, self.port = host, port
+        self.username, self.password, self.sender = username, password, sender
+
+    def enviar(self, email: str, asunto: str, cuerpo: str) -> None:
+        message = EmailMessage()
+        message["From"] = self.sender
+        message["To"] = email
+        message["Subject"] = asunto
+        message.set_content(cuerpo)
+        with smtplib.SMTP(self.host, self.port, timeout=10) as server:
+            server.starttls()
+            if self.username:
+                server.login(self.username, self.password)
+            server.send_message(message)
+
+
+def crear_notificador() -> NotificadorBase:
+    """Devuelve SMTP solo cuando USE_REAL_MAIL=true; por defecto es simulado."""
+    return NotificadorSMTP() if USE_REAL_MAIL else NotificadorSimulado()
+
+
 def _calcular_siguiente_intento(intentos: int) -> datetime:
     """
     Calcula el instante UTC del próximo intento usando backoff exponencial.
@@ -230,7 +244,7 @@ def _procesar_un_mensaje(
         _marcar_muerto(db, msg, f"Payload inválido: {exc}", mid, cid)
         return
 
-    email = _resolver_email(db, usuario_id)
+    email = payload_dict.get("email") or _resolver_email(db, usuario_id)
     if not email:
         _marcar_muerto(
             db, msg,
@@ -248,13 +262,22 @@ def _procesar_un_mensaje(
     )
 
     try:
+        asunto = "UTB Tracker — Préstamo registrado"
+        cuerpo = (
+            f"Hola, se registró el préstamo #{prestamo_id}. "
+            f"Correlation-ID: {cid}"
+        )
+        if msg.tipo == "password.reset solicitado":
+            asunto = "UTB Tracker — Recuperación de contraseña"
+            token = payload_dict.get("token", "")
+            cuerpo = (
+                "Usa este token de recuperación para cambiar tu contraseña "
+                f"(válido por 10 minutos): {token}"
+            )
         notificador.enviar(
             email=email,
-            asunto="UTB Tracker — Préstamo registrado",
-            cuerpo=(
-                f"Hola, se registró el préstamo #{prestamo_id}. "
-                f"Correlation-ID: {cid}"
-            ),
+            asunto=asunto,
+            cuerpo=cuerpo,
         )
     except Exception as exc:  # noqa: BLE001
         error_str = str(exc)
@@ -341,7 +364,7 @@ def _run_loop() -> None:
     from app.core.database import SessionLocal
     from app.messaging.models import MensajeOutbox, NotificacionProcesada  # noqa: F401 — registra tablas
 
-    notificador = NotificadorSimulado()
+    notificador = crear_notificador()
     logger.info("[worker] Iniciando. poll_interval=%ds", WORKER_POLL_INTERVAL)
 
     try:

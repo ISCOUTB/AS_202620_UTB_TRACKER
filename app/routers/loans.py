@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import CurrentUser
+from app.core.deps import AdminUser, CurrentUser
 from app.schemas import schemas
 from app.services import loans as loans_service
 
@@ -82,3 +82,20 @@ def devolver_prestamo(
     Marca fecha_devolucion_real y restaura el recurso a 'disponible'.
     """
     return loans_service.devolver_prestamo(db, prestamo_id)
+
+
+@router.post("/marcar-vencidos", response_model=list[schemas.PrestamoOut])
+def marcar_vencidos(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: AdminUser,
+):
+    """Job idempotente para actualizar préstamos activos vencidos."""
+    return loans_service.marcar_prestamos_vencidos(db)
+
+
+@router.post("/jobs/marcar-vencidos", response_model=list[schemas.PrestamoOut], include_in_schema=False)
+def marcar_vencidos_job(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: AdminUser,
+):
+    return loans_service.marcar_prestamos_vencidos(db)
