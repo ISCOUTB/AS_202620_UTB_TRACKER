@@ -19,37 +19,59 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
   final SalonesController _salones = sl<SalonesController>();
   final AuthController _auth = sl<AuthController>();
 
+  // Estado actual del salón (se refresca al entrar a la página)
+  late Salon _salonActual;
+
   int _diaSeleccionado = 1; // 1 = Lunes
   List<FranjaDisponible> _franjas = [];
   List<Horario> _horarios = [];
+  List<PrestamoSalon> _misSolicitudesPendientes = [];
   bool _cargandoDatos = true;
+  String? _errorDatos;
 
-  final List<String> _diasNombres = [
-    'Lun',
-    'Mar',
-    'Mié',
-    'Jue',
-    'Vie',
-    'Sáb',
-  ];
+  final List<String> _diasNombres = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
   @override
   void initState() {
     super.initState();
+    _salonActual = widget.salon;
     _cargarTodo();
   }
 
   Future<void> _cargarTodo() async {
-    setState(() => _cargandoDatos = true);
-    final franjas = await _salones.obtenerDisponibilidad(
-      widget.salon.id,
+    setState(() {
+      _cargandoDatos = true;
+      _errorDatos = null;
+    });
+
+    // Refresca el estado actual del salón desde el backend
+    final salonActualizado = await _salones.obtenerSalonPorId(_salonActual.id);
+
+    final (franjas, errFranjas) = await _salones.obtenerDisponibilidad(
+      _salonActual.id,
       diaSemana: _diaSeleccionado,
     );
-    final horarios = await _salones.obtenerHorarios(widget.salon.id);
+    final (horarios, errHorarios) = await _salones.obtenerHorarios(_salonActual.id);
+
+    // Carga los préstamos pendientes del usuario actual para este salón
+    List<PrestamoSalon> pendientes = [];
+    if (!_auth.esAdministrador) {
+      final usuario = _auth.usuario;
+      if (usuario != null) {
+        final (todos, _) = await _salones.obtenerPrestamosSalon(_salonActual.id);
+        pendientes = todos
+            .where((p) => p.usuarioId == usuario.id && p.estado == 'pendiente')
+            .toList();
+      }
+    }
+
     if (mounted) {
       setState(() {
+        if (salonActualizado != null) _salonActual = salonActualizado;
         _franjas = franjas;
         _horarios = horarios;
+        _misSolicitudesPendientes = pendientes;
+        _errorDatos = errFranjas ?? errHorarios;
         _cargandoDatos = false;
       });
     }
@@ -60,8 +82,8 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
       _diaSeleccionado = dia;
       _cargandoDatos = true;
     });
-    final franjas = await _salones.obtenerDisponibilidad(
-      widget.salon.id,
+    final (franjas, _) = await _salones.obtenerDisponibilidad(
+      _salonActual.id,
       diaSemana: dia,
     );
     if (mounted) {
@@ -72,7 +94,8 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
     }
   }
 
-  void _abrirSolicitudPrestamo() {
+  /// Abre el sheet de préstamo, opcionalmente pre-llenando una franja libre.
+  void _abrirSolicitudPrestamo({TimeOfDay? horaInicio, TimeOfDay? horaFin}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -83,8 +106,10 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: _SolicitarPrestamoSalonSheet(
-          salon: widget.salon,
+          salon: _salonActual,
           onExito: _cargarTodo,
+          horaInicioInicial: horaInicio,
+          horaFinInicial: horaFin,
         ),
       ),
     );
@@ -101,16 +126,47 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: _AgregarHorarioSheet(
-          salon: widget.salon,
+          salon: _salonActual,
           onExito: _cargarTodo,
         ),
       ),
     );
   }
 
+  Future<void> _cancelarSolicitud(PrestamoSalon prestamo) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancelar solicitud'),
+        content: const Text('¿Deseas cancelar esta solicitud de préstamo?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danado),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+
+    final error = await _salones.cancelarPrestamoSalon(prestamo.id);
+    if (!mounted) return;
+    if (error != null) {
+      mostrarMensaje(context, error);
+    } else {
+      mostrarMensaje(context, 'Solicitud cancelada');
+      _cargarTodo();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final s = widget.salon;
+    final s = _salonActual;
+    // El salón solo acepta préstamos si está disponible
+    final puedePrestar = s.disponible;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(s.nombre),
@@ -171,6 +227,48 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
               ],
             ),
           ),
+
+          // Sección: mis solicitudes pendientes (solo usuarios regulares)
+          if (_misSolicitudesPendientes.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'Mis solicitudes pendientes',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            for (final p in _misSolicitudesPendientes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TarjetaBorde(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.pending_actions_rounded, color: AppColors.textoSuave, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${_formatFecha(p.fechaInicio)} · ${_formatHora(p.fechaInicio)} – ${_formatHora(p.fechaFin)}',
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            if (p.motivo != null && p.motivo!.isNotEmpty)
+                              Text(p.motivo!, style: const TextStyle(color: AppColors.textoSuave, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => _cancelarSolicitud(p),
+                        style: TextButton.styleFrom(foregroundColor: AppColors.danado),
+                        child: const Text('Cancelar'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+
           const SizedBox(height: 24),
 
           // Sección de Disponibilidad para Préstamos
@@ -207,7 +305,23 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
             ),
           ),
           const SizedBox(height: 12),
-          if (_franjas.isEmpty && !_cargandoDatos)
+
+          // Error de carga (si ocurrió)
+          if (_errorDatos != null && !_cargandoDatos)
+            TarjetaBorde(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: AppColors.danado, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(_errorDatos!, style: const TextStyle(color: AppColors.danado, fontSize: 13)),
+                  ),
+                ],
+              ),
+            )
+          // Franjas libres — al tocar una se pre-llena el formulario
+          else if (_franjas.isEmpty && !_cargandoDatos)
             const TarjetaBorde(
               padding: EdgeInsets.all(16),
               child: Text(
@@ -221,24 +335,61 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
               runSpacing: 8,
               children: [
                 for (final f in _franjas)
-                  Chip(
+                  ActionChip(
                     avatar: const Icon(Icons.access_time_rounded, size: 16, color: AppColors.disponible),
                     label: Text(
-                      '${f.horaInicio.substring(0, 5)} - ${f.horaFin.substring(0, 5)} libre',
+                      '${f.horaInicio.substring(0, 5)} – ${f.horaFin.substring(0, 5)} libre',
                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                     backgroundColor: AppColors.superficieAlta,
                     side: BorderSide(color: AppColors.disponible.withValues(alpha: 0.5)),
+                    tooltip: 'Solicitar préstamo en esta franja',
+                    // pre-llena fecha y horas al tocar la franja
+                    onPressed: puedePrestar
+                        ? () {
+                            final partes = f.horaInicio.split(':');
+                            final partesF = f.horaFin.split(':');
+                            _abrirSolicitudPrestamo(
+                              horaInicio: TimeOfDay(
+                                hour: int.parse(partes[0]),
+                                minute: int.parse(partes[1]),
+                              ),
+                              horaFin: TimeOfDay(
+                                hour: int.parse(partesF[0]),
+                                minute: int.parse(partesF[1]),
+                              ),
+                            );
+                          }
+                        : null,
                   ),
               ],
             ),
 
           const SizedBox(height: 16),
-          FilledButton.icon(
-            icon: const Icon(Icons.event_available_rounded),
-            label: const Text('Solicitar préstamo de este salón'),
-            onPressed: _abrirSolicitudPrestamo,
-          ),
+
+          // Botón deshabilitado si el salón no está disponible
+          if (!puedePrestar)
+            TarjetaBorde(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.block_rounded, color: AppColors.danado, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Este salón no está disponible para préstamos (estado: ${s.estado})',
+                      style: const TextStyle(color: AppColors.danado, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            FilledButton.icon(
+              icon: const Icon(Icons.event_available_rounded),
+              label: const Text('Solicitar préstamo de este salón'),
+              onPressed: _abrirSolicitudPrestamo,
+            ),
 
           const SizedBox(height: 30),
 
@@ -309,6 +460,10 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
       ),
     );
   }
+
+  String _formatFecha(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
+  String _formatHora(DateTime dt) =>
+      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 }
 
 class _InfoItem extends StatelessWidget {
@@ -331,10 +486,20 @@ class _InfoItem extends StatelessWidget {
   }
 }
 
+// ─── Sheet: Solicitar préstamo de salón ────────────────────────────────────────
+
 class _SolicitarPrestamoSalonSheet extends StatefulWidget {
-  const _SolicitarPrestamoSalonSheet({required this.salon, required this.onExito});
+  const _SolicitarPrestamoSalonSheet({
+    required this.salon,
+    required this.onExito,
+    this.horaInicioInicial,
+    this.horaFinInicial,
+  });
+
   final Salon salon;
   final VoidCallback onExito;
+  final TimeOfDay? horaInicioInicial;
+  final TimeOfDay? horaFinInicial;
 
   @override
   State<_SolicitarPrestamoSalonSheet> createState() => _SolicitarPrestamoSalonSheetState();
@@ -344,16 +509,42 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
   final SalonesController _salones = sl<SalonesController>();
   final TextEditingController _motivoCtrl = TextEditingController();
 
-  DateTime _fecha = DateTime.now();
-  TimeOfDay _horaInicio = const TimeOfDay(hour: 8, minute: 0);
-  TimeOfDay _horaFin = const TimeOfDay(hour: 10, minute: 0);
+  late DateTime _fecha;
+  late TimeOfDay _horaInicio;
+  late TimeOfDay _horaFin;
   bool _enviando = false;
+
+  // Duración mínima y máxima definidas en el backend
+  static const _minMinutos = 30;
+  static const _maxMinutos = 240; // 4 horas
+
+  @override
+  void initState() {
+    super.initState();
+    _fecha = DateTime.now();
+    _horaInicio = widget.horaInicioInicial ?? const TimeOfDay(hour: 8, minute: 0);
+    _horaFin = widget.horaFinInicial ?? const TimeOfDay(hour: 10, minute: 0);
+  }
 
   @override
   void dispose() {
     _motivoCtrl.dispose();
     super.dispose();
   }
+
+  /// Advertencia de duración mostrada en tiempo real bajo los pickers.
+  String? get _advertenciaDuracion {
+    final dtInicio = _dtInicio;
+    final dtFin = _dtFin;
+    if (!dtFin.isAfter(dtInicio)) return null; // validación separada
+    final minutos = dtFin.difference(dtInicio).inMinutes;
+    if (minutos < _minMinutos) return 'Duración mínima: $_minMinutos minutos (actual: ${minutos}min)';
+    if (minutos > _maxMinutos) return 'Duración máxima: ${_maxMinutos ~/ 60} horas (actual: ${minutos}min)';
+    return null;
+  }
+
+  DateTime get _dtInicio => DateTime(_fecha.year, _fecha.month, _fecha.day, _horaInicio.hour, _horaInicio.minute);
+  DateTime get _dtFin => DateTime(_fecha.year, _fecha.month, _fecha.day, _horaFin.hour, _horaFin.minute);
 
   Future<void> _elegirFecha() async {
     final picked = await showDatePicker(
@@ -376,11 +567,28 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
   }
 
   Future<void> _enviar() async {
-    final dtInicio = DateTime(_fecha.year, _fecha.month, _fecha.day, _horaInicio.hour, _horaInicio.minute);
-    final dtFin = DateTime(_fecha.year, _fecha.month, _fecha.day, _horaFin.hour, _horaFin.minute);
+    final dtInicio = _dtInicio;
+    final dtFin = _dtFin;
+
+    // Validar que no sea en el pasado
+    if (dtInicio.isBefore(DateTime.now())) {
+      mostrarMensaje(context, 'No puedes solicitar un préstamo en el pasado');
+      return;
+    }
 
     if (!dtFin.isAfter(dtInicio)) {
       mostrarMensaje(context, 'La hora de fin debe ser posterior a la de inicio');
+      return;
+    }
+
+    // Bloquear envío si la duración está fuera de rango
+    final minutos = dtFin.difference(dtInicio).inMinutes;
+    if (minutos < _minMinutos) {
+      mostrarMensaje(context, 'La duración mínima es $_minMinutos minutos');
+      return;
+    }
+    if (minutos > _maxMinutos) {
+      mostrarMensaje(context, 'La duración máxima es ${_maxMinutos ~/ 60} horas');
       return;
     }
 
@@ -405,6 +613,7 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
 
   @override
   Widget build(BuildContext context) {
+    final advertencia = _advertenciaDuracion;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       child: Column(
@@ -457,6 +666,22 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
               ),
             ],
           ),
+          // Advertencia de duración en tiempo real
+          if (advertencia != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.danado),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    advertencia,
+                    style: const TextStyle(color: AppColors.danado, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: _motivoCtrl,
@@ -467,7 +692,8 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
           ),
           const SizedBox(height: 20),
           FilledButton(
-            onPressed: _enviando ? null : _enviar,
+            // Deshabilitar si hay advertencia de duración
+            onPressed: (_enviando || advertencia != null) ? null : _enviar,
             child: _enviando
                 ? const SizedBox(
                     height: 20,
@@ -481,6 +707,8 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
     );
   }
 }
+
+// ─── Sheet: Agregar horario académico ─────────────────────────────────────────
 
 class _AgregarHorarioSheet extends StatefulWidget {
   const _AgregarHorarioSheet({required this.salon, required this.onExito});
@@ -511,10 +739,18 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
   }
 
   Future<void> _guardar() async {
+    // Validar que horaFin > horaInicio antes de llamar al backend
+    final inicioEnMinutos = _horaInicio.hour * 60 + _horaInicio.minute;
+    final finEnMinutos = _horaFin.hour * 60 + _horaFin.minute;
+    if (finEnMinutos <= inicioEnMinutos) {
+      mostrarMensaje(context, 'La hora de fin debe ser posterior a la hora de inicio');
+      return;
+    }
+
     final horaInicioStr =
-        '${_horaInicio.hour.toString().padLeft(2, "0")}:${_horaInicio.minute.toString().padLeft(2, "0")}:00';
+        '${_horaInicio.hour.toString().padLeft(2, '0')}:${_horaInicio.minute.toString().padLeft(2, '0')}:00';
     final horaFinStr =
-        '${_horaFin.hour.toString().padLeft(2, "0")}:${_horaFin.minute.toString().padLeft(2, "0")}:00';
+        '${_horaFin.hour.toString().padLeft(2, '0')}:${_horaFin.minute.toString().padLeft(2, '0')}:00';
 
     setState(() => _enviando = true);
     final error = await _salones.agregarHorario(
@@ -540,6 +776,10 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // Indicador visual de que fin <= inicio
+    final finInvalido =
+        (_horaFin.hour * 60 + _horaFin.minute) <= (_horaInicio.hour * 60 + _horaInicio.minute);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       child: Column(
@@ -590,10 +830,21 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
               const SizedBox(width: 12),
               Expanded(
                 child: ListTile(
-                  tileColor: AppColors.superficieAlta,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  tileColor: finInvalido ? AppColors.danado.withValues(alpha: 0.12) : AppColors.superficieAlta,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: finInvalido
+                        ? const BorderSide(color: AppColors.danado, width: 1)
+                        : BorderSide.none,
+                  ),
                   title: const Text('Hora Fin', style: TextStyle(fontSize: 12)),
-                  subtitle: Text(_horaFin.format(context), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                    _horaFin.format(context),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: finInvalido ? AppColors.danado : null,
+                    ),
+                  ),
                   onTap: () async {
                     final picked = await showTimePicker(context: context, initialTime: _horaFin);
                     if (picked != null) setState(() => _horaFin = picked);
@@ -602,19 +853,40 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
               ),
             ],
           ),
+          // Mensaje de error inline si fin <= inicio
+          if (finInvalido) ...[
+            const SizedBox(height: 6),
+            const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.danado),
+                SizedBox(width: 6),
+                Text(
+                  'La hora de fin debe ser posterior a la de inicio',
+                  style: TextStyle(color: AppColors.danado, fontSize: 12),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: _materiaCtrl,
-            decoration: const InputDecoration(labelText: 'Materia / Asignatura', hintText: 'Ej. Arquitectura de Software'),
+            decoration: const InputDecoration(
+              labelText: 'Materia / Asignatura',
+              hintText: 'Ej. Arquitectura de Software',
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _profesorCtrl,
-            decoration: const InputDecoration(labelText: 'Docente / Profesor', hintText: 'Ej. Dr. Martínez'),
+            decoration: const InputDecoration(
+              labelText: 'Docente / Profesor',
+              hintText: 'Ej. Dr. Martínez',
+            ),
           ),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: _enviando ? null : _guardar,
+            // Deshabilitar si las horas son inválidas
+            onPressed: (_enviando || finInvalido) ? null : _guardar,
             child: _enviando
                 ? const SizedBox(
                     height: 20,

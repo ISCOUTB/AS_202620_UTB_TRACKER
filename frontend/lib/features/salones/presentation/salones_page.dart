@@ -43,7 +43,13 @@ class _SalonesPageState extends State<SalonesPage> {
       ),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: const _CrearSalonSheet(),
+        // #4 — al crear un salón se limpia la búsqueda para que el nuevo sea visible
+        child: _CrearSalonSheet(
+          onExito: () {
+            _busquedaCtrl.clear();
+            _salones.fijarBusqueda('');
+          },
+        ),
       ),
     );
   }
@@ -213,8 +219,12 @@ class _FilaSalon extends StatelessWidget {
   }
 }
 
+// ─── Sheet: Crear nuevo salón ─────────────────────────────────────────────────
+
 class _CrearSalonSheet extends StatefulWidget {
-  const _CrearSalonSheet();
+  const _CrearSalonSheet({required this.onExito});
+  // #4 — callback para limpiar el buscador tras crear exitosamente
+  final VoidCallback onExito;
 
   @override
   State<_CrearSalonSheet> createState() => _CrearSalonSheetState();
@@ -265,6 +275,8 @@ class _CrearSalonSheetState extends State<_CrearSalonSheet> {
       mostrarMensaje(context, error);
     } else {
       Navigator.of(context).pop();
+      // #4 — notificar al padre para limpiar búsqueda y mostrar el nuevo salón
+      widget.onExito();
       mostrarMensaje(context, 'Salón creado exitosamente');
     }
   }

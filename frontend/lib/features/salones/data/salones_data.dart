@@ -97,19 +97,27 @@ class SalonesRemoteDataSource {
     return SalonModel.desdeJson(cuerpo);
   }
 
+  /// Usa el mapa `parametros:` en lugar de concatenar query string manualmente,
+  /// así el ApiClient serializa correctamente los valores.
   Future<List<FranjaDisponible>> consultarDisponibilidad(
     int salonId, {
     int? diaSemana,
   }) async {
-    final query = diaSemana != null ? '?dia_semana=$diaSemana' : '';
-    final cuerpo = await _api.get('/salones/$salonId/disponibilidad$query') as List<dynamic>;
+    final cuerpo = await _api.get(
+      '/salones/$salonId/disponibilidad',
+      parametros: diaSemana != null ? {'dia_semana': diaSemana} : null,
+    ) as List<dynamic>;
     return cuerpo
         .map((e) => FranjaDisponibleModel.desdeJson(e as Map<String, dynamic>))
         .toList();
   }
 
+  /// Usa el mapa `parametros:` en lugar de concatenar query string manualmente.
   Future<List<Horario>> listarHorarios(int salonId) async {
-    final cuerpo = await _api.get('/horarios?salon_id=$salonId') as List<dynamic>;
+    final cuerpo = await _api.get(
+      '/horarios',
+      parametros: {'salon_id': salonId},
+    ) as List<dynamic>;
     return cuerpo
         .map((e) => HorarioModel.desdeJson(e as Map<String, dynamic>))
         .toList();
@@ -169,6 +177,12 @@ class SalonesRemoteDataSource {
       '/prestamos-salon/$id',
       cuerpo: {'estado': estado},
     ) as Map<String, dynamic>;
+    return PrestamoSalonModel.desdeJson(cuerpo);
+  }
+
+  /// Cancela la propia solicitud pendiente del usuario (DELETE).
+  Future<PrestamoSalon> cancelarPrestamoSalon(int id) async {
+    final cuerpo = await _api.delete('/prestamos-salon/$id') as Map<String, dynamic>;
     return PrestamoSalonModel.desdeJson(cuerpo);
   }
 }
@@ -251,4 +265,8 @@ class SalonesRepositoryImpl implements SalonesRepository {
   @override
   Future<PrestamoSalon> actualizarEstadoPrestamo(int id, String estado) =>
       _remoto.actualizarEstadoPrestamo(id, estado);
+
+  @override
+  Future<PrestamoSalon> cancelarPrestamoSalon(int id) =>
+      _remoto.cancelarPrestamoSalon(id);
 }

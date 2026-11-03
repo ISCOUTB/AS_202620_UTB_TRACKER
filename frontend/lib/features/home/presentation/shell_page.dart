@@ -2,18 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../cuenta/presentation/cuenta_page.dart';
 import '../../prestamos/presentation/actividad_page.dart';
 import '../../prestamos/presentation/prestamos_controller.dart';
 import '../../recursos/domain/entities/recurso.dart';
 import '../../recursos/presentation/equipos_page.dart';
 import '../../recursos/presentation/recursos_controller.dart';
-import '../../auth/presentation/auth_controller.dart';
 import '../../salones/presentation/salones_page.dart';
 import '../../salones_admin/presentation/panel_salones_page.dart';
 import 'home_page.dart';
 
-/// Contenedor con la barra inferior flotante en forma de píldora (Inicio · Equipos · Salones · Actividad · Cuenta).
+/// Contenedor con la barra inferior flotante en forma de píldora
+/// (Inicio · Equipos · Salones · Actividad · Cuenta).
 class ShellPage extends StatefulWidget {
   const ShellPage({super.key});
 
@@ -33,8 +34,13 @@ class _ShellPageState extends State<ShellPage> {
   @override
   void initState() {
     super.initState();
-    _recursos.cargar();
-    _prestamos.cargar();
+    // El auxiliar/administrador gestiona salones: no necesita cargar equipos ni
+    // préstamos de recursos al arrancar (esas pantallas no se les muestran).
+    final auth = sl<AuthController>();
+    if (!auth.esAdministrador) {
+      _recursos.cargar();
+      _prestamos.cargar();
+    }
   }
 
   void _ir(int i) => setState(() => _indice = i);
@@ -71,7 +77,7 @@ class _ShellPageState extends State<ShellPage> {
             onVerActividad: _verActividad,
           ),
           const EquiposPage(),
-          // El auxiliar administra los salones; el usuario UTB los consulta y solicita.
+          // El auxiliar/admin administra los salones; el usuario UTB los consulta.
           sl<AuthController>().esAdministrador
               ? const PanelSalonesPage()
               : const SalonesPage(),

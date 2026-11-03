@@ -37,8 +37,8 @@ def _ahora_campus(momento: Optional[datetime]) -> datetime:
 
 
 def _a_utc_naive(local: datetime) -> datetime:
-    """Convierte una hora local del campus a UTC sin zona (como guarda el backend)."""
-    return local - timedelta(hours=-5)
+    """Convierte una hora local del campus (COT, UTC-5) a UTC sin zona (como guarda el backend)."""
+    return local + timedelta(hours=5)
 
 
 def _clase_en_curso(db: Session, salon_id: int, local: datetime) -> Optional[Horario]:

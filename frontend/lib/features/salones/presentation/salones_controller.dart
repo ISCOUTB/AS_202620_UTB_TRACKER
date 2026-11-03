@@ -41,6 +41,29 @@ class SalonesController extends ChangeNotifier {
     return null;
   }
 
+  /// Obtiene el estado fresco de un salón directamente del backend.
+  /// Retorna [null] si falla (no lanza excepción).
+  Future<Salon?> obtenerSalonPorId(int id) async {
+    try {
+      return await _repo.obtenerSalon(id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Lista todos los préstamos del endpoint y los filtra por [salonId].
+  /// Retorna una tupla (lista, mensajeError?).
+  Future<(List<PrestamoSalon>, String?)> obtenerPrestamosSalon(int salonId) async {
+    try {
+      final todos = await _repo.listarPrestamosSalon();
+      return (todos.where((p) => p.salonId == salonId).toList(), null);
+    } on ApiException catch (e) {
+      return (const <PrestamoSalon>[], e.mensaje);
+    } catch (_) {
+      return (const <PrestamoSalon>[], 'No se pudieron cargar los préstamos');
+    }
+  }
+
   Future<void> cargar({bool silencioso = false}) async {
     if (!silencioso) {
       _carga = Carga.cargando;
@@ -90,19 +113,31 @@ class SalonesController extends ChangeNotifier {
     }
   }
 
-  Future<List<FranjaDisponible>> obtenerDisponibilidad(int salonId, {int? diaSemana}) async {
+  /// Retorna la disponibilidad del salón; lanza el error como [String] en lugar de
+  /// silenciarlo, para que la UI pueda mostrarlo al usuario.
+  Future<(List<FranjaDisponible>, String?)> obtenerDisponibilidad(
+    int salonId, {
+    int? diaSemana,
+  }) async {
     try {
-      return await _repo.consultarDisponibilidad(salonId, diaSemana: diaSemana);
+      final franjas = await _repo.consultarDisponibilidad(salonId, diaSemana: diaSemana);
+      return (franjas, null);
+    } on ApiException catch (e) {
+      return (const <FranjaDisponible>[], e.mensaje);
     } catch (_) {
-      return [];
+      return (const <FranjaDisponible>[], 'No se pudo consultar la disponibilidad');
     }
   }
 
-  Future<List<Horario>> obtenerHorarios(int salonId) async {
+  /// Retorna los horarios del salón; propaga error en lugar de silenciarlo.
+  Future<(List<Horario>, String?)> obtenerHorarios(int salonId) async {
     try {
-      return await _repo.listarHorarios(salonId);
+      final horarios = await _repo.listarHorarios(salonId);
+      return (horarios, null);
+    } on ApiException catch (e) {
+      return (const <Horario>[], e.mensaje);
     } catch (_) {
-      return [];
+      return (const <Horario>[], 'No se pudieron cargar los horarios');
     }
   }
 
@@ -151,6 +186,19 @@ class SalonesController extends ChangeNotifier {
       return e.mensaje;
     } catch (_) {
       return 'Error al solicitar préstamo de salón';
+    }
+  }
+
+  /// Cancela una solicitud de préstamo pendiente que le pertenece al usuario actual.
+  /// Retorna [null] si tuvo éxito, o el mensaje de error en caso contrario.
+  Future<String?> cancelarPrestamoSalon(int id) async {
+    try {
+      await _repo.cancelarPrestamoSalon(id);
+      return null;
+    } on ApiException catch (e) {
+      return e.mensaje;
+    } catch (_) {
+      return 'No se pudo cancelar el préstamo';
     }
   }
 }

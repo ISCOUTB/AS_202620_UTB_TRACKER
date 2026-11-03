@@ -7,7 +7,7 @@ Endpoints protegidos con JWT.
 """
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -38,6 +38,7 @@ def crear_prestamo_salon(
 
 @router.get("", response_model=list[PrestamoSalonResponse])
 def listar_prestamos_salon(
+    response: Response,
     db: Annotated[Session, Depends(get_db)],
     current_user: CurrentUser,
     salon_id: Optional[int] = None,
@@ -48,12 +49,30 @@ def listar_prestamos_salon(
     """
     Lista préstamos de salón con filtros.
     Admin/auxiliar ve todos; usuario normal solo ve los suyos.
+    Devuelve el total de registros en el header X-Total-Count.
     """
     usuario_id = None
     if current_user.rol not in ("administrador", "auxiliar"):
         usuario_id = current_user.id
-    items, _ = ps_service.listar_prestamos_salon(db, salon_id, estado, usuario_id, skip, limit)
+    items, total = ps_service.listar_prestamos_salon(db, salon_id, estado, usuario_id, skip, limit)
+    response.headers["X-Total-Count"] = str(total)
     return items
+
+
+@router.get("/{prestamo_id}", response_model=PrestamoSalonResponse)
+def obtener_prestamo_salon(
+    prestamo_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """
+    Obtiene un préstamo de salón por ID.
+    Usuario normal solo puede consultar el suyo; admin/auxiliar cualquiera.
+    """
+    usuario_id = None
+    if current_user.rol not in ("administrador", "auxiliar"):
+        usuario_id = current_user.id
+    return ps_service.obtener_prestamo_salon(db, prestamo_id, usuario_id)
 
 
 @router.patch("/{prestamo_id}", response_model=PrestamoSalonResponse)
@@ -70,3 +89,31 @@ def actualizar_estado_prestamo_salon(
     aprobado→en_uso/cancelado, en_uso→finalizado.
     """
     return ps_service.actualizar_estado_prestamo_salon(db, prestamo_id, datos.estado)
+
+
+@router.delete("/{prestamo_id}", response_model=PrestamoSalonResponse)
+def cancelar_prestamo_propio(
+    prestamo_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """
+    Cancela un préstamo propio que todavía esté en estado 'pendiente'.
+    El usuario solo puede cancelar sus propias solicitudes; admin/auxiliar
+    deben usar PATCH para cualquier otra transición de estado.
+    """
+    return ps_service.cancelar_prestamo_propio(db, prestamo_id, current_user.id)
+
+
+@router.post("/expirar", status_code=200)
+def expirar_prestamos_pendientes(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: AdminUser,
+):
+    """
+    Marca como 'cancelado' todos los préstamos pendientes cuya fecha_inicio
+    ya pasó. Debe llamarse periódicamente (cron/scheduler).
+    Solo admin/auxiliar.
+    """
+    total = ps_service.expirar_prestamos_pendientes(db)
+    return {"expirados": total}

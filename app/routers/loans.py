@@ -11,7 +11,7 @@ Refactorización S9 / S11:
 """
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -44,6 +44,7 @@ def crear_prestamo(
 
 @router.get("", response_model=list[schemas.PrestamoOut])
 def listar_prestamos(
+    response: Response,
     db: Annotated[Session, Depends(get_db)],
     current_user: CurrentUser,
     estado: Optional[str] = None,
@@ -53,11 +54,13 @@ def listar_prestamos(
     """
     Lista préstamos de recursos.
     Admin/auxiliar ve todos; usuario normal solo ve los suyos.
+    Devuelve el total en el header X-Total-Count.
     """
     usuario_id = None
     if current_user.rol not in ("administrador", "auxiliar"):
         usuario_id = current_user.id
-    items, _ = loans_service.listar_prestamos(db, usuario_id, estado, skip, limit)
+    items, total = loans_service.listar_prestamos(db, usuario_id, estado, skip, limit)
+    response.headers["X-Total-Count"] = str(total)
     return items
 
 
