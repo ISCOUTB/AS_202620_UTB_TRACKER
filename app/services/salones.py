@@ -4,7 +4,7 @@ Capa de servicio para el módulo de Salones.
 CRUD completo de salones con soft-delete, consulta de disponibilidad
 cruzando horarios académicos y préstamos existentes.
 """
-from datetime import date, time
+from datetime import date, datetime, time
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -115,14 +115,14 @@ def obtener_disponibilidad(
         (h.hora_inicio, h.hora_fin) for h in horarios_ocupados
     ]
 
-    # También considerar préstamos de salón aprobados/en_uso para esa fecha
+    # También considerar préstamos de salón aprobados/en_uso para esa fecha.
+    # Se usan datetimes naïve (sin tzinfo) para ser consistentes con la BD,
+    # que almacena fechas en UTC naïve y funciona tanto en SQLite como en PostgreSQL.
     if fecha:
-        from datetime import datetime, timezone
+        inicio_dia = datetime.combine(fecha, HORA_APERTURA)  # naïve, sin tzinfo
+        fin_dia = datetime.combine(fecha, HORA_CIERRE)       # naïve, sin tzinfo
 
-        inicio_dia = datetime.combine(fecha, HORA_APERTURA, tzinfo=timezone.utc)
-        fin_dia = datetime.combine(fecha, HORA_CIERRE, tzinfo=timezone.utc)
-
-        prestamos_salon = (
+        prestamos_activos = (
             db.query(PrestamoSalon)
             .filter(
                 PrestamoSalon.salon_id == salon_id,
@@ -132,7 +132,7 @@ def obtener_disponibilidad(
             )
             .all()
         )
-        for p in prestamos_salon:
+        for p in prestamos_activos:
             bloques_ocupados.append((p.fecha_inicio.time(), p.fecha_fin.time()))
 
     # Ordenar bloques por hora de inicio

@@ -9,6 +9,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.enums import EstadoSalon
+
 
 class SalonCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=50, examples=["A-301"])
@@ -16,7 +18,8 @@ class SalonCreate(BaseModel):
     edificio: Optional[str] = None
     piso: Optional[int] = None
     capacidad: int = Field(..., gt=0, examples=[40])
-    estado: str = Field(default="disponible")
+    # Usa el Enum centralizado para rechazar valores inválidos con 422
+    estado: EstadoSalon = Field(default=EstadoSalon.DISPONIBLE)
 
 
 class SalonUpdate(BaseModel):
@@ -25,7 +28,8 @@ class SalonUpdate(BaseModel):
     edificio: Optional[str] = None
     piso: Optional[int] = None
     capacidad: Optional[int] = Field(default=None, gt=0)
-    estado: Optional[str] = None
+    # Usa el Enum centralizado para rechazar valores inválidos con 422
+    estado: Optional[EstadoSalon] = None
 
 
 class SalonResponse(BaseModel):

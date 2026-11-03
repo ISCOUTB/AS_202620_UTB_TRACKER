@@ -58,18 +58,24 @@ def crear_horario(db: Session, datos: HorarioCreate) -> Horario:
 
 
 def crear_horarios_bulk(db: Session, items: list[HorarioCreate]) -> list[Horario]:
-    """Carga masiva de horarios. Valida conflictos para cada uno."""
-    creados = []
+    """
+    Carga masiva de horarios. Totalmente atómica: valida TODOS los registros primero
+    y solo persiste si no hay ningún conflicto. Si falla uno, no se guarda ninguno.
+    """
+    # Fase 1 — validar todo antes de tocar la base de datos
+    horarios_nuevos: list[Horario] = []
     for datos in items:
         _validar_salon_existe(db, datos.salon_id)
         _detectar_conflicto(db, datos.salon_id, datos.dia_semana, datos.hora_inicio, datos.hora_fin)
-        nuevo = Horario(**datos.model_dump())
-        db.add(nuevo)
-        creados.append(nuevo)
+        horarios_nuevos.append(Horario(**datos.model_dump()))
+
+    # Fase 2 — persistir solo cuando todas las validaciones pasaron
+    for h in horarios_nuevos:
+        db.add(h)
     db.commit()
-    for h in creados:
+    for h in horarios_nuevos:
         db.refresh(h)
-    return creados
+    return horarios_nuevos
 
 
 def listar_horarios(

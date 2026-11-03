@@ -4,10 +4,10 @@ Capa de servicio para préstamos de salón.
 Gestiona solicitudes de préstamo de salones validando conflictos
 con horarios académicos y otros préstamos existentes.
 """
+from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.auth_models import Usuario
 from app.models.salon_models import Horario, PrestamoSalon, Salon
 from app.schemas.prestamos_salon import PrestamoSalonCreate
 
@@ -19,33 +19,41 @@ def _validar_salon(db: Session, salon_id: int) -> Salon:
     return salon
 
 
-def _validar_usuario(db: Session, usuario_id: int) -> Usuario:
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
-    if not usuario:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
-    return usuario
-
-
 def _detectar_conflicto_horario(db: Session, salon_id: int, fecha_inicio, fecha_fin):
-    """Verifica que la franja solicitada no choque con horarios académicos fijos."""
-    dia_semana = fecha_inicio.isoweekday()  # 1=Lunes ... 7=Domingo
-    hora_inicio = fecha_inicio.time()
-    hora_fin = fecha_fin.time()
+    """
+    Verifica que la franja solicitada no choque con horarios académicos fijos.
 
-    conflicto = db.query(Horario).filter(
-        Horario.salon_id == salon_id,
-        Horario.dia_semana == dia_semana,
-        Horario.activo.is_(True),
-        Horario.hora_inicio < hora_fin,
-        Horario.hora_fin > hora_inicio,
-    ).first()
+    Soporta préstamos que abarcan medianoche: itera cada día cubierto por
+    la franja (fecha_inicio.date … fecha_fin.date inclusive) y valida las
+    horas que correspondan a ese día.
+    """
+    from datetime import date, time as dtime, timedelta
 
-    if conflicto:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Conflicto con horario académico: {conflicto.materia or 'clase'} "
-                   f"({conflicto.hora_inicio}-{conflicto.hora_fin}, {conflicto.profesor or 'sin profesor'})",
-        )
+    dia_actual = fecha_inicio.date()
+    dia_fin = fecha_fin.date()
+
+    while dia_actual <= dia_fin:
+        dia_semana = dia_actual.isoweekday()  # 1=Lunes … 7=Domingo
+
+        hora_inicio_check = fecha_inicio.time() if dia_actual == fecha_inicio.date() else dtime(0, 0)
+        hora_fin_check = fecha_fin.time() if dia_actual == fecha_fin.date() else dtime(23, 59)
+
+        conflicto = db.query(Horario).filter(
+            Horario.salon_id == salon_id,
+            Horario.dia_semana == dia_semana,
+            Horario.activo.is_(True),
+            Horario.hora_inicio < hora_fin_check,
+            Horario.hora_fin > hora_inicio_check,
+        ).first()
+
+        if conflicto:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Conflicto con horario académico: {conflicto.materia or 'clase'} "
+                       f"({conflicto.hora_inicio}-{conflicto.hora_fin}, {conflicto.profesor or 'sin profesor'})",
+            )
+
+        dia_actual += timedelta(days=1)
 
 
 def _detectar_conflicto_prestamo(db: Session, salon_id: int, fecha_inicio, fecha_fin, excluir_id: int | None = None):
@@ -109,6 +117,24 @@ def listar_prestamos_salon(
     return items, total
 
 
+def obtener_prestamo_salon(
+    db: Session, prestamo_id: int, usuario_id: int | None = None
+) -> PrestamoSalon:
+    """
+    Obtiene un préstamo de salón por ID.
+    Si se pasa usuario_id, verifica que el préstamo le pertenezca (usuarios normales).
+    """
+    prestamo = db.query(PrestamoSalon).filter(PrestamoSalon.id == prestamo_id).first()
+    if not prestamo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Préstamo de salón no encontrado")
+    if usuario_id is not None and prestamo.usuario_id != usuario_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para consultar este préstamo",
+        )
+    return prestamo
+
+
 def actualizar_estado_prestamo_salon(db: Session, prestamo_id: int, nuevo_estado: str) -> PrestamoSalon:
     """Actualiza el estado de un préstamo de salón (aprobar, rechazar, cancelar, etc.)."""
     TRANSICIONES_VALIDAS = {
@@ -133,3 +159,46 @@ def actualizar_estado_prestamo_salon(db: Session, prestamo_id: int, nuevo_estado
     db.commit()
     db.refresh(prestamo)
     return prestamo
+
+
+def cancelar_prestamo_propio(db: Session, prestamo_id: int, usuario_id: int) -> PrestamoSalon:
+    """
+    Permite al propietario del préstamo cancelarlo si aún está en estado pendiente.
+    Lanza 403 si el préstamo pertenece a otro usuario, 409 si ya no es cancelable.
+    """
+    prestamo = db.query(PrestamoSalon).filter(PrestamoSalon.id == prestamo_id).first()
+    if not prestamo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Préstamo de salón no encontrado")
+    if prestamo.usuario_id != usuario_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para cancelar este préstamo",
+        )
+    if prestamo.estado != "pendiente":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Solo puedes cancelar préstamos en estado 'pendiente'. Estado actual: {prestamo.estado}",
+        )
+    prestamo.estado = "cancelado"
+    db.commit()
+    db.refresh(prestamo)
+    return prestamo
+
+
+def expirar_prestamos_pendientes(db: Session) -> int:
+    """
+    Marca como 'cancelado' todos los préstamos pendientes cuya fecha_inicio
+    ya pasó (TTL de solicitudes sin respuesta).
+    Devuelve el número de registros afectados.
+    """
+    ahora = datetime.now(timezone.utc).replace(tzinfo=None)  # naïve UTC
+    pendientes_vencidos = db.query(PrestamoSalon).filter(
+        PrestamoSalon.estado == "pendiente",
+        PrestamoSalon.fecha_inicio < ahora,
+    ).all()
+
+    for p in pendientes_vencidos:
+        p.estado = "cancelado"
+
+    db.commit()
+    return len(pendientes_vencidos)

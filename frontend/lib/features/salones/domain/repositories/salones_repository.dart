@@ -49,4 +49,7 @@ abstract class SalonesRepository {
 
   /// PATCH /prestamos-salon/{id}
   Future<PrestamoSalon> actualizarEstadoPrestamo(int id, String estado);
+
+  /// DELETE /prestamos-salon/{id}  (solo el dueño puede cancelar su solicitud pendiente)
+  Future<PrestamoSalon> cancelarPrestamoSalon(int id);
 }
