@@ -1,4 +1,6 @@
 # UTB Tracker
+https://129-80-171-141.nip.io/docs#/
+Backend desplegado
 
 Sistema de inventario y préstamo de equipos y salones de la Universidad
 Tecnológica de Bolívar. El backend está construido con FastAPI y el cliente
