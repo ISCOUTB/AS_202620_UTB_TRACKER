@@ -88,7 +88,9 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _Marca(servidorOk: _auth.servidorOk, onTap: _auth.comprobarServidor),
+                        _Marca(
+                            servidorOk: _auth.servidorOk,
+                            onTap: _auth.comprobarServidor),
                         const SizedBox(height: 36),
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 220),
@@ -97,7 +99,9 @@ class _LoginPageState extends State<LoginPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _registrando ? 'Crea tu cuenta' : 'Bienvenido de vuelta',
+                                _registrando
+                                    ? 'Crea tu cuenta'
+                                    : 'Bienvenido de vuelta',
                                 style: const TextStyle(
                                   fontSize: 38,
                                   fontWeight: FontWeight.w900,
@@ -129,8 +133,12 @@ class _LoginPageState extends State<LoginPage> {
                           accion: TextInputAction.next,
                           validator: (v) {
                             final t = (v ?? '').trim();
-                            if (t.isEmpty) return 'Escribe tu nombre de usuario';
-                            if (_registrando && t.length < 3) return 'Mínimo 3 caracteres';
+                            if (t.isEmpty) {
+                              return 'Escribe tu nombre de usuario';
+                            }
+                            if (_registrando && t.length < 3) {
+                              return 'Mínimo 3 caracteres';
+                            }
                             return null;
                           },
                         ),
@@ -148,10 +156,11 @@ class _LoginPageState extends State<LoginPage> {
                                     teclado: TextInputType.emailAddress,
                                     autofill: const [AutofillHints.email],
                                     accion: TextInputAction.next,
-                                    validator: (v) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                                            .hasMatch((v ?? '').trim())
-                                        ? null
-                                        : 'Escribe un correo válido',
+                                    validator: (v) =>
+                                        RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                                .hasMatch((v ?? '').trim())
+                                            ? null
+                                            : 'Escribe un correo válido',
                                   ),
                                 )
                               : const SizedBox(width: double.infinity),
@@ -163,21 +172,32 @@ class _LoginPageState extends State<LoginPage> {
                           icono: Icons.lock_outline_rounded,
                           oculto: _ocultar,
                           autofill: [
-                            _registrando ? AutofillHints.newPassword : AutofillHints.password,
+                            _registrando
+                                ? AutofillHints.newPassword
+                                : AutofillHints.password,
                           ],
                           accion: TextInputAction.done,
                           onEnviar: (_) => _continuar(),
                           sufijo: IconButton(
-                            tooltip: _ocultar ? 'Mostrar contraseña' : 'Ocultar contraseña',
+                            tooltip: _ocultar
+                                ? 'Mostrar contraseña'
+                                : 'Ocultar contraseña',
                             icon: Icon(
-                              _ocultar ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                              _ocultar
+                                  ? Icons.visibility_rounded
+                                  : Icons.visibility_off_rounded,
                               color: AppColors.textoSuave,
                             ),
-                            onPressed: () => setState(() => _ocultar = !_ocultar),
+                            onPressed: () =>
+                                setState(() => _ocultar = !_ocultar),
                           ),
                           validator: (v) {
-                            if (v == null || v.isEmpty) return 'Escribe tu contraseña';
-                            if (_registrando && v.length < 8) return 'Mínimo 8 caracteres';
+                            if (v == null || v.isEmpty) {
+                              return 'Escribe tu contraseña';
+                            }
+                            if (_registrando && v.length < 8) {
+                              return 'Mínimo 8 caracteres';
+                            }
                             return null;
                           },
                         ),
@@ -203,11 +223,23 @@ class _LoginPageState extends State<LoginPage> {
                           onPressed: _continuar,
                         ),
                         const SizedBox(height: 18),
+                        if (!_registrando)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: _auth.cargando
+                                  ? null
+                                  : () => _mostrarRecuperacion(context),
+                              child: const Text('¿Olvidaste tu contraseña?'),
+                            ),
+                          ),
                         Center(
                           child: TextButton(
                             onPressed: _auth.cargando
                                 ? null
-                                : () => _cambiarModo(_registrando ? _Modo.ingresar : _Modo.registrar),
+                                : () => _cambiarModo(_registrando
+                                    ? _Modo.ingresar
+                                    : _Modo.registrar),
                             child: Text(
                               _registrando
                                   ? '¿Ya tienes cuenta? Inicia sesión'
@@ -228,6 +260,123 @@ class _LoginPageState extends State<LoginPage> {
           },
         ),
       ),
+    );
+  }
+
+  Future<void> _mostrarRecuperacion(BuildContext context) async {
+    final email = TextEditingController(text: _email.text);
+    final form = GlobalKey<FormState>();
+    final enviado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Recuperar contraseña'),
+        content: Form(
+          key: form,
+          child: TextFormField(
+            controller: email,
+            keyboardType: TextInputType.emailAddress,
+            decoration:
+                const InputDecoration(labelText: 'Correo institucional'),
+            validator: (value) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                    .hasMatch((value ?? '').trim())
+                ? null
+                : 'Escribe un correo válido',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await _mostrarRestablecimiento(context);
+            },
+            child: const Text('Ya tengo un token'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (!form.currentState!.validate()) {
+                return;
+              }
+              final ok = await _auth.solicitarRecuperacion(email.text);
+              if (dialogContext.mounted) {
+                Navigator.pop(dialogContext, ok);
+              }
+            },
+            child: const Text('Enviar'),
+          ),
+        ],
+      ),
+    );
+    email.dispose();
+    if (!context.mounted || enviado != true) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Si el correo existe, recibirás instrucciones.')),
+    );
+  }
+
+  Future<void> _mostrarRestablecimiento(BuildContext context) async {
+    final token = TextEditingController();
+    final password = TextEditingController();
+    final form = GlobalKey<FormState>();
+    final actualizado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Nueva contraseña'),
+        content: Form(
+          key: form,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: token,
+                decoration: const InputDecoration(labelText: 'Token recibido'),
+                validator: (value) => (value ?? '').trim().length < 10
+                    ? 'Escribe el token completo'
+                    : null,
+              ),
+              TextFormField(
+                controller: password,
+                obscureText: true,
+                decoration:
+                    const InputDecoration(labelText: 'Nueva contraseña'),
+                validator: (value) =>
+                    (value ?? '').length < 6 ? 'Mínimo 6 caracteres' : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (!form.currentState!.validate()) return;
+              final ok = await _auth.restablecerConToken(
+                token: token.text,
+                nuevaPassword: password.text,
+              );
+              if (dialogContext.mounted) {
+                Navigator.pop(dialogContext, ok);
+              }
+            },
+            child: const Text('Actualizar'),
+          ),
+        ],
+      ),
+    );
+    token.dispose();
+    password.dispose();
+    if (!context.mounted || actualizado != true) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Contraseña actualizada correctamente.')),
     );
   }
 }
@@ -254,10 +403,12 @@ class _Marca extends StatelessWidget {
       children: [
         SvgPicture.asset(Figuras.logo, height: 40),
         const SizedBox(width: 12),
-        const Text('UTB Tracker', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+        const Text('UTB Tracker',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
         const Spacer(),
         Tooltip(
-          message: 'Servidor: ${ApiConfig.baseUrl}\nToca para volver a comprobar',
+          message:
+              'Servidor: ${ApiConfig.baseUrl}\nToca para volver a comprobar',
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
             onTap: onTap,
@@ -273,12 +424,14 @@ class _Marca extends StatelessWidget {
                   Container(
                     width: 8,
                     height: 8,
-                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    decoration:
+                        BoxDecoration(color: color, shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 7),
                   Text(
                     texto,
-                    style: const TextStyle(fontSize: 12.5, color: AppColors.textoSuave),
+                    style: const TextStyle(
+                        fontSize: 12.5, color: AppColors.textoSuave),
                   ),
                 ],
               ),
@@ -392,7 +545,8 @@ class _CampoUber extends StatelessWidget {
         suffixIcon: sufijo,
         filled: true,
         fillColor: AppColors.superficieAlta,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         border: borde(Colors.transparent),
         enabledBorder: borde(Colors.transparent),
         focusedBorder: borde(AppColors.texto, 1.5),
@@ -451,7 +605,9 @@ class _MedidorClave extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        Text(texto, style: const TextStyle(fontSize: 12.5, color: AppColors.textoSuave)),
+        Text(texto,
+            style:
+                const TextStyle(fontSize: 12.5, color: AppColors.textoSuave)),
       ],
     );
   }
@@ -477,7 +633,8 @@ class _CajaError extends StatelessWidget {
           children: [
             const Icon(Icons.error_outline, color: AppColors.danado, size: 20),
             const SizedBox(width: 10),
-            Expanded(child: Text(mensaje, style: const TextStyle(fontSize: 14))),
+            Expanded(
+                child: Text(mensaje, style: const TextStyle(fontSize: 14))),
           ],
         ),
       ),

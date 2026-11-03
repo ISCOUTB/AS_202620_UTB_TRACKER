@@ -1,16 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/error/api_exception.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/notifications/fcm_registration.dart';
 import '../../../core/storage/token_storage.dart';
 import '../domain/auth_domain.dart';
 
 /// Estado de sesión con soporte de persistencia local del token.
 class AuthController extends ChangeNotifier {
-  AuthController(this._repo, this._api);
+  AuthController(this._repo, this._api, [FcmRegistration? fcm])
+      : _fcm = fcm ?? FcmRegistration();
 
   final AuthRepository _repo;
   final ApiClient _api;
+  final FcmRegistration _fcm;
 
   Sesion? _sesion;
   bool _cargando = false;
@@ -35,6 +40,7 @@ class AuthController extends ChangeNotifier {
     try {
       final u = await _repo.usuarioActual();
       _sesion = Sesion(token: token, usuario: u);
+      await _registrarFcm();
       notifyListeners();
       return true;
     } catch (_) {
@@ -50,8 +56,30 @@ class AuthController extends ChangeNotifier {
     });
     if (ok && _sesion != null) {
       await TokenStorage.guardarToken(_sesion!.token);
+      await _registrarFcm();
     }
     return ok;
+  }
+
+  Future<bool> solicitarRecuperacion(String email) async {
+    return _ejecutar(() async {
+      await _api.post(
+        '/auth/forgot-password',
+        cuerpo: {'email': email.trim()},
+      );
+    });
+  }
+
+  Future<bool> restablecerConToken({
+    required String token,
+    required String nuevaPassword,
+  }) async {
+    return _ejecutar(() async {
+      await _api.post(
+        '/auth/reset-password',
+        cuerpo: {'token': token.trim(), 'new_password': nuevaPassword},
+      );
+    });
   }
 
   /// Registra y entra directamente (ya sabemos quién es, no hace falta identificarlo).
@@ -76,11 +104,13 @@ class AuthController extends ChangeNotifier {
     });
     if (ok && _sesion != null) {
       await TokenStorage.guardarToken(_sesion!.token);
+      await _registrarFcm();
     }
     return ok;
   }
 
   void cerrarSesion() {
+    unawaited(_fcm.stop());
     _sesion = null;
     _error = null;
     _api.fijarToken(null);
@@ -88,9 +118,26 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _registrarFcm() => _fcm.start(_repo.registrarTokenFcm);
+
   Future<void> comprobarServidor() async {
     _servidorOk = await _repo.servidorSaludable();
     notifyListeners();
+  }
+
+  Future<bool> actualizarPerfil() async {
+    try {
+      final usuario = await _repo.usuarioActual();
+      if (_sesion != null) {
+        _sesion = Sesion(token: _sesion!.token, usuario: usuario);
+        notifyListeners();
+      }
+      return true;
+    } on ApiException catch (e) {
+      _error = e.mensaje;
+      notifyListeners();
+      return false;
+    }
   }
 
   void limpiarError() {

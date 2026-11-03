@@ -13,12 +13,67 @@ import '../../recursos/domain/entities/recurso.dart';
 import '../../recursos/presentation/filtros_sheet.dart';
 import '../../recursos/presentation/recurso_detalle_page.dart';
 import '../../recursos/presentation/recursos_controller.dart';
+import '../../stats/presentation/stats_controller.dart';
 
 typedef VerEquipos = void Function({
   CategoriaRecurso? categoria,
   EstadoRecurso? estado,
   String? busqueda,
 });
+
+class _ResumenOperativo extends StatelessWidget {
+  const _ResumenOperativo({required this.stats});
+  final StatsController stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = stats.stats;
+    if (value == null && stats.error == null) {
+      return const SizedBox(
+        height: 72,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    if (value == null) return const SizedBox.shrink();
+    return TarjetaBorde(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          _Indicador(
+              'Equipos libres', value.equiposDisponibles, Icons.devices_other),
+          _Indicador('Salones libres', value.salonesLibres,
+              Icons.meeting_room_outlined),
+          _Indicador('Préstamos activos', value.prestamosActivos,
+              Icons.assignment_outlined),
+        ],
+      ),
+    );
+  }
+}
+
+class _Indicador extends StatelessWidget {
+  const _Indicador(this.label, this.value, this.icon);
+  final String label;
+  final int value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Column(
+          children: [
+            Icon(icon, size: 19, color: AppColors.textoSuave),
+            const SizedBox(height: 4),
+            Text('$value',
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(label,
+                textAlign: TextAlign.center,
+                style:
+                    const TextStyle(fontSize: 10, color: AppColors.textoSuave)),
+          ],
+        ),
+      );
+}
 
 /// Pantalla de inicio: selector de salón, pestañas, buscador, tarjeta "Reciente",
 /// accesos rápidos por categoría ("Para ti") y carrusel de atajos.
@@ -45,6 +100,7 @@ class _HomePageState extends State<HomePage> {
   final RecursosController _recursos = sl<RecursosController>();
   final PrestamosController _prestamos = sl<PrestamosController>();
   final AuthController _auth = sl<AuthController>();
+  final StatsController _stats = sl<StatsController>();
   final TextEditingController _buscar = TextEditingController();
 
   @override
@@ -53,8 +109,18 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _stats.cargar();
+  }
+
   Future<void> _refrescar() async {
-    await Future.wait([_recursos.cargar(silencioso: true), _prestamos.cargar(silencioso: true)]);
+    await Future.wait([
+      _recursos.cargar(silencioso: true),
+      _prestamos.cargar(silencioso: true),
+      _stats.cargar(silencioso: true),
+    ]);
   }
 
   /// Préstamos que le importan a quien mira: el auxiliar ve todos; el usuario, solo los suyos.
@@ -86,7 +152,7 @@ class _HomePageState extends State<HomePage> {
     return SafeArea(
       bottom: false,
       child: ListenableBuilder(
-        listenable: Listenable.merge([_recursos, _prestamos, _auth]),
+        listenable: Listenable.merge([_recursos, _prestamos, _auth, _stats]),
         builder: (context, _) {
           final vencidos = _prestamos.vencidos(_alcance());
           return RefreshIndicator(
@@ -103,6 +169,8 @@ class _HomePageState extends State<HomePage> {
                   onAvisos: () => widget.onVerActividad(filtro: 1),
                 ),
                 const SizedBox(height: 14),
+                _ResumenOperativo(stats: _stats),
+                const SizedBox(height: 22),
                 _Pestanas(onPrestamos: () => widget.onVerActividad()),
                 const Divider(height: 1),
                 const SizedBox(height: 22),
@@ -115,7 +183,8 @@ class _HomePageState extends State<HomePage> {
                 _TarjetaReciente(
                   recursos: _recursos,
                   onAbrir: (r) => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => RecursoDetallePage(recurso: r)),
+                    MaterialPageRoute<void>(
+                        builder: (_) => RecursoDetallePage(recurso: r)),
                   ),
                 ),
                 const SizedBox(height: 26),
@@ -137,7 +206,8 @@ class _HomePageState extends State<HomePage> {
                       figura: Figuras.tarjetaPrestar,
                       titulo: 'Presta en segundos',
                       detalle: 'Equipos disponibles ahora mismo',
-                      onTap: () => widget.onVerEquipos(estado: EstadoRecurso.disponible),
+                      onTap: () =>
+                          widget.onVerEquipos(estado: EstadoRecurso.disponible),
                     ),
                     _DatosTarjeta(
                       figura: Figuras.tarjetaDevolver,
@@ -151,7 +221,8 @@ class _HomePageState extends State<HomePage> {
                       figura: Figuras.tarjetaMantenimiento,
                       titulo: 'Equipos dañados',
                       detalle: 'Mira qué necesita mantenimiento',
-                      onTap: () => widget.onVerEquipos(estado: EstadoRecurso.danado),
+                      onTap: () =>
+                          widget.onVerEquipos(estado: EstadoRecurso.danado),
                     ),
                   ],
                 ),
@@ -202,10 +273,12 @@ class _Cabecera extends StatelessWidget {
                     child: Text(
                       salon == null ? 'Todos los salones' : 'Salón $salon',
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          fontSize: 19, fontWeight: FontWeight.w600),
                     ),
                   ),
-                  const Icon(Icons.keyboard_arrow_down, color: AppColors.textoSuave),
+                  const Icon(Icons.keyboard_arrow_down,
+                      color: AppColors.textoSuave),
                 ],
               ),
             ),
@@ -225,7 +298,9 @@ class _Cabecera extends StatelessWidget {
                   child: const Icon(Icons.notifications_none_rounded, size: 26),
                 ),
                 const SizedBox(width: 8),
-                const Text('Avisos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+                const Text('Avisos',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -242,7 +317,8 @@ class _Pestanas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget pestana(String texto, String figura, bool activa, VoidCallback? onTap) {
+    Widget pestana(
+        String texto, String figura, bool activa, VoidCallback? onTap) {
       return Expanded(
         child: InkWell(
           onTap: onTap,
@@ -338,7 +414,9 @@ class _Buscador extends StatelessWidget {
                 children: [
                   Icon(Icons.tune_rounded, size: 22),
                   SizedBox(width: 8),
-                  Text('Filtros', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+                  Text('Filtros',
+                      style:
+                          TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -399,19 +477,22 @@ class _TarjetaReciente extends StatelessWidget {
                   titulo,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   detalle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 16, color: AppColors.textoSuave),
+                  style: const TextStyle(
+                      fontSize: 16, color: AppColors.textoSuave),
                 ),
               ],
             ),
           ),
-          if (onTap != null) const Icon(Icons.chevron_right, color: AppColors.textoSuave),
+          if (onTap != null)
+            const Icon(Icons.chevron_right, color: AppColors.textoSuave),
         ],
       ),
     );
@@ -448,11 +529,13 @@ class _Categorias extends StatelessWidget {
                     c.etiqueta,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   Text(
                     recursos.carga == Carga.ok ? '$libres libres' : '—',
-                    style: const TextStyle(fontSize: 12.5, color: AppColors.textoSuave),
+                    style: const TextStyle(
+                        fontSize: 12.5, color: AppColors.textoSuave),
                   ),
                 ],
               ),
@@ -512,14 +595,16 @@ class _Carrusel extends StatelessWidget {
                     t.titulo,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     t.detalle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, color: AppColors.textoSuave),
+                    style: const TextStyle(
+                        fontSize: 16, color: AppColors.textoSuave),
                   ),
                 ],
               ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/utilidades.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/salon.dart';
@@ -143,17 +144,36 @@ class _SalonesPageState extends State<SalonesPage> {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, i) {
               final s = lista[i];
-              return _FilaSalon(salon: s);
+              return _FilaSalon(
+                salon: s,
+                puedeSolicitar: !_auth.esAdministrador && s.disponible,
+                onSolicitar: () => _abrirSolicitud(s),
+              );
             },
           ),
         );
     }
   }
+
+  void _abrirSolicitud(Salon salon) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.superficie,
+      builder: (sheetContext) => _SolicitudSalonSheet(salon: salon),
+    );
+  }
 }
 
 class _FilaSalon extends StatelessWidget {
-  const _FilaSalon({required this.salon});
+  const _FilaSalon({
+    required this.salon,
+    required this.puedeSolicitar,
+    required this.onSolicitar,
+  });
   final Salon salon;
+  final bool puedeSolicitar;
+  final VoidCallback onSolicitar;
 
   @override
   Widget build(BuildContext context) {
@@ -189,12 +209,14 @@ class _FilaSalon extends StatelessWidget {
               children: [
                 Text(
                   salon.nombre,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   salon.detalleUbicacion,
-                  style: const TextStyle(color: AppColors.textoSuave, fontSize: 13.5),
+                  style: const TextStyle(
+                      color: AppColors.textoSuave, fontSize: 13.5),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -209,9 +231,147 @@ class _FilaSalon extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Insignia(
-            texto: salon.estado.toUpperCase(),
-            color: disponible ? AppColors.disponible : AppColors.danado,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Insignia(
+                texto: salon.estado.toUpperCase(),
+                color: disponible ? AppColors.disponible : AppColors.danado,
+              ),
+              if (puedeSolicitar)
+                TextButton(
+                  onPressed: onSolicitar,
+                  child: const Text('Solicitar'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SolicitudSalonSheet extends StatefulWidget {
+  const _SolicitudSalonSheet({required this.salon});
+  final Salon salon;
+
+  @override
+  State<_SolicitudSalonSheet> createState() => _SolicitudSalonSheetState();
+}
+
+class _SolicitudSalonSheetState extends State<_SolicitudSalonSheet> {
+  final SalonesController _salones = sl<SalonesController>();
+  final _motivo = TextEditingController();
+  DateTime _inicio = DateTime.now().add(const Duration(hours: 1));
+  DateTime _fin = DateTime.now().add(const Duration(hours: 2));
+  bool _enviando = false;
+
+  @override
+  void dispose() {
+    _motivo.dispose();
+    super.dispose();
+  }
+
+  Future<void> _seleccionar(bool inicio) async {
+    final actual = inicio ? _inicio : _fin;
+    final fecha = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+      initialDate: actual,
+    );
+    if (!mounted || fecha == null) return;
+    final hora = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(actual),
+    );
+    if (!mounted || hora == null) return;
+    final resultado = DateTime(
+      fecha.year,
+      fecha.month,
+      fecha.day,
+      hora.hour,
+      hora.minute,
+    );
+    setState(() {
+      if (inicio) {
+        _inicio = resultado;
+        if (!_fin.isAfter(_inicio)) {
+          _fin = _inicio.add(const Duration(hours: 1));
+        }
+      } else {
+        _fin = resultado;
+      }
+    });
+  }
+
+  Future<void> _enviar() async {
+    if (!_fin.isAfter(_inicio)) {
+      mostrarMensaje(context, 'La hora final debe ser posterior a la inicial');
+      return;
+    }
+    setState(() => _enviando = true);
+    final error = await _salones.solicitarPrestamo(
+      salonId: widget.salon.id,
+      fechaInicio: _inicio,
+      fechaFin: _fin,
+      motivo: _motivo.text,
+    );
+    if (!mounted) return;
+    setState(() => _enviando = false);
+    if (error != null) {
+      mostrarMensaje(context, error);
+      return;
+    }
+    Navigator.pop(context);
+    mostrarMensaje(context, 'Solicitud enviada correctamente');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        MediaQuery.viewInsetsOf(context).bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Solicitar ${widget.salon.nombre}',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Inicio'),
+            subtitle: Text(formatearFechaHora(_inicio)),
+            trailing: const Icon(Icons.calendar_today_outlined),
+            onTap: () => _seleccionar(true),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Fin'),
+            subtitle: Text(formatearFechaHora(_fin)),
+            trailing: const Icon(Icons.calendar_today_outlined),
+            onTap: () => _seleccionar(false),
+          ),
+          TextField(
+            controller: _motivo,
+            maxLength: 500,
+            decoration: const InputDecoration(
+              labelText: 'Motivo (opcional)',
+              prefixIcon: Icon(Icons.notes_outlined),
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: _enviando ? null : _enviar,
+            icon: const Icon(Icons.send_outlined),
+            label: Text(_enviando ? 'Enviando...' : 'Enviar solicitud'),
           ),
         ],
       ),
@@ -236,7 +396,8 @@ class _CrearSalonSheetState extends State<_CrearSalonSheet> {
   final TextEditingController _ubicacionCtrl = TextEditingController();
   final TextEditingController _edificioCtrl = TextEditingController();
   final TextEditingController _pisoCtrl = TextEditingController();
-  final TextEditingController _capacidadCtrl = TextEditingController(text: '30');
+  final TextEditingController _capacidadCtrl =
+      TextEditingController(text: '30');
 
   bool _enviando = false;
 
@@ -359,7 +520,8 @@ class _CrearSalonSheetState extends State<_CrearSalonSheet> {
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.black),
                   )
                 : const Text('Registrar salón'),
           ),

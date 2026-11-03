@@ -50,6 +50,13 @@ class AuthRemoteDataSource {
     return UsuarioModel.desdeJson(r as Map<String, dynamic>);
   }
 
+  Future<void> solicitarRecuperacion(String email) async {
+    await _api.post(
+      '/auth/forgot-password',
+      cuerpo: {'email': email.trim()},
+    );
+  }
+
   Future<Usuario> obtenerUsuario(int id) async {
     final r = await _api.get('/auth/user/$id', reintentos: 0);
     return UsuarioModel.desdeJson(r as Map<String, dynamic>);
@@ -63,9 +70,12 @@ class AuthRemoteDataSource {
     if (rol != null && rol.trim().isNotEmpty) {
       query['rol'] = rol.trim();
     }
-    final r = await _api.get('/auth/users', parametros: query.isEmpty ? null : query);
+    final r =
+        await _api.get('/auth/users', parametros: query.isEmpty ? null : query);
     if (r is! List) return [];
-    return r.map((e) => UsuarioModel.desdeJson(e as Map<String, dynamic>)).toList();
+    return r
+        .map((e) => UsuarioModel.desdeJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Usuario> actualizarRolUsuario(int id, String rol) async {
@@ -74,6 +84,13 @@ class AuthRemoteDataSource {
       cuerpo: {'rol': rol},
     );
     return UsuarioModel.desdeJson(r as Map<String, dynamic>);
+  }
+
+  Future<void> registrarTokenFcm(String token) async {
+    await _api.patch(
+      '/auth/fcm-token',
+      cuerpo: {'fcm_token': token},
+    );
   }
 
   Future<bool> salud() async {
@@ -145,9 +162,10 @@ class AuthRepositoryImpl implements AuthRepository {
     } catch (_) {}
 
     // 3) Fallback por escaneo
-    final email = (respuestaLogin['email'] ?? leerPayloadJwt(token)?['sub'] ?? '')
-        .toString()
-        .toLowerCase();
+    final email =
+        (respuestaLogin['email'] ?? leerPayloadJwt(token)?['sub'] ?? '')
+            .toString()
+            .toLowerCase();
 
     for (var inicio = 1; inicio <= _maxIdExploracion; inicio += _lote) {
       final lote = await Future.wait(
@@ -200,6 +218,9 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Usuario> actualizarRolUsuario(int usuarioId, String nuevoRol) =>
       _remoto.actualizarRolUsuario(usuarioId, nuevoRol);
+
+  @override
+  Future<void> registrarTokenFcm(String token) => _remoto.registrarTokenFcm(token);
 
   @override
   Future<bool> servidorSaludable() => _remoto.salud();

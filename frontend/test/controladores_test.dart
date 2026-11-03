@@ -55,6 +55,9 @@ class _AuthFalso implements AuthRepository {
   }
 
   @override
+  Future<void> registrarTokenFcm(String token) async {}
+
+  @override
   Future<bool> servidorSaludable() async => true;
 }
 

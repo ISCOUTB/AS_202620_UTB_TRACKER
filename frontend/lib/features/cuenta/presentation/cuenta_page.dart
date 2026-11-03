@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets.dart';
 import '../../admin/presentation/panel_administrativo_page.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../recursos/presentation/mantenimiento_page.dart';
 
 class CuentaPage extends StatefulWidget {
   const CuentaPage({super.key});
@@ -32,7 +33,8 @@ class _CuentaPageState extends State<CuentaPage> {
         builder: (context, _) {
           final u = _auth.usuario;
           if (u == null) return const SizedBox.shrink();
-          final inicial = u.nombre.isEmpty ? '?' : u.nombre.substring(0, 1).toUpperCase();
+          final inicial =
+              u.nombre.isEmpty ? '?' : u.nombre.substring(0, 1).toUpperCase();
           final ok = _auth.servidorOk;
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 130),
@@ -46,7 +48,8 @@ class _CuentaPageState extends State<CuentaPage> {
                     radius: 36,
                     backgroundColor: AppColors.superficieAlta,
                     child: Text(inicial,
-                        style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
+                        style: const TextStyle(
+                            fontSize: 30, fontWeight: FontWeight.w800)),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -56,11 +59,13 @@ class _CuentaPageState extends State<CuentaPage> {
                         Text(u.nombre,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                            style: const TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.w800)),
                         Text(u.email,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: AppColors.textoSuave)),
+                            style:
+                                const TextStyle(color: AppColors.textoSuave)),
                         const SizedBox(height: 8),
                         Insignia(
                           texto: u.rolLegible,
@@ -74,7 +79,44 @@ class _CuentaPageState extends State<CuentaPage> {
                 ],
               ),
               const SizedBox(height: 28),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final ok = await _auth.actualizarPerfil();
+                  if (!context.mounted) return;
+                  if (ok) mostrarMensaje(context, 'Perfil actualizado');
+                },
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Actualizar datos de cuenta'),
+              ),
+              const SizedBox(height: 12),
               if (u.esAdministrador) ...[
+                TarjetaBorde(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const MantenimientoPage()),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.build_outlined,
+                          color: AppColors.mantenimiento),
+                      SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Mantenimiento',
+                                style: TextStyle(fontWeight: FontWeight.w700)),
+                            Text('Revisar equipos dañados y reportes abiertos',
+                                style: TextStyle(
+                                    color: AppColors.textoSuave, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: AppColors.textoSuave),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 TarjetaBorde(
                   onTap: () {
                     Navigator.of(context).push(
@@ -88,7 +130,8 @@ class _CuentaPageState extends State<CuentaPage> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.mantenimiento.withValues(alpha: 0.15),
+                          color:
+                              AppColors.mantenimiento.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
@@ -120,7 +163,8 @@ class _CuentaPageState extends State<CuentaPage> {
                           ],
                         ),
                       ),
-                      const Icon(Icons.chevron_right, color: AppColors.textoSuave),
+                      const Icon(Icons.chevron_right,
+                          color: AppColors.textoSuave),
                     ],
                   ),
                 ),
@@ -131,7 +175,9 @@ class _CuentaPageState extends State<CuentaPage> {
                 child: Row(
                   children: [
                     Icon(
-                      ok == true ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+                      ok == true
+                          ? Icons.cloud_done_outlined
+                          : Icons.cloud_off_outlined,
                       color: ok == null
                           ? AppColors.neutro
                           : ok
@@ -190,7 +236,8 @@ class _CuentaPageState extends State<CuentaPage> {
               const SizedBox(height: 20),
               const Center(
                 child: Text('UTB Tracker · v1.0.0',
-                    style: TextStyle(color: AppColors.textoTenue, fontSize: 12)),
+                    style:
+                        TextStyle(color: AppColors.textoTenue, fontSize: 12)),
               ),
             ],
           );

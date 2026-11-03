@@ -19,7 +19,8 @@ class Usuario {
     return r == 'administrador' || r == 'admin' || r == 'auxiliar';
   }
 
-  String get rolLegible => esAdministrador ? 'Auxiliar de planta' : 'Usuario UTB';
+  String get rolLegible =>
+      esAdministrador ? 'Auxiliar de planta' : 'Usuario UTB';
 }
 
 class Sesion {
@@ -56,6 +57,9 @@ abstract class AuthRepository {
 
   /// PATCH /auth/user/{id}/role (Panel administrativo — asignar o modificar rol)
   Future<Usuario> actualizarRolUsuario(int usuarioId, String nuevoRol);
+
+  /// PATCH /auth/fcm-token
+  Future<void> registrarTokenFcm(String token);
 
   /// GET /salud (health check profundo, S8)
   Future<bool> servidorSaludable();
