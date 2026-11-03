@@ -13,11 +13,12 @@ Para prevenir la introducción de dependencias con vulnerabilidades conocidas (C
 El paso de análisis se ubica inmediatamente después de la ejecución de la suite de pruebas Pytest dentro del trabajo `test`:
 
 ```yaml
-      # Análisis de vulnerabilidades en dependencias (S13)
-      - name: Análisis de seguridad de dependencias (pip-audit)
-        run: |
-          pip install pip-audit
-          pip-audit -r requirements.txt
+      # Análisis de seguridad de dependencias (S13 — pip-audit)
+      - name: Análisis de dependencias (pip-audit)
+        uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266  # v1.1.0
+        with:
+          inputs: requirements.txt
+          require-hashes: true
 ```
 
 ### 1.2 Criterio de Fallo del Pipeline
