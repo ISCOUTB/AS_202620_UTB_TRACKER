@@ -50,10 +50,10 @@ jobs:
 
       # Análisis de seguridad de dependencias (S13 — pip-audit)
       - name: Análisis de dependencias (pip-audit)
-        run: |
-          pip install pip-audit
-          pip-audit -r requirements.txt
-
+        uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266  # v1.1.0
+        with:
+          inputs: requirements.txt
+          require-hashes: true
 
   deploy:
     needs: test
@@ -72,7 +72,7 @@ jobs:
             git reset --hard origin/main
             source venv/bin/activate
             python -m pip install --upgrade pip
-            pip install -r requirements.txt
+            pip install --only-binary :all: -r requirements.txt
             set -a; . ./.env; set +a
             alembic upgrade head
             sudo systemctl restart utb-tracker
