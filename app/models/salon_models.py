@@ -25,6 +25,9 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
+FK_SALONES_ID = "salones.id"
+FK_USUARIOS_ID = "usuarios.id"
+
 
 class Salon(Base):
     __tablename__ = "salones"
@@ -56,7 +59,7 @@ class Horario(Base):
     __tablename__ = "horarios"
 
     id = Column(Integer, primary_key=True, index=True)
-    salon_id = Column(Integer, ForeignKey("salones.id"), nullable=False, index=True)
+    salon_id = Column(Integer, ForeignKey(FK_SALONES_ID), nullable=False, index=True)
     dia_semana = Column(Integer, nullable=False)  # 1=Lunes … 7=Domingo
     hora_inicio = Column(Time, nullable=False)
     hora_fin = Column(Time, nullable=False)
@@ -73,8 +76,8 @@ class PrestamoSalon(Base):
     __tablename__ = "prestamos_salon"
 
     id = Column(Integer, primary_key=True, index=True)
-    salon_id = Column(Integer, ForeignKey("salones.id"), nullable=False, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    salon_id = Column(Integer, ForeignKey(FK_SALONES_ID), nullable=False, index=True)
+    usuario_id = Column(Integer, ForeignKey(FK_USUARIOS_ID), nullable=False, index=True)
     fecha_inicio = Column(DateTime, nullable=False)
     fecha_fin = Column(DateTime, nullable=False)
     motivo = Column(String, nullable=True)
@@ -94,12 +97,12 @@ class PresenciaSalon(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    salon_id = Column(Integer, ForeignKey("salones.id"), nullable=False, index=True)
+    salon_id = Column(Integer, ForeignKey(FK_SALONES_ID), nullable=False, index=True)
     horario_id = Column(Integer, ForeignKey("horarios.id"), nullable=False)
     fecha = Column(Date, nullable=False)
     profesor_presente = Column(Boolean, nullable=False)
     nota = Column(String, nullable=True)
-    registrado_por = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    registrado_por = Column(Integer, ForeignKey(FK_USUARIOS_ID), nullable=False)
     updated_at = Column(
         DateTime,
         nullable=False,
@@ -112,8 +115,8 @@ class ReporteSalon(Base):
     __tablename__ = "reportes_salon"
 
     id = Column(Integer, primary_key=True, index=True)
-    salon_id = Column(Integer, ForeignKey("salones.id"), nullable=False, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    salon_id = Column(Integer, ForeignKey(FK_SALONES_ID), nullable=False, index=True)
+    usuario_id = Column(Integer, ForeignKey(FK_USUARIOS_ID), nullable=False)
     tipo = Column(String, nullable=False)
     # valores válidos: limpieza | equipo | infraestructura | seguridad | otro
     descripcion = Column(String, nullable=False)

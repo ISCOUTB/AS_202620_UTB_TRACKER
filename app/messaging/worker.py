@@ -90,9 +90,10 @@ class NotificadorSimulado:
         self._envios += 1
         logger.info(
             "[NotificadorSimulado] Notificación enviada — "
-            "email=%s asunto=%r envio_num=%d",
+            "email=%s asunto=%r cuerpo=%r envio_num=%d",
             email,
             asunto,
+            cuerpo,
             self._envios,
         )
 

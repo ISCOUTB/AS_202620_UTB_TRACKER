@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from app.models.salon_models import Horario, PrestamoSalon, Salon
 from app.schemas.prestamos_salon import PrestamoSalonCreate
 
+MSG_PRESTAMO_NO_ENCONTRADO = "Préstamo de salón no encontrado"
+
 
 def _validar_salon(db: Session, salon_id: int) -> Salon:
     salon = db.query(Salon).filter(Salon.id == salon_id, Salon.activo.is_(True)).first()
@@ -126,7 +128,7 @@ def obtener_prestamo_salon(
     """
     prestamo = db.query(PrestamoSalon).filter(PrestamoSalon.id == prestamo_id).first()
     if not prestamo:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Préstamo de salón no encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MSG_PRESTAMO_NO_ENCONTRADO)
     if usuario_id is not None and prestamo.usuario_id != usuario_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -145,7 +147,7 @@ def actualizar_estado_prestamo_salon(db: Session, prestamo_id: int, nuevo_estado
 
     prestamo = db.query(PrestamoSalon).filter(PrestamoSalon.id == prestamo_id).first()
     if not prestamo:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Préstamo de salón no encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MSG_PRESTAMO_NO_ENCONTRADO)
 
     estados_permitidos = TRANSICIONES_VALIDAS.get(prestamo.estado, [])
     if nuevo_estado not in estados_permitidos:
@@ -168,7 +170,7 @@ def cancelar_prestamo_propio(db: Session, prestamo_id: int, usuario_id: int) -> 
     """
     prestamo = db.query(PrestamoSalon).filter(PrestamoSalon.id == prestamo_id).first()
     if not prestamo:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Préstamo de salón no encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MSG_PRESTAMO_NO_ENCONTRADO)
     if prestamo.usuario_id != usuario_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
