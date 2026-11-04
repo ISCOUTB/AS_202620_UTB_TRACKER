@@ -40,6 +40,10 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "")
+FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", "")
+USE_REAL_PUSH = os.getenv("USE_REAL_PUSH", "false").strip().lower() in (
+    "1", "true", "yes", "on"
+)
 
 # ---------------------------------------------------------------------------
 # Advertencia de seguridad — claves por defecto inseguras (#5)

@@ -33,6 +33,7 @@ import os
 import random
 import time
 import smtplib
+from pathlib import Path
 from email.message import EmailMessage
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Protocol
@@ -42,7 +43,8 @@ from sqlalchemy.orm import Session
 from app.messaging.events import VERSIONES_SOPORTADAS
 from app.messaging.models import MensajeOutbox, NotificacionProcesada
 from app.core.config import (
-    SMTP_FROM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USERNAME, USE_REAL_MAIL,
+    FIREBASE_CREDENTIALS_PATH, SMTP_FROM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT,
+    SMTP_USERNAME, USE_REAL_MAIL, USE_REAL_PUSH,
 )
 
 logger = logging.getLogger("utb_tracker.messaging.worker")
@@ -110,9 +112,67 @@ class NotificadorSMTP:
             server.send_message(message)
 
 
+class NotificadorFCM:
+    """Notificador Firebase Admin para dispositivos con token registrado."""
+
+    def __init__(self, credentials_path: str):
+        if not credentials_path:
+            raise RuntimeError("FIREBASE_CREDENTIALS_PATH es obligatorio para FCM")
+        if not Path(credentials_path).is_file():
+            raise RuntimeError(
+                f"No existe el archivo de credenciales Firebase: {credentials_path}"
+            )
+        try:
+            import firebase_admin
+            from firebase_admin import credentials
+        except ImportError as exc:
+            raise RuntimeError(
+                "firebase-admin no está instalado; agrega la dependencia del backend"
+            ) from exc
+
+        try:
+            self._firebase = firebase_admin.get_app()
+        except ValueError:
+            self._firebase = firebase_admin.initialize_app(
+                credentials.Certificate(credentials_path)
+            )
+
+    def enviar(self, token: str, asunto: str, cuerpo: str) -> None:
+        from firebase_admin import messaging
+
+        messaging.send(
+            messaging.Message(
+                notification=messaging.Notification(title=asunto, body=cuerpo),
+                token=token,
+            ),
+            app=self._firebase,
+        )
+
+
+class NotificadorConPush:
+    def __init__(
+        self,
+        correo: NotificadorBase,
+        push: Optional[NotificadorFCM],
+    ):
+        self._correo = correo
+        self._push = push
+
+    def enviar(self, email: str, asunto: str, cuerpo: str, fcm_token: Optional[str] = None) -> None:
+        self._correo.enviar(email=email, asunto=asunto, cuerpo=cuerpo)
+        if self._push is not None and fcm_token:
+            self._push.enviar(token=fcm_token, asunto=asunto, cuerpo=cuerpo)
+
+
 def crear_notificador() -> NotificadorBase:
     """Devuelve SMTP solo cuando USE_REAL_MAIL=true; por defecto es simulado."""
     return NotificadorSMTP() if USE_REAL_MAIL else NotificadorSimulado()
+
+
+def crear_notificador_push() -> Optional[NotificadorFCM]:
+    if not USE_REAL_PUSH:
+        return None
+    return NotificadorFCM(FIREBASE_CREDENTIALS_PATH)
 
 
 def _calcular_siguiente_intento(intentos: int) -> datetime:
@@ -134,7 +194,7 @@ def _calcular_siguiente_intento(intentos: int) -> datetime:
 # --------------------------------------------------------------------------
 def procesar_pendientes(
     db: Session,
-    notificador: NotificadorBase,
+    notificador: NotificadorConPush | NotificadorBase,
     ahora: Optional[datetime] = None,
     max_intentos: int = WORKER_MAX_INTENTOS,
 ) -> int:
@@ -245,6 +305,7 @@ def _procesar_un_mensaje(
         return
 
     email = payload_dict.get("email") or _resolver_email(db, usuario_id)
+    fcm_token = payload_dict.get("fcm_token") or _resolver_fcm_token(db, usuario_id)
     if not email:
         _marcar_muerto(
             db, msg,
@@ -274,11 +335,19 @@ def _procesar_un_mensaje(
                 "Usa este token de recuperación para cambiar tu contraseña "
                 f"(válido por 10 minutos): {token}"
             )
-        notificador.enviar(
-            email=email,
-            asunto=asunto,
-            cuerpo=cuerpo,
-        )
+        if isinstance(notificador, NotificadorConPush):
+            notificador.enviar(
+                email=email,
+                asunto=asunto,
+                cuerpo=cuerpo,
+                fcm_token=fcm_token,
+            )
+        else:
+            notificador.enviar(
+                email=email,
+                asunto=asunto,
+                cuerpo=cuerpo,
+            )
     except Exception as exc:  # noqa: BLE001
         error_str = str(exc)
         logger.warning(
@@ -346,6 +415,14 @@ def _resolver_email(db: Session, usuario_id: Optional[int]) -> Optional[str]:
     return usuario.email if usuario else None
 
 
+def _resolver_fcm_token(db: Session, usuario_id: Optional[int]) -> Optional[str]:
+    if usuario_id is None:
+        return None
+    from app.models.auth_models import Usuario
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    return usuario.fcm_token if usuario else None
+
+
 # --------------------------------------------------------------------------
 # Punto de entrada CLI: python -m app.messaging.worker
 # --------------------------------------------------------------------------
@@ -364,7 +441,10 @@ def _run_loop() -> None:
     from app.core.database import SessionLocal
     from app.messaging.models import MensajeOutbox, NotificacionProcesada  # noqa: F401 — registra tablas
 
-    notificador = crear_notificador()
+    notificador = NotificadorConPush(
+        correo=crear_notificador(),
+        push=crear_notificador_push(),
+    )
     logger.info("[worker] Iniciando. poll_interval=%ds", WORKER_POLL_INTERVAL)
 
     try:

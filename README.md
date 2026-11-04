@@ -115,6 +115,16 @@ simula una entrega externa exitosa.
 - Notificaciones Android listas para probar con Firebase Console en un
   dispositivo real.
 
+Para activar el envío FCM desde el worker, instala el lock actualizado y define
+en el `.env` del servidor:
+
+```env
+USE_REAL_PUSH=true
+FIREBASE_CREDENTIALS_PATH=/etc/utb-tracker/firebase-service-account.json
+```
+
+La cuenta de servicio debe permanecer fuera del repositorio con permisos `600`.
+
 ## Estructura
 
 ```text

@@ -48,6 +48,11 @@ entorno o del proveedor de CI. No deben escribirse en el repositorio ni en
 logs. El correo real solo se activa con `USE_REAL_MAIL=1` y configuración SMTP
 completa; el notificador local no acredita entrega externa.
 
+El envío push del worker se activa solo con `USE_REAL_PUSH=true` y requiere
+`FIREBASE_CREDENTIALS_PATH` apuntando a una cuenta de servicio protegida fuera
+del repositorio. La app móvil usa `google-services.json`, que es una
+configuración distinta y no reemplaza la cuenta de servicio del backend.
+
 ## Verificación de despliegue
 
 Después de migrar y reiniciar el servicio, el deploy exige:
