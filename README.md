@@ -99,22 +99,6 @@ sea una cebolla pura.
 | Facade | `ApiClient` ofrece una interfaz única para HTTP, autenticación, serialización, timeout y errores. |
 | Unit of Work transaccional | La sesión SQLAlchemy agrupa cambios de negocio y eventos outbox en una misma transacción antes del `commit`. |
 
-### Patrones que no se deben afirmar
-
-El proyecto no implementa de forma completa algunos patrones que pueden
-confundirse con su estructura:
-
-- No es una **cebolla pura** ni una **hexagonal pura** en el backend, porque
-  varios servicios conocen directamente SQLAlchemy.
-- No es **microservicios**: existe un backend monolítico y un proceso worker,
-  no servicios de dominio independientes con despliegue y contratos separados.
-- No hay un **Command Bus**, **Mediator** o **CQRS** general; los endpoints
-  delegan directamente a servicios.
-- `GetIt` centraliza dependencias, pero no convierte por sí solo toda la app en
-  una implementación formal de Clean Architecture.
-- `ChangeNotifier` proporciona observación de estado, pero no implica que todo
-  el frontend siga un Event Sourcing completo.
-
 ### Flujo de una operación
 
 1. Flutter valida la entrada y el controlador solicita una operación al
