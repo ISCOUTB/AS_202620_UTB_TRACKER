@@ -5,12 +5,11 @@ Verifica experimentalmente las métricas de calidad:
 - QS-02: Latencia de respuesta en endpoints principales (p95 < 200 ms en backend local).
 - QS-03: Concurrencia de solicitudes sin errores.
 """
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi.testclient import TestClient
-
-from app.main import app
+import pytest
 
 
 def test_rendimiento_latencia_p95_salud(client):
@@ -46,3 +45,40 @@ def test_concurrencia_solicitudes_simultaneas(client):
     # Todas deben ser exitosas (200 OK)
     assert all(code == 200 for code in resultados)
     assert len(resultados) == 50
+
+
+@pytest.mark.skipif(
+    not (os.environ.get("TEST_DATABASE_URL") or "").startswith("postgresql"),
+    reason="La prueba requiere bloqueo de filas PostgreSQL",
+)
+def test_concurrencia_prestamos_mismo_recurso_postgresql(
+    client, admin_headers, auth_headers
+):
+    """Solo una solicitud concurrente puede prestar el mismo recurso."""
+    recurso = client.post(
+        "/recursos",
+        json={"categoria": "computador", "serial": "CONCURRENCY-001"},
+        headers=admin_headers,
+    )
+    assert recurso.status_code == 201
+    recurso_id = recurso.json()["id"]
+    payload = {
+        "recurso_id": recurso_id,
+        "usuario_id": 1,
+        "fecha_devolucion_esperada": "2026-12-01T18:00:00",
+    }
+
+    def prestar(indice):
+        return client.post(
+            "/prestamos",
+            json=payload,
+            headers={
+                **auth_headers,
+                "X-Idempotency-Key": f"concurrency-test-{indice}",
+            },
+        ).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        resultados = list(executor.map(prestar, range(2)))
+
+    assert sorted(resultados) == [201, 409]

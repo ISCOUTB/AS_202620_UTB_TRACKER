@@ -55,6 +55,15 @@ jobs:
           inputs: requirements.txt
           require-hashes: true
 
+      - name: Análisis SonarCloud y Quality Gate
+        uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703  # v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >-
+            -Dsonar.qualitygate.wait=true
+
   deploy:
     needs: test
     runs-on: ubuntu-latest
