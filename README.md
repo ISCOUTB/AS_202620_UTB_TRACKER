@@ -6,6 +6,109 @@ Sistema de inventario y préstamo de equipos y salones de la Universidad
 Tecnológica de Bolívar. El backend está construido con FastAPI y el cliente
 móvil con Flutter.
 
+## Arquitectura del proyecto
+
+UTB Tracker utiliza un **monolito modular**: backend y worker se despliegan
+como componentes del mismo proyecto, pero el código está dividido por
+responsabilidades y dominios. No es una arquitectura de microservicios ni una
+arquitectura hexagonal pura; se adoptó esta solución para conservar bajo el
+costo operativo del proyecto académico sin perder separación de
+responsabilidades.
+
+```text
+                 Cliente Flutter
+          UI -> Controladores -> Repositorios
+                -> ApiClient HTTP
+                         |
+                         v
+                    API FastAPI
+       Middleware -> Routers -> Servicios de dominio
+                                  |
+                         SQLAlchemy / PostgreSQL
+                                  |
+                         Outbox transaccional
+                                  |
+                    Worker -> SMTP / Firebase Admin
+```
+
+### Backend: monolito modular y capas
+
+Cada módulo de dominio mantiene una frontera funcional dentro de `app/`:
+
+- `routers/`: adaptadores HTTP. Reciben solicitudes, aplican dependencias de
+  FastAPI y convierten la entrada/salida mediante esquemas Pydantic.
+- `services/`: reglas de negocio y transacciones. Aquí viven las validaciones
+  de disponibilidad, idempotencia, vencimiento, mantenimiento y autorización.
+- `models/`: entidades y mapeos SQLAlchemy de usuarios, recursos, salones,
+  préstamos, reportes y mensajería.
+- `schemas/`: DTOs de entrada y salida de la API; evitan exponer directamente
+  los modelos de persistencia como contrato HTTP.
+- `core/`: configuración, seguridad JWT, base de datos, hashing y utilidades
+  transversales.
+- `messaging/`: eventos, publicación en outbox y worker de entrega.
+
+La dependencia principal del backend fluye desde HTTP hacia servicios y desde
+los servicios hacia persistencia. Esto es una **arquitectura por capas con
+organización modular**, no una implementación estricta de cebolla: algunas
+reglas y servicios conocen SQLAlchemy para aprovechar transacciones y bloqueos
+de PostgreSQL. La decisión está documentada en
+[`docs/adr/0001-estilo-arquitectonico.md`](docs/adr/0001-estilo-arquitectonico.md).
+
+### Inyección de dependencias
+
+FastAPI realiza inyección de dependencias en los routers mediante `Depends`.
+Se utiliza para proporcionar sesiones de base de datos, usuario autenticado y
+otros servicios transversales sin construirlos manualmente en cada endpoint.
+Esto facilita sustituir dependencias en las pruebas y mantiene los routers
+centrados en el contrato HTTP.
+
+En Flutter, `GetIt` centraliza la composición en
+[`frontend/lib/core/di/injection.dart`](frontend/lib/core/di/injection.dart).
+La aplicación registra un `ApiClient`, fuentes remotas, repositorios y
+controladores. La dirección de dependencias es:
+
+```text
+Presentación -> interfaces de dominio <- implementaciones de datos
+```
+
+Por ejemplo, `AuthController` depende de `AuthRepository`, no de `http`
+directamente; `AuthRepositoryImpl` conecta esa interfaz con
+`AuthRemoteDataSource` y `ApiClient`. Este es un enfoque inspirado en
+**Clean Architecture/cebolla** aplicado al cliente móvil, con inversión de
+dependencias en los límites importantes, pero sin afirmar que todo el backend
+sea una cebolla pura.
+
+### Patrones de diseño utilizados
+
+| Patrón | Aplicación |
+|---|---|
+| Monolito modular | Separación por dominios: autenticación, recursos, préstamos, salones, mantenimiento y estadísticas. |
+| Capas | Routers, servicios, modelos, esquemas y componentes transversales. |
+| Repository | Interfaces de repositorio en Flutter aíslan la presentación de las fuentes HTTP. |
+| Dependency Injection | `Depends` en FastAPI y `GetIt` en Flutter. |
+| DTO / Data Mapper | Esquemas Pydantic y modelos Dart convierten payloads sin acoplar la UI al ORM. |
+| Outbox transaccional | Los eventos se guardan en `mensajes_outbox` junto con la operación de negocio y el worker los entrega después. |
+| Strategy / Adapter | `NotificadorSimulado`, `NotificadorSMTP` y Firebase Admin implementan canales intercambiables de notificación. |
+| Idempotencia | `X-Idempotency-Key` evita duplicar préstamos ante reintentos del cliente. |
+| Middleware | CORS y logging estructurado agregan políticas transversales sin repetirlas en cada router. |
+| State/Workflow | Estados de préstamos, recursos, mantenimiento y mensajes controlan transiciones válidas. |
+
+### Flujo de una operación
+
+1. Flutter valida la entrada y el controlador solicita una operación al
+   repositorio.
+2. El repositorio usa `ApiClient`, que agrega autenticación, serializa el DTO
+   y procesa errores HTTP.
+3. FastAPI recibe la solicitud, valida el esquema Pydantic y resuelve las
+   dependencias.
+4. El router delega la regla de negocio al servicio correspondiente.
+5. El servicio ejecuta una transacción SQLAlchemy en PostgreSQL, incluyendo
+   bloqueo de fila o idempotencia cuando la operación lo requiere.
+6. Si corresponde una notificación, publica un evento en el outbox dentro de
+   la misma transacción.
+7. El worker procesa el evento con reintentos y entrega por SMTP o Firebase
+   Admin, registrando el resultado y evitando reprocesamientos.
+
 ## Estado actual
 
 - Backend FastAPI modular con autenticación JWT, préstamos, recursos, salones,
@@ -17,9 +120,9 @@ móvil con Flutter.
 - Auditoría de dependencias con `pip-audit` como gate bloqueante del CI.
 - Despliegue por SSH con migración, reinicio de systemd y smoke test de salud.
 - Firebase Cloud Messaging está integrado en Android: la app solicita permiso,
-  registra el token en el backend y escucha su rotación. El envío automático
-  desde el worker requiere configurar Firebase Admin y una cuenta de servicio
-  fuera del repositorio.
+  registra el token en el backend y escucha su rotación. El worker puede enviar
+  push mediante Firebase Admin cuando se configura la cuenta de servicio fuera
+  del repositorio.
 
 ## API pública
 
