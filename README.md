@@ -89,9 +89,31 @@ sea una cebolla pura.
 | DTO / Data Mapper | Esquemas Pydantic y modelos Dart convierten payloads sin acoplar la UI al ORM. |
 | Outbox transaccional | Los eventos se guardan en `mensajes_outbox` junto con la operación de negocio y el worker los entrega después. |
 | Strategy / Adapter | `NotificadorSimulado`, `NotificadorSMTP` y Firebase Admin implementan canales intercambiables de notificación. |
+| Factory Method / composición | `crear_notificador()` y `crear_notificador_push()` seleccionan la implementación según la configuración del entorno. |
 | Idempotencia | `X-Idempotency-Key` evita duplicar préstamos ante reintentos del cliente. |
 | Middleware | CORS y logging estructurado agregan políticas transversales sin repetirlas en cada router. |
 | State/Workflow | Estados de préstamos, recursos, mantenimiento y mensajes controlan transiciones válidas. |
+| Circuit Breaker | `app/core/resilience.py` bloquea llamadas después de fallos consecutivos y permite una prueba en estado `HALF_OPEN`. |
+| Retry / backoff | `ApiClient` reintenta lecturas transitorias; el worker reprograma mensajes con backoff exponencial y jitter. |
+| Observer / Publisher-Subscriber | `ChangeNotifier` notifica cambios a la UI Flutter y `onTokenRefresh` observa la rotación de tokens FCM. |
+| Facade | `ApiClient` ofrece una interfaz única para HTTP, autenticación, serialización, timeout y errores. |
+| Unit of Work transaccional | La sesión SQLAlchemy agrupa cambios de negocio y eventos outbox en una misma transacción antes del `commit`. |
+
+### Patrones que no se deben afirmar
+
+El proyecto no implementa de forma completa algunos patrones que pueden
+confundirse con su estructura:
+
+- No es una **cebolla pura** ni una **hexagonal pura** en el backend, porque
+  varios servicios conocen directamente SQLAlchemy.
+- No es **microservicios**: existe un backend monolítico y un proceso worker,
+  no servicios de dominio independientes con despliegue y contratos separados.
+- No hay un **Command Bus**, **Mediator** o **CQRS** general; los endpoints
+  delegan directamente a servicios.
+- `GetIt` centraliza dependencias, pero no convierte por sí solo toda la app en
+  una implementación formal de Clean Architecture.
+- `ChangeNotifier` proporciona observación de estado, pero no implica que todo
+  el frontend siga un Event Sourcing completo.
 
 ### Flujo de una operación
 
