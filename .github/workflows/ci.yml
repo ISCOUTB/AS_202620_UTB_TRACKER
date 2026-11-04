@@ -76,4 +76,6 @@ jobs:
             set -a; . ./.env; set +a
             alembic upgrade head
             sudo systemctl restart utb-tracker
-            curl --fail --silent --show-error --max-time 15 https://129-80-171-141.nip.io/salud
+            curl --fail --silent --show-error --max-time 15 \
+            --retry 6 --retry-delay 3 --retry-connrefused \
+            https://129-80-171-141.nip.io/salud
