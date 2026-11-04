@@ -15,6 +15,8 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
+RECURSO_FK = "recursos.id"
+
 
 class Recurso(Base):
     __tablename__ = "recursos"
@@ -45,7 +47,7 @@ class Prestamo(Base):
     __tablename__ = "prestamos"
 
     id = Column(Integer, primary_key=True, index=True)
-    recurso_id = Column(Integer, ForeignKey("recursos.id"), nullable=False, index=True)
+    recurso_id = Column(Integer, ForeignKey(RECURSO_FK), nullable=False, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     fecha_prestamo = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     fecha_devolucion_esperada = Column(DateTime, nullable=False)
@@ -80,7 +82,7 @@ class Reporte(Base):
     __tablename__ = "reportes"
 
     id = Column(Integer, primary_key=True, index=True)
-    recurso_id = Column(Integer, ForeignKey("recursos.id"), nullable=False, index=True)
+    recurso_id = Column(Integer, ForeignKey(RECURSO_FK), nullable=False, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     estado_reportado = Column(String, nullable=False)
     descripcion = Column(Text, nullable=True)
@@ -95,7 +97,7 @@ class MantenimientoRecurso(Base):
     __tablename__ = "mantenimientos_recursos"
 
     id = Column(Integer, primary_key=True, index=True)
-    recurso_id = Column(Integer, ForeignKey("recursos.id"), nullable=False, index=True)
+    recurso_id = Column(Integer, ForeignKey(RECURSO_FK), nullable=False, index=True)
     reporte_id = Column(Integer, ForeignKey("reportes.id"), nullable=True, index=True)
     tipo = Column(String, nullable=False, default="correctivo")
     estado = Column(String, nullable=False, default="pendiente")

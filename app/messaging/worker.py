@@ -137,7 +137,7 @@ class NotificadorFCM:
                 credentials.Certificate(credentials_path)
             )
 
-    def enviar(self, token: str, asunto: str, cuerpo: str) -> None:
+    def enviar(self, token: str, asunto: str) -> None:
         from firebase_admin import messaging
 
         messaging.send(
@@ -158,10 +158,12 @@ class NotificadorConPush:
         self._correo = correo
         self._push = push
 
-    def enviar(self, email: str, asunto: str, cuerpo: str, fcm_token: Optional[str] = None) -> None:
+    def enviar(self, email: str, asunto: str, cuerpo: str) -> None:
         self._correo.enviar(email=email, asunto=asunto, cuerpo=cuerpo)
+
+    def enviar_push(self, fcm_token: Optional[str], asunto: str) -> None:
         if self._push is not None and fcm_token:
-            self._push.enviar(token=fcm_token, asunto=asunto, cuerpo=cuerpo)
+            self._push.enviar(token=fcm_token, asunto=asunto)
 
 
 def crear_notificador() -> NotificadorBase:
@@ -253,136 +255,139 @@ def _procesar_un_mensaje(
       5. Marcar en notificaciones_procesadas (idempotencia).
       6. Actualizar estado del mensaje en outbox.
     """
-    mid = msg.message_id
-    cid = msg.correlation_id or "n/a"
-
-    # 1. Validar versión
-    if msg.version not in VERSIONES_SOPORTADAS:
-        error = (
-            f"Versión {msg.version} no soportada. "
-            f"Versiones soportadas: {sorted(VERSIONES_SOPORTADAS)}"
-        )
-        logger.error(
-            "[worker] message_id=%s correlation_id=%s "
-            "VERSION_NO_SOPORTADA — %s",
-            mid, cid, error,
-        )
-        msg.estado = "muerto"
-        msg.ultimo_error = error
-        db.commit()
+    mid, cid = msg.message_id, msg.correlation_id or "n/a"
+    if not _validar_version(db, msg, mid, cid):
         return
-
-    # 2. Deduplicación: ya procesado previamente
-    ya_procesado = (
-        db.query(NotificacionProcesada)
-        .filter(NotificacionProcesada.message_id == mid)
-        .first()
-    )
-    if ya_procesado:
-        logger.info(
-            "[worker] message_id=%s correlation_id=%s "
-            "DUPLICADO_DESCARTADO — mensaje ya procesado, omitiendo envío",
-            mid, cid,
-        )
-        # Aun así sincronizamos el estado del outbox si quedó desincronizado
-        if msg.estado == "pendiente":
-            msg.estado = "enviado"
-            msg.procesado_en = ya_procesado.procesado_en
-            db.commit()
+    if _descartar_duplicado(db, msg, mid, cid):
         return
-
-    # 3. Resolver email del usuario desde el payload
     try:
-        raw_dict = json.loads(msg.payload)
-        if isinstance(raw_dict, dict) and "payload" in raw_dict and isinstance(raw_dict["payload"], dict):
-            payload_dict = raw_dict["payload"]
-        else:
-            payload_dict = raw_dict
-        usuario_id = payload_dict.get("usuario_id")
-        prestamo_id = payload_dict.get("prestamo_id")
-    except (json.JSONDecodeError, KeyError, AttributeError) as exc:
+        payload_dict = _leer_payload(msg.payload)
+    except (json.JSONDecodeError, KeyError, AttributeError, ValueError) as exc:
         _marcar_muerto(db, msg, f"Payload inválido: {exc}", mid, cid)
         return
 
+    usuario_id = payload_dict.get("usuario_id")
     email = payload_dict.get("email") or _resolver_email(db, usuario_id)
     fcm_token = payload_dict.get("fcm_token") or _resolver_fcm_token(db, usuario_id)
     if not email:
-        _marcar_muerto(
-            db, msg,
-            f"Usuario {usuario_id} no encontrado en BD",
-            mid, cid,
-        )
+        _marcar_muerto(db, msg, f"Usuario {usuario_id} no encontrado en BD", mid, cid)
         return
 
-    # 4. Intentar envío
     msg.intentos += 1
     logger.info(
         "[worker] message_id=%s correlation_id=%s "
         "INTENTO_%d tipo=%s prestamo_id=%s usuario_id=%s",
-        mid, cid, msg.intentos, msg.tipo, prestamo_id, usuario_id,
+        mid, cid, msg.intentos, msg.tipo,
+        payload_dict.get("prestamo_id"), usuario_id,
     )
 
     try:
-        asunto = "UTB Tracker — Préstamo registrado"
-        cuerpo = (
-            f"Hola, se registró el préstamo #{prestamo_id}. "
-            f"Correlation-ID: {cid}"
-        )
-        if msg.tipo == "password.reset solicitado":
-            asunto = "UTB Tracker — Recuperación de contraseña"
-            token = payload_dict.get("token", "")
-            cuerpo = (
-                "Usa este token de recuperación para cambiar tu contraseña "
-                f"(válido por 10 minutos): {token}"
-            )
-        if isinstance(notificador, NotificadorConPush):
-            notificador.enviar(
-                email=email,
-                asunto=asunto,
-                cuerpo=cuerpo,
-                fcm_token=fcm_token,
-            )
-        else:
-            notificador.enviar(
-                email=email,
-                asunto=asunto,
-                cuerpo=cuerpo,
-            )
+        asunto, cuerpo = _construir_notificacion(msg, payload_dict, cid)
+        _enviar_notificacion(notificador, email, asunto, cuerpo, fcm_token)
     except Exception as exc:  # noqa: BLE001
-        error_str = str(exc)
-        logger.warning(
-            "[worker] message_id=%s correlation_id=%s "
-            "FALLO intento=%d error=%r",
-            mid, cid, msg.intentos, error_str,
-        )
-
-        if msg.intentos >= max_intentos:
-            _marcar_muerto(db, msg, error_str, mid, cid)
-        else:
-            prox = _calcular_siguiente_intento(msg.intentos)
-            msg.siguiente_intento = prox.replace(tzinfo=None)
-            msg.ultimo_error = error_str
-            logger.info(
-                "[worker] message_id=%s correlation_id=%s "
-                "REPROGRAMADO siguiente_intento=%s",
-                mid, cid, prox.isoformat(),
-            )
-            db.commit()
+        _reprogramar_o_matar(db, msg, exc, mid, cid, max_intentos)
         return
 
-    # 5. Éxito: registrar en tabla de deduplicación
     ahora_naive = ahora.replace(tzinfo=None) if ahora.tzinfo else ahora
-    db.add(NotificacionProcesada(
-        message_id=mid,
-        procesado_en=ahora_naive,
-    ))
+    _marcar_enviado(db, msg, ahora_naive, mid, cid, payload_dict.get("prestamo_id"))
 
-    # 6. Actualizar outbox
-    msg.estado = "enviado"
-    msg.procesado_en = ahora_naive
-    msg.ultimo_error = None
+
+def _validar_version(db: Session, msg: MensajeOutbox, mid: str, cid: str) -> bool:
+    if msg.version in VERSIONES_SOPORTADAS:
+        return True
+    error = (
+        f"Versión {msg.version} no soportada. "
+        f"Versiones soportadas: {sorted(VERSIONES_SOPORTADAS)}"
+    )
+    logger.error(
+        "[worker] message_id=%s correlation_id=%s VERSION_NO_SOPORTADA — %s",
+        mid, cid, error,
+    )
+    _marcar_muerto(db, msg, error, mid, cid)
+    return False
+
+
+def _descartar_duplicado(db: Session, msg: MensajeOutbox, mid: str, cid: str) -> bool:
+    previo = (
+        db.query(NotificacionProcesada)
+        .filter(NotificacionProcesada.message_id == mid)
+        .first()
+    )
+    if not previo:
+        return False
+    logger.info(
+        "[worker] message_id=%s correlation_id=%s DUPLICADO_DESCARTADO",
+        mid, cid,
+    )
+    if msg.estado == "pendiente":
+        msg.estado = "enviado"
+        msg.procesado_en = previo.procesado_en
+        db.commit()
+    return True
+
+
+def _leer_payload(payload: str) -> dict:
+    raw = json.loads(payload)
+    if isinstance(raw, dict) and isinstance(raw.get("payload"), dict):
+        return raw["payload"]
+    if not isinstance(raw, dict):
+        raise ValueError("El payload debe ser un objeto JSON")
+    return raw
+
+
+def _construir_notificacion(
+    msg: MensajeOutbox,
+    payload: dict,
+    correlation_id: str,
+) -> tuple[str, str]:
+    if msg.tipo == "password.reset solicitado":
+        return (
+            "UTB Tracker — Recuperación de contraseña",
+            "Usa este token de recuperación para cambiar tu contraseña "
+            f"(válido por 10 minutos): {payload.get('token', '')}",
+        )
+    return (
+        "UTB Tracker — Préstamo registrado",
+        f"Hola, se registró el préstamo #{payload.get('prestamo_id')}. "
+        f"Correlation-ID: {correlation_id}",
+    )
+
+
+def _reprogramar_o_matar(
+    db: Session,
+    msg: MensajeOutbox,
+    exc: Exception,
+    mid: str,
+    cid: str,
+    max_intentos: int,
+) -> None:
+    error = str(exc)
+    logger.warning(
+        "[worker] message_id=%s correlation_id=%s FALLO intento=%d error=%r",
+        mid, cid, msg.intentos, error,
+    )
+    if msg.intentos >= max_intentos:
+        _marcar_muerto(db, msg, error, mid, cid)
+        return
+    prox = _calcular_siguiente_intento(msg.intentos)
+    msg.siguiente_intento = prox.replace(tzinfo=None)
+    msg.ultimo_error = error
     db.commit()
 
+
+def _marcar_enviado(
+    db: Session,
+    msg: MensajeOutbox,
+    ahora: datetime,
+    mid: str,
+    cid: str,
+    prestamo_id: Optional[int],
+) -> None:
+    db.add(NotificacionProcesada(message_id=mid, procesado_en=ahora))
+    msg.estado = "enviado"
+    msg.procesado_en = ahora
+    msg.ultimo_error = None
+    db.commit()
     logger.info(
         "[worker] message_id=%s correlation_id=%s ENVIADO prestamo_id=%s",
         mid, cid, prestamo_id,
@@ -404,6 +409,20 @@ def _marcar_muerto(
         "MUERTO intentos=%d error=%r",
         mid, cid, msg.intentos, error,
     )
+
+
+def _enviar_notificacion(
+    notificador: NotificadorConPush | NotificadorBase,
+    email: str,
+    asunto: str,
+    cuerpo: str,
+    fcm_token: Optional[str],
+) -> None:
+    if isinstance(notificador, NotificadorConPush):
+        notificador.enviar(email=email, asunto=asunto, cuerpo=cuerpo)
+        notificador.enviar_push(fcm_token, asunto)
+        return
+    notificador.enviar(email=email, asunto=asunto, cuerpo=cuerpo)
 
 
 def _resolver_email(db: Session, usuario_id: Optional[int]) -> Optional[str]:

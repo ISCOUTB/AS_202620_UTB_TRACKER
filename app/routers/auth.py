@@ -36,7 +36,11 @@ def _client_key(request: Request, username: str) -> str:
     return f"{host}:{username.strip().lower()}"
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    responses={429: {"description": "Demasiados intentos de inicio de sesión"}},
+)
 def login_endpoint(
     user: UsuarioLogin,
     request: Request,

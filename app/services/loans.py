@@ -113,7 +113,6 @@ def crear_prestamo(
     db.flush()
 
     cid = _resolver_correlation_id(correlation_id)
-    ahora_utc = datetime.now(timezone.utc)
     fecha_esperada = (
         nuevo.fecha_devolucion_esperada.isoformat()
         if nuevo.fecha_devolucion_esperada
