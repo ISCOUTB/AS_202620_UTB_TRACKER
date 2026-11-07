@@ -1,5 +1,5 @@
 # UTB Tracker
-https://129-80-171-141.nip.io/docs#/
+https://api.iscoutb.dev/docs#/
 Backend desplegado
 
 Sistema de inventario y préstamo de equipos y salones de la Universidad
@@ -132,8 +132,35 @@ sea una cebolla pura.
 
 ## API pública
 
-- Swagger: <https://129-80-171-141.nip.io/docs#/>
-- Salud profunda: <https://129-80-171-141.nip.io/salud>
+- Swagger: <https://api.iscoutb.dev/docs#/>
+- Salud profunda: <https://api.iscoutb.dev/salud>
+
+El dominio raíz `iscoutb.dev` corresponde al sitio web. La API utiliza el
+subdominio `api.iscoutb.dev`, que debe resolver al VPS de producción
+`129.80.171.141` y tener un certificado TLS válido configurado en Nginx.
+
+### Requisitos DNS y Nginx para producción
+
+En el proveedor DNS del dominio crea o modifica este registro:
+
+```text
+Tipo: A
+Nombre: api
+Valor: 129.80.171.141
+TTL: 300
+```
+
+En el VPS, configura Nginx para responder por `api.iscoutb.dev` y emite el
+certificado TLS antes de ejecutar el despliegue de GitHub Actions. Por
+ejemplo, con Certbot:
+
+```bash
+sudo certbot --nginx -d api.iscoutb.dev
+```
+
+El workflow valida `https://api.iscoutb.dev/salud` después de reiniciar la
+aplicación. Si el DNS todavía apunta a otro servidor, el despliegue se
+detendrá correctamente en ese smoke test.
 
 El endpoint `/salud` valida la conexión real con PostgreSQL mediante `SELECT 1`.
 No se deben publicar credenciales ni claves en el repositorio.
