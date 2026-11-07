@@ -324,14 +324,12 @@ graph TD
 
     subgraph GitHub
         CI["🔄 GitHub Actions\n(CI/CD pipeline)"]
-        SC["📊 SonarCloud\n(análisis estático)"]
     end
 
     Mobile -->|"HTTPS :443"| Nginx
     Nginx -->|"HTTP :8000 (interno)"| Uvicorn
     Uvicorn -->|"TCP :5432 (local)"| Postgres
     CI -->|"SSH deploy"| VPS
-    CI -->|"análisis de código"| SC
 ```
 
 **Motivación:**
@@ -350,7 +348,7 @@ gestionados. La decisión de no usar microservicios está formalizada en
 - **PostgreSQL local (mismo host):** la latencia de red entre el backend y la base de
   datos es prácticamente despreciable (loopback local), favoreciendo QS-02 (tiempo de respuesta).
 - **Despliegue automatizado vía CI:** los cambios en `main` se despliegan sin
-  intervención manual después de pasar las pruebas y el Quality Gate de SonarCloud.
+  intervención manual después de pasar la suite de pruebas y la auditoría de dependencias.
 
 **Mapeo de bloques constructivos a infraestructura:**
 
@@ -374,7 +372,6 @@ Costos aproximados para el entorno de producción del proyecto académico:
 | **PostgreSQL** | Instancia local en el mismo VPS (incluida arriba) | $0 adicional |
 | **Dominio `.com`** | Namecheap / Google Domains | USD $1 – $2 (prorrateado mensual) |
 | **SSL/TLS** | Let's Encrypt (Certbot) | $0 |
-| **SonarCloud** | Plan Community (repositorios públicos) | $0 |
 | **GitHub Actions** | Plan Free (2 000 min/mes incluidos) | $0 |
 | **Total estimado** | | **USD $0 – $26 / mes** |
 
