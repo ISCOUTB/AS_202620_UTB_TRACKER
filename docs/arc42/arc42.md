@@ -505,7 +505,7 @@ aspecto correspondiente en `docs/aspectos.md`.
 | **Artefacto** | Servicio movil de UTB Tracker |
 | **Respuesta** | La vista carga y queda interactiva |
 | **Medida** | Tiempo de carga ≤ 3 segundos |
-| **Evidencia empírica (S9)** | Evaluada con `tests/test_performance.py`: p50 de respuesta API ~4 ms, p95 < 25 ms, muy por debajo del umbral de 3 s |
+| **Evidencia empírica (S9 / S14)** | Evaluada con `tests/test_performance.py`: p50 de respuesta API ~4 ms, p95 < 25 ms, muy por debajo del umbral de 3 s. Medición empírica S14 con endpoints reales reportada en [`docs/calidad/medicion-qs03.md`](../calidad/medicion-qs03.md) (máx 2976 ms bajo 300 peticiones concurrentes). |
 
 ### QS-03 — Rendimiento (concurrencia)
 
@@ -517,7 +517,7 @@ aspecto correspondiente en `docs/aspectos.md`.
 | **Artefacto** | Backend / API de UTB Tracker |
 | **Respuesta** | El sistema procesa las solicitudes sin degradar el servicio |
 | **Medida** | Soporta al menos 300 usuarios simultáneos sin errores ni caídas |
-| **Evidencia empírica (S9)** | `tests/test_performance.py::test_concurrencia_solicitudes_simultaneas`: 50 peticiones simultáneas con ThreadPool, 100% de tasa de éxito (HTTP 200), 0 caídas o timeouts |
+| **Evidencia empírica (S9 / S14)** | `tests/test_performance.py::test_concurrencia_solicitudes_simultaneas`: 50 peticiones simultáneas con ThreadPool, 100% de tasa de éxito (HTTP 200), 0 caídas o timeouts. Medición empírica S14 con 300 usuarios simultáneos sobre endpoints reales en [`docs/calidad/medicion-qs03.md`](../calidad/medicion-qs03.md): 300/300 peticiones exitosas (0 errores). |
 
 
 ### QS-04 — Seguridad
@@ -580,6 +580,9 @@ en `docs/auditoria_s8_s9_s11.md`.
 | **R-18** | Entrega at-least-once con potenciales duplicados y orden no garantizado en Outbox (`messaging/worker.py:145-153, 250-291`) | Bajo — Calidad / Usabilidad. Mensajes pueden entregarse fuera de orden o duplicarse si el worker cae | **Amenaza aceptada (S13):** Se asume por diseño para mantener desacoplamiento sin 2PC ni colas FIFO complejas ([`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md)). |
 | **R-19** | Vulnerabilidad de bypass y forja de tokens JWT por omisión de lista de revocación (T-17) | Medio — Seguridad / QS-04. Cierre de sesión declarativo mantiene tokens válidos hasta su expiración | **Amenaza aceptada (S13 / A-03):** Se preserva diseño stateless; ventana de riesgo acotada por `ACCESS_TOKEN_EXPIRE_MINUTES`. |
 | **R-20** | Vulnerabilidades en cadena de suministro de paquetes backend (T-22) | Medio — Seguridad / Integridad. CVEs en starlette 0.50.0 y pyjwt 2.12.1 | **Abierto / En proceso:** Mitigado parcialmente con `pip-audit` en CI (`ci.yml:51-55`); pendiente actualización de versiones a starlette >= 1.0.1 y pyjwt >= 2.14.0. |
+| **R-21** | Margen mínimo de QS-02 bajo 300 peticiones concurrentes con 1 worker (máx 2976 ms vs 3000 ms) | Medio — Rendimiento / QS-02. Latencia al límite del umbral ante picos de demanda. Causa no aislada (hipótesis no verificada: 1 worker de Uvicorn y pool de 30 conexiones en `app/core/database.py:21-24`) | **Abierto / Deuda técnica:** Mitigación propuesta mediante caché en memoria acotada por TTL ([`docs/datos/diseno-cache.md`](../datos/diseno-cache.md)) y despliegue multi-worker de Uvicorn. Evidencia en [`docs/calidad/medicion-qs03.md`](../calidad/medicion-qs03.md). |
+
+<PENDIENTE: hallazgos de la revisión entre pares>
 
 
 
