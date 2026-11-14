@@ -15,7 +15,7 @@ from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.enums import CategoriaRecurso, EstadoPrestamo, EstadoRecurso
+from app.schemas.enums import CategoriaRecurso, EstadoRecurso
 
 T = TypeVar("T")
 

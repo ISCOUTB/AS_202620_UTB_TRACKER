@@ -30,6 +30,7 @@ from app.models.auth_models import Usuario
 # Importar todos los modelos para que Base.metadata los registre
 from app.models import recurso_models, salon_models  # noqa: F401
 from app.messaging import models as messaging_models  # noqa: F401
+import contextlib
 
 load_dotenv()
 
@@ -125,17 +126,13 @@ def db_session(client):
         try:
             yield db
         finally:
-            try:
+            with contextlib.suppress(StopIteration):
                 next(gen)
-            except StopIteration:
-                pass
     else:
         gen = get_db()
         db = next(gen)
         try:
             yield db
         finally:
-            try:
+            with contextlib.suppress(StopIteration):
                 next(gen)
-            except StopIteration:
-                pass

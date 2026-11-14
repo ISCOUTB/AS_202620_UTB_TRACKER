@@ -71,12 +71,12 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
         db.commit()
         db.refresh(new_user)
         return new_user
-    except Exception:
+    except Exception as exc:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno al crear usuario",
-        )
+        ) from exc
 
 
 def login(db: Session, schema: UsuarioLogin) -> dict:
@@ -156,12 +156,12 @@ def delete_user(db: Session, user_id: int, actor_id: Optional[int] = None) -> di
             db.delete(user)
             db.commit()
             return {"message": "Usuario eliminado correctamente"}
-    except Exception:
+    except Exception as exc:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno al eliminar usuario",
-        )
+        ) from exc
 
 
 def get_user_by_id(db: Session, user_id: int) -> Usuario:
@@ -244,12 +244,12 @@ def update_user_role(
         db.commit()
         db.refresh(user)
         return user
-    except Exception:
+    except Exception as exc:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno al actualizar rol de usuario",
-        )
+        ) from exc
 
 
 def request_password_reset(db: Session, email: str) -> None:

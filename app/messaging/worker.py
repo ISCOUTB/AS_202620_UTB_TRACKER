@@ -137,7 +137,7 @@ class NotificadorFCM:
                 credentials.Certificate(credentials_path)
             )
 
-    def enviar(self, token: str, asunto: str) -> None:
+    def enviar(self, token: str, asunto: str, cuerpo: str) -> None:
         from firebase_admin import messaging
 
         messaging.send(
@@ -161,9 +161,9 @@ class NotificadorConPush:
     def enviar(self, email: str, asunto: str, cuerpo: str) -> None:
         self._correo.enviar(email=email, asunto=asunto, cuerpo=cuerpo)
 
-    def enviar_push(self, fcm_token: Optional[str], asunto: str) -> None:
+    def enviar_push(self, fcm_token: Optional[str], asunto: str, cuerpo: str) -> None:
         if self._push is not None and fcm_token:
-            self._push.enviar(token=fcm_token, asunto=asunto)
+            self._push.enviar(token=fcm_token, asunto=asunto, cuerpo=cuerpo)
 
 
 def crear_notificador() -> NotificadorBase:
@@ -186,7 +186,7 @@ def _calcular_siguiente_intento(intentos: int) -> datetime:
     Retorna: datetime UTC = ahora + delay.
     """
     delay = min(WORKER_MAX_DELAY, WORKER_BASE_DELAY * (2 ** intentos))
-    jitter = random.uniform(0, delay * 0.1)
+    jitter = random.uniform(0, delay * 0.1)  # noqa: S311  # NOSONAR - jitter de reintentos, no es criptografía
     total = delay + jitter
     return datetime.now(timezone.utc) + timedelta(seconds=total)
 
@@ -420,7 +420,7 @@ def _enviar_notificacion(
 ) -> None:
     if isinstance(notificador, NotificadorConPush):
         notificador.enviar(email=email, asunto=asunto, cuerpo=cuerpo)
-        notificador.enviar_push(fcm_token, asunto)
+        notificador.enviar_push(fcm_token, asunto, cuerpo)
         return
     notificador.enviar(email=email, asunto=asunto, cuerpo=cuerpo)
 

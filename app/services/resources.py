@@ -6,11 +6,10 @@ y eliminación lógica (soft-delete) sobre equipos tecnológicos de la universid
 """
 from typing import Optional
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models import recurso_models
-from app.models.auth_models import Usuario
 from app.schemas import schemas
 from app.services import auditoria
 from app.services import maintenance as maintenance_service

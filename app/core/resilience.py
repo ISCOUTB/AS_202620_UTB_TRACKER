@@ -46,7 +46,7 @@ def with_retry(
                         raise
 
                     # Backoff exponencial + Jitter
-                    jitter = random.uniform(0, base_delay * 0.5)
+                    jitter = random.uniform(0, base_delay * 0.5)  # noqa: S311  # NOSONAR - jitter de reintentos, no es criptografía
                     delay = min(max_delay, base_delay * (2 ** (attempt - 1))) + jitter
                     logger.warning(
                         f"[Resilience] Intento {attempt}/{max_retries} falló en {func.__name__}: {exc}. "
@@ -110,11 +110,13 @@ class CircuitBreaker:
 
     def _check_state(self):
         now = time.time()
-        if self.state == CircuitBreakerState.OPEN:
-            if now - self.last_state_change >= self.recovery_timeout:
-                self.state = CircuitBreakerState.HALF_OPEN
-                self.last_state_change = now
-                logger.info("[CircuitBreaker] Estado transicionado a HALF_OPEN para prueba")
+        if (
+            self.state == CircuitBreakerState.OPEN
+            and now - self.last_state_change >= self.recovery_timeout
+        ):
+            self.state = CircuitBreakerState.HALF_OPEN
+            self.last_state_change = now
+            logger.info("[CircuitBreaker] Estado transicionado a HALF_OPEN para prueba")
 
     def _on_success(self):
         if self.state in (CircuitBreakerState.HALF_OPEN, CircuitBreakerState.CLOSED):

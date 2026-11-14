@@ -31,7 +31,7 @@ def health_check(db: Annotated[Session, Depends(get_db)]):
             "version": "1.0.0",
             "database": "connected",
         }
-    except Exception:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={
@@ -39,4 +39,4 @@ def health_check(db: Annotated[Session, Depends(get_db)]):
                 "proyecto": "UTB Tracker",
                 "database": "disconnected",
             },
-        )
+        ) from exc

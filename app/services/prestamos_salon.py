@@ -30,7 +30,7 @@ def _detectar_conflicto_horario(db: Session, salon_id: int, fecha_inicio, fecha_
     la franja (fecha_inicio.date … fecha_fin.date inclusive) y valida las
     horas que correspondan a ese día.
     """
-    from datetime import date, time as dtime, timedelta
+    from datetime import time as dtime, timedelta
 
     dia_actual = fecha_inicio.date()
     dia_fin = fecha_fin.date()
