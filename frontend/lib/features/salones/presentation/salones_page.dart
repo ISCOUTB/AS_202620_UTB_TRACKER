@@ -25,7 +25,7 @@ class _SalonesPageState extends State<SalonesPage> {
   @override
   void initState() {
     super.initState();
-    _salones.cargar();
+    _salones.cargar(silencioso: _salones.carga == Carga.ok);
   }
 
   @override

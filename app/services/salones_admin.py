@@ -208,6 +208,14 @@ def crear_reporte(
     return reporte
 
 
+def listar_todos_los_reportes(db: Session, estado: Optional[str] = None) -> list[ReporteSalon]:
+    """Reportes de todos los salones, los más recientes primero (pantalla Control del auxiliar)."""
+    query = db.query(ReporteSalon)
+    if estado:
+        query = query.filter(ReporteSalon.estado == estado)
+    return query.order_by(ReporteSalon.created_at.desc()).all()
+
+
 def listar_reportes(
     db: Session, salon_id: int, estado: Optional[str] = None
 ) -> list[ReporteSalon]:

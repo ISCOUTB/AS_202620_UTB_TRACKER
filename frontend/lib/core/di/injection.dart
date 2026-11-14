@@ -1,9 +1,11 @@
 import 'package:get_it/get_it.dart';
 
 import '../../features/admin/presentation/admin_usuarios_controller.dart';
+import '../../features/auditoria/auditoria.dart';
 import '../../features/auth/data/auth_data.dart';
 import '../../features/auth/domain/auth_domain.dart';
 import '../../features/auth/presentation/auth_controller.dart';
+import '../../features/control/presentation/control_controller.dart';
 import '../../features/prestamos/data/prestamos_data.dart';
 import '../../features/prestamos/domain/repositories/prestamos_repository.dart';
 import '../../features/prestamos/presentation/prestamos_controller.dart';
@@ -61,4 +63,7 @@ Future<void> configurarDependencias({ApiClient? api}) async {
   sl.registerLazySingleton(() => SalonesController(sl()));
   sl.registerLazySingleton(() => SalonesAdminController(sl()));
   sl.registerLazySingleton(() => StatsController(sl()));
+  sl.registerLazySingleton(() => ControlController(sl()));
+  sl.registerLazySingleton<AuditoriaRepository>(() => AuditoriaRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => AuditoriaController(sl()));
 }

@@ -6,6 +6,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/uber_widgets.dart';
+import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/ocupacion.dart';
@@ -32,7 +33,7 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
   @override
   void initState() {
     super.initState();
-    _cargar();
+    _cargar(silencioso: _c.carga == Carga.ok);
     // El estado de un salón cambia durante el día: se refresca solo cada medio minuto.
     _refresco = Timer.periodic(const Duration(seconds: 30), (_) => _cargar(silencioso: true));
   }
@@ -57,7 +58,9 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Sin SafeArea arriba: el encabezado en degradado llega hasta la barra de estado.
     return SafeArea(
+      top: false,
       bottom: false,
       child: ListenableBuilder(
         listenable: _c,
@@ -71,6 +74,7 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
                 onBuscar: _c.fijarBusqueda,
                 onRefrescar: () => _cargar(),
               ),
+              const SizedBox(height: 12),
               _Filtros(controller: _c),
               const SizedBox(height: 8),
               Expanded(child: _cuerpo()),
@@ -103,14 +107,23 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
               snapSizes: const [0.46],
               builder: (context, scroll) {
                 return Container(
-                  decoration: const BoxDecoration(
-                    color: AppColors.fondo,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-                    border: Border(top: BorderSide(color: AppColors.borde)),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xF2181A24), Color(0xFA0A0A0C)],
+                    ),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                    border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.10))),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primario.withValues(alpha: 0.18),
+                        blurRadius: 30,
+                        offset: const Offset(0, -6),
+                      ),
+                    ],
                   ),
                   child: RefreshIndicator(
-                    color: Colors.black,
-                    backgroundColor: AppColors.texto,
                     onRefresh: () => _cargar(silencioso: true),
                     child: ListView(
                       controller: scroll,
@@ -129,10 +142,14 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
                             ),
                           )
                         else
-                          for (final o in visibles)
+                          for (final (i, o) in visibles.indexed)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 10),
-                              child: TarjetaSalonAdmin(ocupacion: o, onTap: () => _abrir(o)),
+                              child: Aparecer(
+                                key: ValueKey('${_c.filtro}-${o.salon.id}'),
+                                orden: i,
+                                child: TarjetaSalonAdmin(ocupacion: o, onTap: () => _abrir(o)),
+                              ),
                             ),
                       ],
                     ),
@@ -162,8 +179,8 @@ class _Cabecera extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+    return EncabezadoDegradado(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -173,16 +190,16 @@ class _Cabecera extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      nombre.isEmpty ? 'Salones' : 'Hola, ${nombre.split(' ').first}',
-                      style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
+                    const Text(
+                      'Salones',
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       actualizado == null
                           ? 'Estado de los salones en vivo'
-                          : 'Actualizado ${formatearHora(actualizado!)}',
-                      style: const TextStyle(color: AppColors.textoSuave),
+                          : 'En vivo · actualizado ${formatearHora(actualizado!)}',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
                     ),
                   ],
                 ),
@@ -190,7 +207,7 @@ class _Cabecera extends StatelessWidget {
               IconButton.filledTonal(
                 tooltip: 'Actualizar',
                 onPressed: onRefrescar,
-                style: IconButton.styleFrom(backgroundColor: AppColors.superficieAlta),
+                style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.18)),
                 icon: const Icon(Icons.refresh_rounded),
               ),
             ],
@@ -203,7 +220,7 @@ class _Cabecera extends StatelessWidget {
               hintText: 'Salón, profesor o usuario',
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
-              fillColor: AppColors.superficieAlta,
+              fillColor: const Color(0x33000000),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(30),
                 borderSide: BorderSide.none,

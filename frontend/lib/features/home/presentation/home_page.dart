@@ -1,627 +1,451 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../core/assets/figuras.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/uber_widgets.dart';
+import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
-import '../../prestamos/domain/entities/prestamo.dart';
-import '../../prestamos/presentation/prestamos_controller.dart';
-import '../../recursos/domain/entities/recurso.dart';
-import '../../recursos/presentation/filtros_sheet.dart';
-import '../../recursos/presentation/recurso_detalle_page.dart';
+import '../../recursos/presentation/equipos_page.dart';
 import '../../recursos/presentation/recursos_controller.dart';
-import '../../stats/presentation/stats_controller.dart';
+import '../../salones/domain/entities/salon.dart';
+import '../../salones/presentation/salon_detalle_page.dart';
+import '../../salones/presentation/salones_controller.dart';
+import '../../salones_admin/domain/entities/ocupacion.dart';
+import '../../salones_admin/presentation/salon_control_page.dart';
+import '../../salones_admin/presentation/salones_admin_controller.dart';
+import '../../salones_admin/presentation/salones_admin_estilos.dart';
 
-typedef VerEquipos = void Function({
-  CategoriaRecurso? categoria,
-  EstadoRecurso? estado,
-  String? busqueda,
-});
-
-class _ResumenOperativo extends StatelessWidget {
-  const _ResumenOperativo({required this.stats});
-  final StatsController stats;
-
-  @override
-  Widget build(BuildContext context) {
-    final value = stats.stats;
-    if (value == null && stats.error == null) {
-      return const SizedBox(
-        height: 72,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
-    }
-    if (value == null) return const SizedBox.shrink();
-    return TarjetaBorde(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          _Indicador(
-              'Equipos libres', value.equiposDisponibles, Icons.devices_other),
-          _Indicador('Salones libres', value.salonesLibres,
-              Icons.meeting_room_outlined),
-          _Indicador('Préstamos activos', value.prestamosActivos,
-              Icons.assignment_outlined),
-        ],
-      ),
-    );
-  }
-}
-
-class _Indicador extends StatelessWidget {
-  const _Indicador(this.label, this.value, this.icon);
-  final String label;
-  final int value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-        child: Column(
-          children: [
-            Icon(icon, size: 19, color: AppColors.textoSuave),
-            const SizedBox(height: 4),
-            Text('$value',
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-            Text(label,
-                textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 10, color: AppColors.textoSuave)),
-          ],
-        ),
-      );
-}
-
-/// Pantalla de inicio: selector de salón, pestañas, buscador, tarjeta "Reciente",
-/// accesos rápidos por categoría ("Para ti") y carrusel de atajos.
+/// Inicio, al estilo de UTB App: encabezado en degradado con saludo, una tarjeta destacada con
+/// lo más importante del momento y, debajo, lo que hay que atender. Cambia según el rol:
+/// el auxiliar ve el estado del campus; el usuario UTB, los salones que puede pedir.
 class HomePage extends StatefulWidget {
-  const HomePage({
-    super.key,
-    required this.onVerEquipos,
-    required this.onIrAEquipos,
-    required this.onVerActividad,
-  });
+  const HomePage({super.key, required this.onIrSalones, required this.onIrControl});
 
-  /// Va a Equipos aplicando (y reemplazando) filtros.
-  final VerEquipos onVerEquipos;
-
-  /// Va a Equipos sin tocar los filtros que ya dejó el controlador.
-  final VoidCallback onIrAEquipos;
-  final void Function({int filtro}) onVerActividad;
+  /// Abre la pestaña Salones (el auxiliar puede llegar con un filtro aplicado).
+  final ValueChanged<FiltroPanel?> onIrSalones;
+  final VoidCallback onIrControl;
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  final RecursosController _recursos = sl<RecursosController>();
-  final PrestamosController _prestamos = sl<PrestamosController>();
   final AuthController _auth = sl<AuthController>();
-  final StatsController _stats = sl<StatsController>();
-  final TextEditingController _buscar = TextEditingController();
+  final SalonesAdminController _panel = sl<SalonesAdminController>();
+  final SalonesController _salones = sl<SalonesController>();
+  final RecursosController _recursos = sl<RecursosController>();
 
-  @override
-  void dispose() {
-    _buscar.dispose();
-    super.dispose();
-  }
+  bool get _esAuxiliar => _auth.esAdministrador;
 
   @override
   void initState() {
     super.initState();
-    _stats.cargar();
+    _refrescar();
   }
 
+  /// Si ya hay datos (al volver a la pestaña) se recarga en silencio, sin mostrar "Cargando".
   Future<void> _refrescar() async {
-    await Future.wait([
-      _recursos.cargar(silencioso: true),
-      _prestamos.cargar(silencioso: true),
-      _stats.cargar(silencioso: true),
-    ]);
-  }
-
-  /// Préstamos que le importan a quien mira: el auxiliar ve todos; el usuario, solo los suyos.
-  List<Prestamo> _alcance() {
-    final u = _auth.usuario;
-    if (u == null) return const [];
-    return u.esAdministrador ? _prestamos.todos : _prestamos.deUsuario(u.id);
-  }
-
-  Future<void> _elegirSalon() async {
-    final elegido = await mostrarSelectorSalon(
-      context,
-      salones: _recursos.salones,
-      actual: _recursos.salon,
-    );
-    if (elegido == null) return; // cerró sin elegir
-    _recursos.fijarSalon(elegido == kTodosLosSalones ? null : elegido);
-    widget.onIrAEquipos();
-  }
-
-  Future<void> _abrirFiltros() async {
-    // mostrarFiltros deja los filtros elegidos en el controlador y devuelve true si se aplicaron.
-    final aplicado = await mostrarFiltros(context, _recursos);
-    if (aplicado == true) widget.onIrAEquipos();
+    if (_esAuxiliar) {
+      await Future.wait([
+        _panel.cargar(silencioso: _panel.carga == Carga.ok),
+        _recursos.cargar(silencioso: _recursos.carga == Carga.ok),
+      ]);
+    } else {
+      await _salones.cargar(silencioso: _salones.carga == Carga.ok);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: ListenableBuilder(
-        listenable: Listenable.merge([_recursos, _prestamos, _auth, _stats]),
-        builder: (context, _) {
-          final vencidos = _prestamos.vencidos(_alcance());
-          return RefreshIndicator(
-            color: Colors.black,
-            backgroundColor: AppColors.texto,
-            onRefresh: _refrescar,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 130),
+    return ListenableBuilder(
+      listenable: Listenable.merge([_auth, _panel, _salones, _recursos]),
+      builder: (context, _) => RefreshIndicator(
+        onRefresh: _refrescar,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 130),
+          children: [
+            _Encabezado(
+              nombre: _auth.usuario?.nombre ?? '',
+              destacada: _esAuxiliar ? _destacadaAuxiliar() : _destacadaUsuario(),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: _esAuxiliar ? _cuerpoAuxiliar(context) : _cuerpoUsuario(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Auxiliar / administrador ───────────────────────────────────────────
+
+  Widget _destacadaAuxiliar() {
+    if (_panel.carga != Carga.ok) {
+      return TarjetaDestacada(
+        etiqueta: 'Ahora en el campus',
+        titulo: _panel.carga == Carga.error ? 'Sin conexión' : 'Cargando salones…',
+        detalle: _panel.error,
+        color: AppColors.neutro,
+      );
+    }
+    final enClase = _panel.contar(FiltroPanel.clases);
+    final sinConfirmar = _panel.todos
+        .where((o) => o.situacion == SituacionSalon.claseSinConfirmar)
+        .length;
+    return TarjetaDestacada(
+      etiqueta: 'Ahora en el campus',
+      titulo: enClase == 1 ? '1 clase en curso' : '$enClase clases en curso',
+      detalle: sinConfirmar == 0
+          ? 'Todos los profesores confirmados'
+          : '$sinConfirmar sin confirmar profesor · ${_panel.totalReportes} reportes abiertos',
+      datoGrande: '${_panel.todos.length - _panel.contar(FiltroPanel.libres)}',
+      datoPequeno: 'en uso',
+      color: sinConfirmar > 0 ? AppColors.prestado : AppColors.disponible,
+      onTap: () => widget.onIrSalones(FiltroPanel.atencion),
+    );
+  }
+
+  List<Widget> _cuerpoAuxiliar(BuildContext context) {
+    final atencion = _panel.todos.where((o) => o.requiereAtencion).toList()
+      ..sort((a, b) => a.salon.nombre.compareTo(b.salon.nombre));
+    final clases = _panel.todos.where((o) => o.clase != null).toList()
+      ..sort((a, b) => a.clase!.horaInicio.compareTo(b.clase!.horaInicio));
+    final conNovedad = _recursos.totalFueraDeServicio;
+    void abrir(OcupacionSalon o) => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => SalonControlPage(salonId: o.salon.id)),
+        );
+
+    return [
+      Aparecer(
+        child: Row(
+          children: [
+            Indicador(
+              valor: '${_panel.contar(FiltroPanel.libres)}',
+              etiqueta: 'Libres',
+              color: AppColors.disponible,
+              onTap: () => widget.onIrSalones(FiltroPanel.libres),
+            ),
+            const SizedBox(width: 10),
+            Indicador(
+              valor: '${_panel.contar(FiltroPanel.clases)}',
+              etiqueta: 'En clase',
+              color: AppColors.mantenimiento,
+              onTap: () => widget.onIrSalones(FiltroPanel.clases),
+            ),
+            const SizedBox(width: 10),
+            Indicador(
+              valor: '${_panel.contar(FiltroPanel.atencion)}',
+              etiqueta: 'Por atender',
+              color: AppColors.danado,
+              onTap: () => widget.onIrSalones(FiltroPanel.atencion),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 22),
+      Aparecer(
+        orden: 1,
+        child: TarjetaPromo(
+          etiqueta: 'Inventario',
+          titulo: 'Equipos de los salones',
+          detalle: conNovedad == 0
+              ? 'Todos los equipos funcionan'
+              : '$conNovedad equipos dañados o en mantenimiento',
+          accion: 'Ver inventario',
+          icono: Icons.devices_other_rounded,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const EquiposPage()),
+          ),
+        ),
+      ),
+      const SizedBox(height: 28),
+      TituloSeccion(
+        'Por atender',
+        subtitulo: atencion.isEmpty
+            ? 'Nada pendiente, todo en orden'
+            : 'Profesores sin confirmar, reportes y solicitudes',
+        onVerTodo: () => widget.onIrSalones(FiltroPanel.atencion),
+      ),
+      const SizedBox(height: 12),
+      for (final (i, o) in atencion.take(4).indexed) ...[
+        Aparecer(orden: i + 2, child: _FilaAtencion(ocupacion: o, onTap: () => abrir(o))),
+        const SizedBox(height: 10),
+      ],
+      if (clases.isNotEmpty) ...[
+        const SizedBox(height: 18),
+        TituloSeccion('Clases en curso', subtitulo: '${clases.length} salones con clase ahora'),
+        const SizedBox(height: 14),
+        for (final (i, o) in clases.indexed)
+          Aparecer(
+            orden: i + 4,
+            child: FilaLineaTiempo(
+              hora: o.clase!.horaInicio.substring(0, 5),
+              color: colorDeSituacion(o.situacion),
+              ultimo: i == clases.length - 1,
+              child: _TarjetaClase(ocupacion: o, onTap: () => abrir(o)),
+            ),
+          ),
+      ],
+    ];
+  }
+
+  // ── Usuario UTB ────────────────────────────────────────────────────────
+
+  List<Salon> get _libres => _salones.todos.where((s) => s.disponible).toList()
+    ..sort((a, b) => a.nombre.compareTo(b.nombre));
+
+  Widget _destacadaUsuario() {
+    final libres = _libres.length;
+    return TarjetaDestacada(
+      etiqueta: 'Salones libres',
+      titulo: _salones.carga == Carga.ok
+          ? (libres == 0 ? 'No hay salones libres' : 'Puedes pedir un salón')
+          : 'Cargando salones…',
+      detalle: 'Para estudiar, exponer o reunirte con tu grupo',
+      datoGrande: _salones.carga == Carga.ok ? '$libres' : null,
+      datoPequeno: 'libres',
+      color: libres > 0 ? AppColors.disponible : AppColors.prestado,
+      onTap: () => widget.onIrSalones(null),
+    );
+  }
+
+  List<Widget> _cuerpoUsuario(BuildContext context) {
+    final libres = _libres;
+    return [
+      Aparecer(
+        child: TarjetaPromo(
+          etiqueta: 'Solicitud',
+          titulo: 'Solicita un salón',
+          detalle: 'Elige el salón, la hora y el motivo. El auxiliar te confirma.',
+          accion: 'Ver salones',
+          onTap: () => widget.onIrSalones(null),
+        ),
+      ),
+      const SizedBox(height: 16),
+      Aparecer(
+        orden: 1,
+        child: TarjetaPromo(
+          etiqueta: 'Mis solicitudes',
+          titulo: 'Sigue tus pedidos',
+          detalle: 'Mira si tus salones fueron aprobados y tus reportes atendidos.',
+          accion: 'Abrir control',
+          icono: Icons.fact_check_rounded,
+          onTap: widget.onIrControl,
+        ),
+      ),
+      const SizedBox(height: 28),
+      TituloSeccion('Libres ahora',
+          subtitulo: 'Salones disponibles en el campus', onVerTodo: () => widget.onIrSalones(null)),
+      const SizedBox(height: 12),
+      for (final (i, s) in libres.take(6).indexed) ...[
+        Aparecer(
+          orden: i + 2,
+          child: TarjetaBorde(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => SalonDetallePage(salon: s)),
+            ),
+            child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.degradado,
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  child: Column(
-                    children: [
-                      _Cabecera(
-                        salon: _recursos.salon,
-                        vencidos: vencidos,
-                        onSalon: _elegirSalon,
-                        onAvisos: () => widget.onVerActividad(filtro: 1),
+                _CodigoSalon(codigo: s.nombre),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(s.detalleUbicacion,
+                      style: const TextStyle(color: AppColors.textoSuave, fontSize: 14)),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.textoTenue),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+    ];
+  }
+}
+
+class _Encabezado extends StatelessWidget {
+  const _Encabezado({required this.nombre, required this.destacada});
+  final String nombre;
+  final Widget destacada;
+
+  @override
+  Widget build(BuildContext context) {
+    final ahora = DateTime.now();
+    final primerNombre = nombre.trim().split(RegExp(r'\s+')).first;
+    return EncabezadoDegradado(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fechaLarga(ahora),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
                       ),
-                      const SizedBox(height: 14),
-                      _ResumenOperativo(stats: _stats),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 22),
-                _Pestanas(onPrestamos: () => widget.onVerActividad()),
-                const Divider(height: 1),
-                const SizedBox(height: 22),
-                _Buscador(
-                  controlador: _buscar,
-                  onEnviar: (t) => widget.onVerEquipos(busqueda: t),
-                  onFiltros: _abrirFiltros,
-                ),
-                const SizedBox(height: 14),
-                _TarjetaReciente(
-                  recursos: _recursos,
-                  onAbrir: (r) => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                        builder: (_) => RecursoDetallePage(recurso: r)),
-                  ),
-                ),
-                const SizedBox(height: 26),
-                SeccionTitulo('Para ti', accion: () => widget.onVerEquipos()),
-                const SizedBox(height: 16),
-                _Categorias(
-                  recursos: _recursos,
-                  onTap: (c) => widget.onVerEquipos(categoria: c),
-                ),
-                const SizedBox(height: 28),
-                const Text(
-                  'Planifica tu próximo préstamo',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 14),
-                _Carrusel(
-                  tarjetas: [
-                    _DatosTarjeta(
-                      figura: Figuras.tarjetaPrestar,
-                      titulo: 'Presta en segundos',
-                      detalle: 'Equipos disponibles ahora mismo',
-                      onTap: () =>
-                          widget.onVerEquipos(estado: EstadoRecurso.disponible),
                     ),
-                    _DatosTarjeta(
-                      figura: Figuras.tarjetaDevolver,
-                      titulo: 'Controla las devoluciones',
-                      detalle: vencidos == 0
-                          ? 'Nada vencido, vas al día'
-                          : '$vencidos con plazo vencido',
-                      onTap: () => widget.onVerActividad(),
-                    ),
-                    _DatosTarjeta(
-                      figura: Figuras.tarjetaMantenimiento,
-                      titulo: 'Equipos dañados',
-                      detalle: 'Mira qué necesita mantenimiento',
-                      onTap: () =>
-                          widget.onVerEquipos(estado: EstadoRecurso.danado),
+                    const SizedBox(height: 6),
+                    Text.rich(
+                      TextSpan(
+                        text: '${saludo(ahora)}, ',
+                        style: const TextStyle(color: AppColors.indigoClaro),
+                        children: [
+                          TextSpan(
+                            text: primerNombre,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
-              ],
-            ),
-          );
-        },
+              ),
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  boxShadow: [BoxShadow(color: Color(0x55000000), blurRadius: 16)],
+                ),
+                child: AvatarIniciales(nombre: nombre, tamano: 62, color: AppColors.primario),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          Aparecer(child: destacada),
+        ],
       ),
     );
   }
 }
 
-class _Cabecera extends StatelessWidget {
-  const _Cabecera({
-    required this.salon,
-    required this.vencidos,
-    required this.onSalon,
-    required this.onAvisos,
-  });
-
-  final String? salon;
-  final int vencidos;
-  final VoidCallback onSalon;
-  final VoidCallback onAvisos;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: onSalon,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 14,
-                    height: 14,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primarioClaro,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      salon == null ? 'Todos los salones' : 'Salón $salon',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 19, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const Icon(Icons.keyboard_arrow_down,
-                      color: AppColors.textoSuave),
-                ],
-              ),
-            ),
-          ),
-        ),
-        InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onAvisos,
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              children: [
-                Badge(
-                  isLabelVisible: vencidos > 0,
-                  backgroundColor: AppColors.danado,
-                  label: Text('$vencidos'),
-                  child: const Icon(Icons.notifications_none_rounded, size: 26),
-                ),
-                const SizedBox(width: 8),
-                const Text('Avisos',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// "Equipos | Préstamos" con subrayado, como las pestañas de la propuesta.
-class _Pestanas extends StatelessWidget {
-  const _Pestanas({required this.onPrestamos});
-  final VoidCallback onPrestamos;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget pestana(
-        String texto, String figura, bool activa, VoidCallback? onTap) {
-      return Expanded(
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SvgPicture.asset(figura, height: 34),
-                  const SizedBox(width: 10),
-                  Text(
-                    texto,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: activa ? FontWeight.w800 : FontWeight.w500,
-                      color: activa ? AppColors.texto : AppColors.textoSuave,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Container(
-                height: 3,
-                width: 120,
-                color: activa ? AppColors.texto : Colors.transparent,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        pestana('Equipos', Figuras.computador, true, null),
-        pestana('Préstamos', Figuras.otros, false, onPrestamos),
-      ],
-    );
-  }
-}
-
-class _Buscador extends StatelessWidget {
-  const _Buscador({
-    required this.controlador,
-    required this.onEnviar,
-    required this.onFiltros,
-  });
-
-  final TextEditingController controlador;
-  final ValueChanged<String> onEnviar;
-  final VoidCallback onFiltros;
+class _CodigoSalon extends StatelessWidget {
+  const _CodigoSalon({required this.codigo, this.color});
+  final String codigo;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 6, 8, 6),
+      constraints: const BoxConstraints(minWidth: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: AppColors.borde, width: 1.5),
-        color: AppColors.superficie,
+        borderRadius: BorderRadius.circular(14),
+        gradient: color == null
+            ? AppColors.degradado
+            : LinearGradient(colors: [color!.withValues(alpha: 0.35), color!.withValues(alpha: 0.12)]),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.search, size: 28),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controlador,
-              textInputAction: TextInputAction.search,
-              onSubmitted: onEnviar,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-              decoration: const InputDecoration(
-                hintText: '¿Qué equipo buscas?',
-                hintStyle: TextStyle(fontSize: 20, color: AppColors.textoSuave),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                contentPadding: EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ),
-          InkWell(
-            borderRadius: BorderRadius.circular(30),
-            onTap: onFiltros,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.tune_rounded, size: 22),
-                  SizedBox(width: 8),
-                  Text('Filtros',
-                      style:
-                          TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-          ),
-        ],
+      child: Text(
+        codigo,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
       ),
     );
   }
 }
 
-/// Equivale a la tarjeta de dirección reciente: último equipo consultado o, si no hay, un resumen.
-class _TarjetaReciente extends StatelessWidget {
-  const _TarjetaReciente({required this.recursos, required this.onAbrir});
-  final RecursosController recursos;
-  final void Function(Recurso) onAbrir;
+class _FilaAtencion extends StatelessWidget {
+  const _FilaAtencion({required this.ocupacion, required this.onTap});
+  final OcupacionSalon ocupacion;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final r = recursos.reciente;
-    final String titulo;
-    final String detalle;
-    final IconData icono;
-    VoidCallback? onTap;
-
-    if (r != null) {
-      titulo = r.titulo;
-      detalle = 'Salón ${r.salonId} · ${r.estado.etiqueta}';
-      icono = Icons.history_rounded;
-      onTap = () => onAbrir(r);
-    } else {
-      titulo = '${recursos.totalDisponibles} equipos disponibles';
-      detalle = recursos.carga == Carga.ok
-          ? '${recursos.totalFueraDeServicio} fuera de servicio de ${recursos.todos.length}'
-          : 'Cargando inventario…';
-      icono = Icons.inventory_2_outlined;
-    }
-
+    final o = ocupacion;
+    final color = colorDeSituacion(o.situacion);
+    final motivos = <String>[
+      if (o.situacion == SituacionSalon.claseSinConfirmar) 'Confirmar profesor',
+      if (o.situacion == SituacionSalon.claseSinProfesor) 'Profesor ausente',
+      if (o.reportesAbiertos > 0)
+        o.reportesAbiertos == 1 ? '1 reporte' : '${o.reportesAbiertos} reportes',
+      if (o.solicitudesPendientes > 0)
+        o.solicitudesPendientes == 1 ? '1 solicitud' : '${o.solicitudesPendientes} solicitudes',
+    ];
     return TarjetaBorde(
       onTap: onTap,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       child: Row(
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppColors.superficie,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icono, size: 28),
-          ),
-          const SizedBox(width: 16),
+          _CodigoSalon(codigo: o.salon.nombre, color: color),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  titulo,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w700),
-                ),
+                Text(o.titular,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 3),
-                Text(
-                  detalle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 16, color: AppColors.textoSuave),
-                ),
+                Text(motivos.join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
-          if (onTap != null)
-            const Icon(Icons.chevron_right, color: AppColors.textoSuave),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.textoTenue),
         ],
       ),
     );
   }
 }
 
-class _Categorias extends StatelessWidget {
-  const _Categorias({required this.recursos, required this.onTap});
-  final RecursosController recursos;
-  final ValueChanged<CategoriaRecurso> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final categorias = CategoriaRecurso.creables;
-    return SizedBox(
-      height: 142,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categorias.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
-        itemBuilder: (context, i) {
-          final c = categorias[i];
-          final libres = recursos.disponiblesDe(c);
-          return InkWell(
-            borderRadius: BorderRadius.circular(40),
-            onTap: () => onTap(c),
-            child: SizedBox(
-              width: 84,
-              child: Column(
-                children: [
-                  FiguraCircular(figura: c.figura, tamano: 84),
-                  const SizedBox(height: 10),
-                  Text(
-                    c.etiqueta,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    recursos.carga == Carga.ok ? '$libres libres' : '—',
-                    style: const TextStyle(
-                        fontSize: 12.5, color: AppColors.textoSuave),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _DatosTarjeta {
-  const _DatosTarjeta({
-    required this.figura,
-    required this.titulo,
-    required this.detalle,
-    required this.onTap,
-  });
-  final String figura;
-  final String titulo;
-  final String detalle;
+class _TarjetaClase extends StatelessWidget {
+  const _TarjetaClase({required this.ocupacion, required this.onTap});
+  final OcupacionSalon ocupacion;
   final VoidCallback onTap;
-}
-
-class _Carrusel extends StatelessWidget {
-  const _Carrusel({required this.tarjetas});
-  final List<_DatosTarjeta> tarjetas;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 238,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: tarjetas.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
-        itemBuilder: (context, i) {
-          final t = tarjetas[i];
-          return InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: t.onTap,
-            child: SizedBox(
-              width: 290,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: SizedBox(
-                      height: 150,
-                      width: 290,
-                      child: SvgPicture.asset(t.figura, fit: BoxFit.cover),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    t.titulo,
+    final c = ocupacion.clase!;
+    final color = colorDeSituacion(ocupacion.situacion);
+    return TarjetaBorde(
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(c.titulo,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    t.detalle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 16, color: AppColors.textoSuave),
-                  ),
-                ],
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
               ),
-            ),
-          );
-        },
+              Insignia(texto: ocupacion.salon.nombre, color: color),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.person_outline_rounded, size: 16, color: AppColors.textoTenue),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(c.nombreProfesor,
+                    style: const TextStyle(color: AppColors.textoSuave, fontSize: 13.5)),
+              ),
+              Text(c.rango,
+                  style: const TextStyle(color: AppColors.textoTenue, fontSize: 12.5)),
+            ],
+          ),
+        ],
       ),
     );
   }

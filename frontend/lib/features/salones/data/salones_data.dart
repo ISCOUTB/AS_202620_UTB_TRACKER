@@ -58,6 +58,8 @@ class PrestamoSalonModel {
         createdAt: j['created_at'] != null
             ? parsearFechaServidor(j['created_at'].toString())
             : DateTime.now(),
+        salonNombre: j['salon_nombre'] as String?,
+        usuarioNombre: j['usuario_nombre'] as String?,
       );
 }
 

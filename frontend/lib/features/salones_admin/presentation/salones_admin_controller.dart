@@ -9,7 +9,7 @@ enum FiltroPanel {
   todos('Todos'),
   atencion('Por atender'),
   clases('En clase'),
-  prestados('Prestados'),
+  prestados('Reservados'),
   libres('Libres');
 
   const FiltroPanel(this.etiqueta);

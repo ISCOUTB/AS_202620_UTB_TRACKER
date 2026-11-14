@@ -102,6 +102,8 @@ class PrestamoSalon {
     this.motivo,
     required this.estado,
     required this.createdAt,
+    this.salonNombre,
+    this.usuarioNombre,
   });
 
   final int id;
@@ -112,4 +114,11 @@ class PrestamoSalon {
   final String? motivo;
   final String estado;
   final DateTime createdAt;
+
+  /// Código real del salón ("A4-204") y nombre de quien lo pidió.
+  final String? salonNombre;
+  final String? usuarioNombre;
+
+  String get salonTexto => salonNombre ?? 'Salón';
+  bool get pendiente => estado == 'pendiente';
 }

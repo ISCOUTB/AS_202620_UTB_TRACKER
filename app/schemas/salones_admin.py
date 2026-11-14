@@ -83,3 +83,5 @@ class ReporteSalonResponse(BaseModel):
     estado: str
     created_at: Optional[datetime] = None
     resuelto_en: Optional[datetime] = None
+    salon_nombre: Optional[str] = None
+    usuario_nombre: Optional[str] = None

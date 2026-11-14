@@ -86,6 +86,15 @@ class PrestamoSalon(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     salon = relationship("Salon", back_populates="prestamos_salon")
+    usuario = relationship("Usuario")
+
+    @property
+    def salon_nombre(self):
+        return self.salon.nombre if self.salon else None
+
+    @property
+    def usuario_nombre(self):
+        return self.usuario.nombre if self.usuario else None
 
 
 class PresenciaSalon(Base):
@@ -124,3 +133,15 @@ class ReporteSalon(Base):
     # valores válidos: abierto | resuelto
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     resuelto_en = Column(DateTime, nullable=True)
+
+    salon = relationship("Salon")
+    usuario = relationship("Usuario")
+
+    # Datos legibles para el listado de reportes de todos los salones.
+    @property
+    def salon_nombre(self):
+        return self.salon.nombre if self.salon else None
+
+    @property
+    def usuario_nombre(self):
+        return self.usuario.nombre if self.usuario else None

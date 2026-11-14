@@ -171,6 +171,8 @@ class ReporteSalon {
     required this.abierto,
     required this.creadoEn,
     this.resueltoEn,
+    this.salonNombre,
+    this.usuarioNombre,
   });
 
   final int id;
@@ -181,4 +183,8 @@ class ReporteSalon {
   final bool abierto;
   final DateTime creadoEn;
   final DateTime? resueltoEn;
+
+  /// Código real del salón y nombre de quien reportó (listado de todos los salones).
+  final String? salonNombre;
+  final String? usuarioNombre;
 }

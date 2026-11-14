@@ -197,7 +197,8 @@ def main() -> None:
         s = {}
         for codigo, edificio, piso, cap, estado, desc in SALONES:
             fila = Salon(
-                nombre=codigo, ubicacion=f"{desc} · Ed. {edificio}, piso {piso} · {SEDE}",
+                # La app arma "Aula de clase · Edif. Aulas 4 · Piso 2" con edificio y piso.
+                nombre=codigo, ubicacion=desc,
                 edificio=edificio, piso=piso, capacidad=cap, estado=estado,
             )
             db.add(fila)
