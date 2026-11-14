@@ -58,6 +58,21 @@ columnas quedan en `—` porque todavía no existen ADRs, código ni pruebas.
   hoy no hay un registro confiable de qué equipo está disponible. Si el sistema permite que dos
   préstamos coincidan sobre el mismo recurso, no mejora nada frente al proceso manual actual.
 
+## A-07 · Declarar
+
+- **Nombre:** Control de salones en vivo
+- **Para quién:** Auxiliares de planta, que necesitan saber qué salón está libre, en clase o prestado, y si el
+  profesor llegó.
+- **Qué problema resuelve:** Sin una vista única, el auxiliar recorre el campus o llama para saber quién tiene
+  cada salón, y no queda constancia de si el profesor llegó ni de las novedades del salón.
+
+## A-08 · Declarar
+
+- **Nombre:** Trazabilidad de acciones (auditoría)
+- **Para quién:** El administrador, que debe poder responder "quién hizo qué y cuándo".
+- **Qué problema resuelve:** Sin bitácora, una disputa sobre un salón o un cambio de rol no se puede resolver, y
+  QS-04 (modificaciones no autorizadas) no se puede demostrar.
+
 ---
 
 ## Tabla de trazabilidad
@@ -69,6 +84,8 @@ columnas quedan en `—` porque todavía no existen ADRs, código ni pruebas.
 | **A-03** | Respuesta rápida | Rendimiento (tiempo) — [QS-02](arc42/arc42.md#qs-02--rendimiento-tiempo-de-respuesta) | C1, C2 | [ADR-0002](adr/0002-cambio-stack-fastapi-flutter.md) | `app/main.py::logging_middleware`, FastAPI ASGI | `tests/test_loans.py`, `tests/test_resources.py` | Middleware con medición de latencia en milisegundos (`latency_ms`) en cada petición HTTP |
 | **A-04** | Estabilidad con concurrencia | Rendimiento (concurrencia) — [QS-03](arc42/arc42.md#qs-03--rendimiento-concurrencia) | C1, C2 | [ADR-0001](adr/0001-estilo-arquitectonico.md), [ADR-0005](adr/0005-monolito-vs-microservicios.md) | `app/core/database.py`, `app/core/resilience.py`, `app/main.py` | `tests/test_performance.py`, `tests/test_resilience.py` | Pool resiliente (`pool_pre_ping`, timeouts) y decorador `@with_retry` con backoff y jitter |
 | **A-05** | Control de acceso por rol | Seguridad — [QS-04](arc42/arc42.md#qs-04--seguridad) | C1, C2 | [ADR-0004](adr/0004-seguridad-jwt.md) | `app/routers/auth.py`, `app/services/auth.py`, `app/core/hashing.py`, `app/core/security.py` | `tests/test_auth.py` (8 pruebas en verde) | Emisión y verificación de tokens JWT HS256, hashing irreversible con `bcrypt` (sin texto plano), control de roles |
+| **A-08** | Trazabilidad de acciones (auditoría) | Seguridad — [QS-04](arc42/arc42.md#qs-04--seguridad) | C1, C2 | [ADR-0010](adr/0010-auditoria.md) | `app/models/auditoria_models.py`, `app/services/auditoria.py`, `app/routers/auditoria.py`, `alembic/versions/a1b2c3d4e5f6_add_auditoria.py` | `tests/test_auditoria.py` (12 pruebas: qué se registra, permisos, filtros, CSV, inmutabilidad) | Cada acción auditada guarda actor, hora, antes y después en la misma transacción; la bitácora no se puede editar ni borrar |
+| **A-07** | Control de salones en vivo | Usabilidad — [QS-05](arc42/arc42.md#qs-05--usabilidad) | C1, C2 | [ADR-0009](adr/0009-administracion-de-salones.md) | `app/services/salones_admin.py`, `app/routers/salones_admin.py`, `frontend/lib/features/salones_admin/` | `tests/test_salones_admin.py`, `frontend/test/salones_admin_test.dart` | `GET /salones/ocupacion` calcula en el servidor quién tiene cada salón; el panel del auxiliar se pinta con una sola petición |
 | **A-06** | Confiabilidad del estado de recursos y préstamos | Confiabilidad de los datos — [QS-06](arc42/arc42.md#qs-06--confiabilidad-de-los-datos) | C1, C2, C3 | [ADR-0001](adr/0001-estilo-arquitectonico.md), [ADR-0003](adr/0003-integracion-sincrona.md) | `app/routers/loans.py`, `app/services/loans.py`, `app/models/recurso_models.py` | `tests/test_loans.py`, `tests/test_resilience.py` (idempotencia y locking) | Regla de negocio QS-06: bloqueo pesimista `.with_for_update()` e idempotencia vía `X-Idempotency-Key` |
 
 

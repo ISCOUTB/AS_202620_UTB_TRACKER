@@ -54,6 +54,9 @@
               }
             }
           },
+          "429": {
+            "description": "Demasiados intentos de inicio de sesión"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -226,6 +229,373 @@
             }
           }
         }
+      }
+    },
+    "/auth/users": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Users Endpoint",
+        "description": "Lista todos los usuarios para el panel administrativo. Requiere rol admin/auxiliar.",
+        "operationId": "get_users_endpoint_auth_users_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "rol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Rol"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  },
+                  "title": "Response Get Users Endpoint Auth Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/user/{user_id}/role": {
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Update User Role Endpoint",
+        "description": "Asigna o actualiza el rol de un usuario desde el panel administrativo. Requiere rol admin/auxiliar.",
+        "operationId": "update_user_role_endpoint_auth_user__user_id__role_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioRoleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Update User Role Endpoint",
+        "description": "Asigna o actualiza el rol de un usuario desde el panel administrativo. Requiere rol admin/auxiliar.",
+        "operationId": "update_user_role_endpoint_auth_user__user_id__role_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioRoleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Forgot Password Endpoint",
+        "operationId": "forgot_password_endpoint_auth_forgot_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Reset Password Endpoint",
+        "operationId": "reset_password_endpoint_auth_reset_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Refresh Endpoint",
+        "operationId": "refresh_endpoint_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/fcm-token": {
+      "patch": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Update Fcm Token Endpoint",
+        "operationId": "update_fcm_token_endpoint_auth_fcm_token_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FcmTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
       }
     },
     "/recursos": {
@@ -746,7 +1116,7 @@
           "prestamos"
         ],
         "summary": "Listar Prestamos",
-        "description": "Lista préstamos de recursos.\nAdmin/auxiliar ve todos; usuario normal solo ve los suyos.",
+        "description": "Lista préstamos de recursos.\nAdmin/auxiliar ve todos; usuario normal solo ve los suyos.\nDevuelve el total en el header X-Total-Count.",
         "operationId": "listar_prestamos_prestamos_get",
         "security": [
           {
@@ -862,6 +1232,434 @@
           },
           "409": {
             "description": "Préstamo ya devuelto"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prestamos/marcar-vencidos": {
+      "post": {
+        "tags": [
+          "prestamos"
+        ],
+        "summary": "Marcar Vencidos",
+        "description": "Job idempotente para actualizar préstamos activos vencidos.",
+        "operationId": "marcar_vencidos_prestamos_marcar_vencidos_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PrestamoOut"
+                  },
+                  "type": "array",
+                  "title": "Response Marcar Vencidos Prestamos Marcar Vencidos Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/salones/ocupacion": {
+      "get": {
+        "tags": [
+          "salones-admin"
+        ],
+        "summary": "Listar Ocupacion",
+        "description": "Estado en vivo de todos los salones: quién los tiene y si el profesor llegó.",
+        "operationId": "listar_ocupacion_salones_ocupacion_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "momento",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Hora local del campus a consultar (por defecto, ahora). Útil para pruebas.",
+              "title": "Momento"
+            },
+            "description": "Hora local del campus a consultar (por defecto, ahora). Útil para pruebas."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OcupacionSalon"
+                  },
+                  "title": "Response Listar Ocupacion Salones Ocupacion Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salones/{salon_id}/ocupacion": {
+      "get": {
+        "tags": [
+          "salones-admin"
+        ],
+        "summary": "Obtener Ocupacion",
+        "operationId": "obtener_ocupacion_salones__salon_id__ocupacion_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          },
+          {
+            "name": "momento",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Hora local del campus a consultar (por defecto, ahora). Útil para pruebas.",
+              "title": "Momento"
+            },
+            "description": "Hora local del campus a consultar (por defecto, ahora). Útil para pruebas."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OcupacionSalon"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salones/{salon_id}/presencia": {
+      "put": {
+        "tags": [
+          "salones-admin"
+        ],
+        "summary": "Registrar Presencia",
+        "description": "Confirma o desmiente que el profesor llegó a la clase en curso.",
+        "operationId": "registrar_presencia_salones__salon_id__presencia_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          },
+          {
+            "name": "momento",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Hora local del campus a consultar (por defecto, ahora). Útil para pruebas.",
+              "title": "Momento"
+            },
+            "description": "Hora local del campus a consultar (por defecto, ahora). Útil para pruebas."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresenciaUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenciaResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No hay una clase en curso en este salón"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salones/{salon_id}/reportes": {
+      "post": {
+        "tags": [
+          "salones-admin"
+        ],
+        "summary": "Crear Reporte",
+        "operationId": "crear_reporte_salones__salon_id__reportes_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReporteSalonCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReporteSalonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "salones-admin"
+        ],
+        "summary": "Listar Reportes",
+        "operationId": "listar_reportes_salones__salon_id__reportes_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoReporteSalon"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReporteSalonResponse"
+                  },
+                  "title": "Response Listar Reportes Salones  Salon Id  Reportes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salones/{salon_id}/reportes/{reporte_id}": {
+      "patch": {
+        "tags": [
+          "salones-admin"
+        ],
+        "summary": "Actualizar Reporte",
+        "description": "Marca un reporte como resuelto (o lo reabre). Solo auxiliar/administrador.",
+        "operationId": "actualizar_reporte_salones__salon_id__reportes__reporte_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          },
+          {
+            "name": "reporte_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Reporte Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReporteSalonUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReporteSalonResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -1647,7 +2445,7 @@
           "prestamos-salon"
         ],
         "summary": "Listar Prestamos Salon",
-        "description": "Lista préstamos de salón con filtros.\nAdmin/auxiliar ve todos; usuario normal solo ve los suyos.",
+        "description": "Lista préstamos de salón con filtros.\nAdmin/auxiliar ve todos; usuario normal solo ve los suyos.\nDevuelve el total de registros en el header X-Total-Count.",
         "operationId": "listar_prestamos_salon_prestamos_salon_get",
         "security": [
           {
@@ -1740,6 +2538,52 @@
       }
     },
     "/prestamos-salon/{prestamo_id}": {
+      "get": {
+        "tags": [
+          "prestamos-salon"
+        ],
+        "summary": "Obtener Prestamo Salon",
+        "description": "Obtiene un préstamo de salón por ID.\nUsuario normal solo puede consultar el suyo; admin/auxiliar cualquiera.",
+        "operationId": "obtener_prestamo_salon_prestamos_salon__prestamo_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "prestamo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Prestamo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestamoSalonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "prestamos-salon"
@@ -1795,11 +2639,620 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "prestamos-salon"
+        ],
+        "summary": "Cancelar Prestamo Propio",
+        "description": "Cancela un préstamo propio que todavía esté en estado 'pendiente'.\nEl usuario solo puede cancelar sus propias solicitudes; admin/auxiliar\ndeben usar PATCH para cualquier otra transición de estado.",
+        "operationId": "cancelar_prestamo_propio_prestamos_salon__prestamo_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "prestamo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Prestamo Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestamoSalonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prestamos-salon/expirar": {
+      "post": {
+        "tags": [
+          "prestamos-salon"
+        ],
+        "summary": "Expirar Prestamos Pendientes",
+        "description": "Marca como 'cancelado' todos los préstamos pendientes cuya fecha_inicio\nya pasó. Debe llamarse periódicamente (cron/scheduler).\nSolo admin/auxiliar.",
+        "operationId": "expirar_prestamos_pendientes_prestamos_salon_expirar_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/mantenimientos": {
+      "post": {
+        "tags": [
+          "mantenimientos"
+        ],
+        "summary": "Crear Mantenimiento",
+        "operationId": "crear_mantenimiento_mantenimientos_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MantenimientoRecursoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MantenimientoRecursoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "mantenimientos"
+        ],
+        "summary": "Listar Mantenimientos",
+        "operationId": "listar_mantenimientos_mantenimientos_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recurso_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recurso Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MantenimientoRecursoOut"
+                  },
+                  "title": "Response Listar Mantenimientos Mantenimientos Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mantenimientos/{mantenimiento_id}": {
+      "patch": {
+        "tags": [
+          "mantenimientos"
+        ],
+        "summary": "Actualizar Mantenimiento",
+        "operationId": "actualizar_mantenimiento_mantenimientos__mantenimiento_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mantenimiento_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Mantenimiento Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MantenimientoRecursoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MantenimientoRecursoOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stats/resumen": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Resumen",
+        "description": "Devuelve los contadores operativos usados por el panel principal.",
+        "operationId": "resumen_stats_resumen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object",
+                  "title": "Response Resumen Stats Resumen Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/auditoria": {
+      "get": {
+        "tags": [
+          "auditoria"
+        ],
+        "summary": "Listar Auditoria",
+        "description": "Bitácora de acciones, de la más reciente a la más antigua.",
+        "operationId": "listar_auditoria_auditoria_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "accion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Acción exacta o prefijo (ej. 'salon')",
+              "title": "Accion"
+            },
+            "description": "Acción exacta o prefijo (ej. 'salon')"
+          },
+          {
+            "name": "entidad",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entidad"
+            }
+          },
+          {
+            "name": "actor_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hasta"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditoriaResponse"
+                  },
+                  "title": "Response Listar Auditoria Auditoria Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auditoria/exportar": {
+      "get": {
+        "tags": [
+          "auditoria"
+        ],
+        "summary": "Exportar Auditoria",
+        "description": "Descarga la bitácora filtrada en CSV (máx. 5000 filas).",
+        "operationId": "exportar_auditoria_auditoria_exportar_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "accion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accion"
+            }
+          },
+          {
+            "name": "entidad",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entidad"
+            }
+          },
+          {
+            "name": "actor_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Id"
+            }
+          },
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Desde"
+            }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hasta"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
   "components": {
     "schemas": {
+      "AuditoriaResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ocurrio_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ocurrio En"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "actor_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Nombre"
+          },
+          "accion": {
+            "type": "string",
+            "title": "Accion"
+          },
+          "entidad": {
+            "type": "string",
+            "title": "Entidad"
+          },
+          "entidad_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entidad Id"
+          },
+          "detalle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detalle"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ocurrio_en",
+          "accion",
+          "entidad"
+        ],
+        "title": "AuditoriaResponse"
+      },
       "CategoriaRecurso": {
         "type": "string",
         "enum": [
@@ -1812,6 +3265,53 @@
         ],
         "title": "CategoriaRecurso"
       },
+      "ClaseActual": {
+        "properties": {
+          "horario_id": {
+            "type": "integer",
+            "title": "Horario Id"
+          },
+          "materia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Materia"
+          },
+          "profesor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profesor"
+          },
+          "hora_inicio": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Inicio"
+          },
+          "hora_fin": {
+            "type": "string",
+            "format": "time",
+            "title": "Hora Fin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "horario_id",
+          "hora_inicio",
+          "hora_fin"
+        ],
+        "title": "ClaseActual"
+      },
       "EstadoRecurso": {
         "type": "string",
         "enum": [
@@ -1821,6 +3321,53 @@
           "mantenimiento"
         ],
         "title": "EstadoRecurso"
+      },
+      "EstadoReporteSalon": {
+        "type": "string",
+        "enum": [
+          "abierto",
+          "resuelto"
+        ],
+        "title": "EstadoReporteSalon"
+      },
+      "EstadoSalon": {
+        "type": "string",
+        "enum": [
+          "disponible",
+          "ocupado",
+          "mantenimiento",
+          "fuera_servicio"
+        ],
+        "title": "EstadoSalon"
+      },
+      "FcmTokenRequest": {
+        "properties": {
+          "fcm_token": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 10,
+            "title": "Fcm Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fcm_token"
+        ],
+        "title": "FcmTokenRequest"
+      },
+      "ForgotPasswordRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 5,
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "ForgotPasswordRequest"
       },
       "HTTPValidationError": {
         "properties": {
@@ -2094,6 +3641,413 @@
         "type": "object",
         "title": "HorarioUpdate"
       },
+      "MantenimientoRecursoCreate": {
+        "properties": {
+          "recurso_id": {
+            "type": "integer",
+            "title": "Recurso Id"
+          },
+          "tipo": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 2,
+            "title": "Tipo",
+            "default": "correctivo"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "fecha_programada": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Programada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recurso_id"
+        ],
+        "title": "MantenimientoRecursoCreate"
+      },
+      "MantenimientoRecursoOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "recurso_id": {
+            "type": "integer",
+            "title": "Recurso Id"
+          },
+          "reporte_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reporte Id"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "fecha_programada": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Programada"
+          },
+          "fecha_inicio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Inicio"
+          },
+          "fecha_fin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Fin"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "recurso_id",
+          "tipo",
+          "estado"
+        ],
+        "title": "MantenimientoRecursoOut"
+      },
+      "MantenimientoRecursoUpdate": {
+        "properties": {
+          "estado": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estado"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "fecha_programada": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Programada"
+          },
+          "fecha_inicio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Inicio"
+          },
+          "fecha_fin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Fin"
+          }
+        },
+        "type": "object",
+        "title": "MantenimientoRecursoUpdate"
+      },
+      "OcupacionSalon": {
+        "properties": {
+          "salon": {
+            "$ref": "#/components/schemas/SalonResponse"
+          },
+          "ocupante": {
+            "type": "string",
+            "title": "Ocupante",
+            "description": "libre | clase | prestamo"
+          },
+          "clase_actual": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClaseActual"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "prestamo_actual": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrestamoActual"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "profesor_presente": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profesor Presente",
+            "description": "None = sin confirmar todavía; solo aplica cuando hay clase_actual"
+          },
+          "solicitudes_pendientes": {
+            "type": "integer",
+            "title": "Solicitudes Pendientes",
+            "default": 0
+          },
+          "reportes_abiertos": {
+            "type": "integer",
+            "title": "Reportes Abiertos",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "salon",
+          "ocupante"
+        ],
+        "title": "OcupacionSalon",
+        "description": "Foto en vivo de un salón: quién lo tiene y en qué situación está."
+      },
+      "PresenciaResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "salon_id": {
+            "type": "integer",
+            "title": "Salon Id"
+          },
+          "horario_id": {
+            "type": "integer",
+            "title": "Horario Id"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "profesor_presente": {
+            "type": "boolean",
+            "title": "Profesor Presente"
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
+          "registrado_por": {
+            "type": "integer",
+            "title": "Registrado Por"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "salon_id",
+          "horario_id",
+          "fecha",
+          "profesor_presente",
+          "registrado_por"
+        ],
+        "title": "PresenciaResponse"
+      },
+      "PresenciaUpdate": {
+        "properties": {
+          "profesor_presente": {
+            "type": "boolean",
+            "title": "Profesor Presente"
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profesor_presente"
+        ],
+        "title": "PresenciaUpdate"
+      },
+      "PrestamoActual": {
+        "properties": {
+          "prestamo_id": {
+            "type": "integer",
+            "title": "Prestamo Id"
+          },
+          "usuario_id": {
+            "type": "integer",
+            "title": "Usuario Id"
+          },
+          "usuario_nombre": {
+            "type": "string",
+            "title": "Usuario Nombre"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "fecha_inicio": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Inicio"
+          },
+          "fecha_fin": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fecha Fin"
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prestamo_id",
+          "usuario_id",
+          "usuario_nombre",
+          "estado",
+          "fecha_inicio",
+          "fecha_fin"
+        ],
+        "title": "PrestamoActual"
+      },
       "PrestamoCreate": {
         "properties": {
           "recurso_id": {
@@ -2275,8 +4229,16 @@
         "properties": {
           "estado": {
             "type": "string",
+            "enum": [
+              "pendiente",
+              "aprobado",
+              "rechazado",
+              "en_uso",
+              "finalizado",
+              "cancelado"
+            ],
             "title": "Estado",
-            "description": "pendiente | aprobado | rechazado | en_uso | finalizado | cancelado"
+            "description": "Estado destino del préstamo"
           }
         },
         "type": "object",
@@ -2499,6 +4461,20 @@
         "type": "object",
         "title": "RecursoUpdate"
       },
+      "RefreshTokenRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "minLength": 20,
+            "title": "Refresh Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshTokenRequest"
+      },
       "ReporteCreate": {
         "properties": {
           "estado_reportado": {
@@ -2596,6 +4572,119 @@
         ],
         "title": "ReporteResponse"
       },
+      "ReporteSalonCreate": {
+        "properties": {
+          "tipo": {
+            "$ref": "#/components/schemas/TipoReporteSalon"
+          },
+          "descripcion": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Descripcion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "descripcion"
+        ],
+        "title": "ReporteSalonCreate"
+      },
+      "ReporteSalonResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "salon_id": {
+            "type": "integer",
+            "title": "Salon Id"
+          },
+          "usuario_id": {
+            "type": "integer",
+            "title": "Usuario Id"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "resuelto_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resuelto En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "salon_id",
+          "usuario_id",
+          "tipo",
+          "descripcion",
+          "estado"
+        ],
+        "title": "ReporteSalonResponse"
+      },
+      "ReporteSalonUpdate": {
+        "properties": {
+          "estado": {
+            "$ref": "#/components/schemas/EstadoReporteSalon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado"
+        ],
+        "title": "ReporteSalonUpdate"
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 10,
+            "title": "Token"
+          },
+          "new_password": {
+            "type": "string",
+            "minLength": 6,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "title": "ResetPasswordRequest"
+      },
       "SalonCreate": {
         "properties": {
           "nombre": {
@@ -2646,8 +4735,7 @@
             ]
           },
           "estado": {
-            "type": "string",
-            "title": "Estado",
+            "$ref": "#/components/schemas/EstadoSalon",
             "default": "disponible"
           }
         },
@@ -2807,17 +4895,27 @@
           "estado": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/EstadoSalon"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Estado"
+            ]
           }
         },
         "type": "object",
         "title": "SalonUpdate"
+      },
+      "TipoReporteSalon": {
+        "type": "string",
+        "enum": [
+          "limpieza",
+          "equipo",
+          "infraestructura",
+          "seguridad",
+          "otro"
+        ],
+        "title": "TipoReporteSalon"
       },
       "TokenResponse": {
         "properties": {
@@ -2828,6 +4926,17 @@
           "token_type": {
             "type": "string",
             "title": "Token Type"
+          },
+          "refresh_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Token"
           },
           "user": {
             "anyOf": [
@@ -2960,6 +5069,23 @@
         ],
         "title": "UsuarioLogin"
       },
+      "UsuarioRoleUpdate": {
+        "properties": {
+          "rol": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Rol",
+            "description": "Nuevo rol: usuario_utb, auxiliar, administrador"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rol"
+        ],
+        "title": "UsuarioRoleUpdate",
+        "description": "Esquema para asignar o actualizar el rol desde el panel administrativo."
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -2983,6 +5109,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",

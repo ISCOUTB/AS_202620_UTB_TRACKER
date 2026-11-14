@@ -443,6 +443,8 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0006](../adr/0006-mensajeria-asincrona-outbox.md) — Mensajería Asíncrona: Transactional Outbox para notificaciones de préstamos (S12)
 - [ADR-0007](../adr/0007-identificadores-enteros-autoincrementales.md) — Identificadores enteros autoincrementales en claves primarias (S12)
 - [ADR-0008](../adr/0008-control-acceso-granular-recurso.md) — Control de acceso granular por recurso (mitigación BOLA/IDOR) (S13)
+- [ADR-0009](../adr/0009-administracion-de-salones.md) — Administración de salones: ocupación en vivo, presencia del profesor y reportes
+- [ADR-0010](../adr/0010-auditoria.md) — Auditoría: bitácora de solo-agregar escrita en la misma transacción
 
 # Requisitos de calidad
 
