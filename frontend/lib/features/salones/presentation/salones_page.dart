@@ -4,6 +4,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/utilidades.dart';
+import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/salon.dart';
@@ -55,49 +56,104 @@ class _SalonesPageState extends State<SalonesPage> {
     );
   }
 
+  /// Edificio elegido en los chips (null = todos).
+  String? _edificio;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Salones y Aulas'),
-        actions: [
-          if (_auth.esAdministrador)
-            IconButton(
-              icon: const Icon(Icons.add_rounded),
-              tooltip: 'Registrar salón',
-              onPressed: _abrirCrearSalon,
-            ),
-        ],
-      ),
+      floatingActionButton: _auth.esAdministrador
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 90),
+              child: FloatingActionButton(
+                tooltip: 'Registrar salón',
+                onPressed: _abrirCrearSalon,
+                child: const Icon(Icons.add_rounded),
+              ),
+            )
+          : null,
       body: ListenableBuilder(
         listenable: _salones,
         builder: (context, _) {
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                child: TextField(
-                  controller: _busquedaCtrl,
-                  onChanged: _salones.fijarBusqueda,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar salón, edificio o aula...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _busquedaCtrl.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear_rounded),
-                            onPressed: () {
-                              _busquedaCtrl.clear();
-                              _salones.fijarBusqueda('');
-                            },
-                          )
-                        : null,
+          final edificios = _salones.todos
+              .map((s) => s.edificio)
+              .whereType<String>()
+              .where((e) => e.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort();
+          final libres = _salones.todos.where((s) => s.disponible).length;
+          return RefreshIndicator(
+            onRefresh: () => _salones.cargar(silencioso: true),
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 130),
+              children: [
+                EncabezadoDegradado(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
+                      const Text('Salones',
+                          style: TextStyle(
+                              fontSize: 32, fontWeight: FontWeight.w800)),
+                      Text(
+                        '$libres libres de ${_salones.todos.length} en el Campus Tecnológico',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 15),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _busquedaCtrl,
+                        onChanged: _salones.fijarBusqueda,
+                        decoration: InputDecoration(
+                          hintText: 'Buscar salón o edificio',
+                          fillColor: const Color(0x33000000),
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _busquedaCtrl.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear_rounded),
+                                  onPressed: () {
+                                    _busquedaCtrl.clear();
+                                    _salones.fijarBusqueda('');
+                                  },
+                                )
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              Expanded(
-                child: _construirCuerpo(),
-              ),
-            ],
+                if (edificios.length > 1)
+                  SizedBox(
+                    height: 58,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                      children: [
+                        for (final e in [null, ...edificios])
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              showCheckmark: false,
+                              label: Text(e ?? 'Todos'),
+                              selected: _edificio == e,
+                              onSelected: (_) => setState(() => _edificio = e),
+                              selectedColor: AppColors.primario,
+                              backgroundColor: AppColors.superficieAlta,
+                              side: BorderSide.none,
+                              shape: const StadiumBorder(),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: _construirCuerpo(),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -115,42 +171,31 @@ class _SalonesPageState extends State<SalonesPage> {
           onReintentar: _salones.cargar,
         );
       case Carga.ok:
-        final lista = _salones.filtrados;
+        final lista = _salones.filtrados
+            .where((s) => _edificio == null || s.edificio == _edificio)
+            .toList();
         if (lista.isEmpty) {
-          return RefreshIndicator(
-            color: Colors.black,
-            backgroundColor: AppColors.texto,
-            onRefresh: () => _salones.cargar(silencioso: true),
-            child: ListView(
-              children: const [
-                SizedBox(
-                  height: 300,
-                  child: VistaVacia(
-                    mensaje: 'No hay salones que coincidan',
-                    detalle: 'Intenta con otro término o crea un nuevo salón.',
-                  ),
-                ),
-              ],
-            ),
+          return const VistaVacia(
+            mensaje: 'No hay salones que coincidan',
+            detalle: 'Intenta con otro término o edificio.',
           );
         }
-        return RefreshIndicator(
-          color: Colors.black,
-          backgroundColor: AppColors.texto,
-          onRefresh: () => _salones.cargar(silencioso: true),
-          child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 130),
-            itemCount: lista.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, i) {
-              final s = lista[i];
-              return _FilaSalon(
-                salon: s,
-                puedeSolicitar: !_auth.esAdministrador && s.disponible,
-                onSolicitar: () => _abrirSolicitud(s),
-              );
-            },
-          ),
+        return Column(
+          children: [
+            for (final (i, s) in lista.indexed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Aparecer(
+                  key: ValueKey('${_edificio ?? ''}-${s.id}'),
+                  orden: i,
+                  child: _FilaSalon(
+                    salon: s,
+                    puedeSolicitar: !_auth.esAdministrador && s.disponible,
+                    onSolicitar: () => _abrirSolicitud(s),
+                  ),
+                ),
+              ),
+          ],
         );
     }
   }
@@ -160,6 +205,9 @@ class _SalonesPageState extends State<SalonesPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.superficie,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetContext) => _SolicitudSalonSheet(salon: salon),
     );
   }
@@ -178,28 +226,33 @@ class _FilaSalon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final disponible = salon.disponible;
+    final color = disponible ? AppColors.disponible : AppColors.danado;
     return TarjetaBorde(
       padding: const EdgeInsets.all(14),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => SalonDetallePage(salon: salon),
-          ),
-        );
-      },
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => SalonDetallePage(salon: salon)),
+      ),
       child: Row(
         children: [
           Container(
-            width: 52,
-            height: 52,
+            width: 78,
+            padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.superficieAlta,
               borderRadius: BorderRadius.circular(16),
+              gradient: disponible
+                  ? AppColors.degradado
+                  : LinearGradient(
+                      colors: [
+                        color.withValues(alpha: 0.30),
+                        color.withValues(alpha: 0.10)
+                      ],
+                    ),
             ),
-            child: const Icon(
-              Icons.meeting_room_rounded,
-              color: AppColors.texto,
-              size: 28,
+            child: Text(
+              salon.nombre,
+              textAlign: TextAlign.center,
+              style:
+                  const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(width: 14),
@@ -208,47 +261,51 @@ class _FilaSalon extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  salon.nombre,
+                  salon.ubicacion,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w700),
+                      fontSize: 15.5, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  salon.detalleUbicacion,
+                  [
+                    if (salon.edificio != null) 'Ed. ${salon.edificio}',
+                    if (salon.piso != null) 'Piso ${salon.piso}',
+                    '${salon.capacidad} personas',
+                  ].join(' · '),
                   style: const TextStyle(
-                      color: AppColors.textoSuave, fontSize: 13.5),
+                      color: AppColors.textoSuave, fontSize: 13),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  'Capacidad: ${salon.capacidad} personas',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textoSuave,
-                  ),
+                const SizedBox(height: 8),
+                Insignia(
+                  texto: disponible ? 'Libre' : _estadoLegible(salon.estado),
+                  color: color,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Insignia(
-                texto: salon.estado.toUpperCase(),
-                color: disponible ? AppColors.disponible : AppColors.danado,
-              ),
-              if (puedeSolicitar)
-                TextButton(
-                  onPressed: onSolicitar,
-                  child: const Text('Solicitar'),
-                ),
-            ],
-          ),
+          if (puedeSolicitar)
+            IconButton.filled(
+              tooltip: 'Solicitar',
+              style: IconButton.styleFrom(backgroundColor: AppColors.primario),
+              onPressed: onSolicitar,
+              icon: const Icon(Icons.add_rounded),
+            )
+          else
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textoTenue),
         ],
       ),
     );
   }
+
+  static String _estadoLegible(String e) => switch (e.toLowerCase()) {
+        'mantenimiento' => 'Mantenimiento',
+        'fuera_servicio' => 'Fuera de servicio',
+        'ocupado' => 'Ocupado',
+        _ => e,
+      };
 }
 
 class _SolicitudSalonSheet extends StatefulWidget {

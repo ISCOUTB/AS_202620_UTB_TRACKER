@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/salon.dart';
@@ -51,14 +52,16 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
       _salonActual.id,
       diaSemana: _diaSeleccionado,
     );
-    final (horarios, errHorarios) = await _salones.obtenerHorarios(_salonActual.id);
+    final (horarios, errHorarios) =
+        await _salones.obtenerHorarios(_salonActual.id);
 
     // Carga los préstamos pendientes del usuario actual para este salón
     List<PrestamoSalon> pendientes = [];
     if (!_auth.esAdministrador) {
       final usuario = _auth.usuario;
       if (usuario != null) {
-        final (todos, _) = await _salones.obtenerPrestamosSalon(_salonActual.id);
+        final (todos, _) =
+            await _salones.obtenerPrestamosSalon(_salonActual.id);
         pendientes = todos
             .where((p) => p.usuarioId == usuario.id && p.estado == 'pendiente')
             .toList();
@@ -138,9 +141,11 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Cancelar solicitud'),
-        content: const Text('¿Deseas cancelar esta solicitud de préstamo?'),
+        content: const Text('¿Deseas cancelar esta solicitud del salón?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('No')),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.danado),
@@ -168,294 +173,343 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
     final puedePrestar = s.disponible;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(s.nombre),
-        actions: [
-          if (_auth.esAdministrador)
-            IconButton(
-              icon: const Icon(Icons.more_time_rounded),
-              tooltip: 'Configurar horario de clase',
-              onPressed: _abrirAgregarHorario,
-            ),
-        ],
-      ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+        padding: const EdgeInsets.only(bottom: 100),
         children: [
-          TarjetaBorde(
-            padding: const EdgeInsets.all(16),
+          EncabezadoDegradado(
+            padding: const EdgeInsets.fromLTRB(12, 4, 20, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: AppColors.superficieAlta,
-                        borderRadius: BorderRadius.circular(16),
+                    const BackButton(),
+                    const Spacer(),
+                    if (_auth.esAdministrador)
+                      IconButton(
+                        icon: const Icon(Icons.more_time_rounded),
+                        tooltip: 'Configurar horario de clase',
+                        onPressed: _abrirAgregarHorario,
                       ),
-                      child: const Icon(Icons.meeting_room_rounded, size: 30, color: AppColors.texto),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        [
+                          if (s.edificio != null)
+                            'ED. ${s.edificio!.toUpperCase()}',
+                          if (s.piso != null) 'PISO ${s.piso}'
+                        ].join(' · '),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(s.nombre,
+                          style: const TextStyle(
+                              fontSize: 40, fontWeight: FontWeight.w800)),
+                      Text(s.ubicacion,
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 15)),
+                      const SizedBox(height: 18),
+                      Row(
                         children: [
-                          Text(s.nombre, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text(s.detalleUbicacion, style: const TextStyle(color: AppColors.textoSuave)),
+                          Indicador(
+                            valor: '${s.capacidad}',
+                            etiqueta: 'Personas',
+                            color: AppColors.indigoClaro,
+                          ),
+                          const SizedBox(width: 10),
+                          Indicador(
+                            valor: s.disponible ? 'Libre' : 'No',
+                            etiqueta: s.disponible ? 'Disponible' : s.estado,
+                            color: s.disponible
+                                ? AppColors.disponible
+                                : AppColors.danado,
+                          ),
                         ],
                       ),
-                    ),
-                    Insignia(
-                      texto: s.estado.toUpperCase(),
-                      color: s.disponible ? AppColors.disponible : AppColors.danado,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const Divider(height: 24),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Sección: mis solicitudes pendientes (solo usuarios regulares)
+                if (_misSolicitudesPendientes.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Mis solicitudes pendientes',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  for (final p in _misSolicitudesPendientes)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TarjetaBorde(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.pending_actions_rounded,
+                                color: AppColors.textoSuave, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${_formatFecha(p.fechaInicio)} · ${_formatHora(p.fechaInicio)} – ${_formatHora(p.fechaFin)}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13),
+                                  ),
+                                  if (p.motivo != null && p.motivo!.isNotEmpty)
+                                    Text(p.motivo!,
+                                        style: const TextStyle(
+                                            color: AppColors.textoSuave,
+                                            fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => _cancelarSolicitud(p),
+                              style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.danado),
+                              child: const Text('Cancelar'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+
+                const SizedBox(height: 24),
+
+                // Sección de Disponibilidad para Préstamos
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _InfoItem(icono: Icons.people_alt_outlined, titulo: 'Capacidad', valor: '${s.capacidad} est.'),
-                    _InfoItem(icono: Icons.stairs_outlined, titulo: 'Piso', valor: s.piso?.toString() ?? 'N/A'),
-                    _InfoItem(icono: Icons.apartment_outlined, titulo: 'Edificio', valor: s.edificio ?? 'N/A'),
+                    const Text(
+                      'Horarios libres',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    if (_cargandoDatos)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.textoSuave),
+                      ),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          // Sección: mis solicitudes pendientes (solo usuarios regulares)
-          if (_misSolicitudesPendientes.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'Mis solicitudes pendientes',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            for (final p in _misSolicitudesPendientes)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: TarjetaBorde(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      const Icon(Icons.pending_actions_rounded, color: AppColors.textoSuave, size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${_formatFecha(p.fechaInicio)} · ${_formatHora(p.fechaInicio)} – ${_formatHora(p.fechaFin)}',
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                            ),
-                            if (p.motivo != null && p.motivo!.isNotEmpty)
-                              Text(p.motivo!, style: const TextStyle(color: AppColors.textoSuave, fontSize: 12)),
-                          ],
+                      for (var i = 1; i <= 6; i++)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(_diasNombres[i - 1]),
+                            selected: _diaSeleccionado == i,
+                            onSelected: (_) => _cambiarDia(i),
+                          ),
                         ),
-                      ),
-                      TextButton(
-                        onPressed: () => _cancelarSolicitud(p),
-                        style: TextButton.styleFrom(foregroundColor: AppColors.danado),
-                        child: const Text('Cancelar'),
-                      ),
                     ],
                   ),
                 ),
-              ),
-          ],
+                const SizedBox(height: 12),
 
-          const SizedBox(height: 24),
-
-          // Sección de Disponibilidad para Préstamos
-          Row(
-            children: [
-              const Text(
-                'Disponibilidad para Préstamo',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              if (_cargandoDatos)
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textoSuave),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var i = 1; i <= 6; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(_diasNombres[i - 1]),
-                      selected: _diaSeleccionado == i,
-                      onSelected: (_) => _cambiarDia(i),
+                // Error de carga (si ocurrió)
+                if (_errorDatos != null && !_cargandoDatos)
+                  TarjetaBorde(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            color: AppColors.danado, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(_errorDatos!,
+                              style: const TextStyle(
+                                  color: AppColors.danado, fontSize: 13)),
+                        ),
+                      ],
                     ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Error de carga (si ocurrió)
-          if (_errorDatos != null && !_cargandoDatos)
-            TarjetaBorde(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: AppColors.danado, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(_errorDatos!, style: const TextStyle(color: AppColors.danado, fontSize: 13)),
-                  ),
-                ],
-              ),
-            )
-          // Franjas libres — al tocar una se pre-llena el formulario
-          else if (_franjas.isEmpty && !_cargandoDatos)
-            const TarjetaBorde(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'No hay franjas libres este día (completamente ocupado por clases).',
-                style: TextStyle(color: AppColors.textoSuave),
-              ),
-            )
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final f in _franjas)
-                  ActionChip(
-                    avatar: const Icon(Icons.access_time_rounded, size: 16, color: AppColors.disponible),
-                    label: Text(
-                      '${f.horaInicio.substring(0, 5)} – ${f.horaFin.substring(0, 5)} libre',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    backgroundColor: AppColors.superficieAlta,
-                    side: BorderSide(color: AppColors.disponible.withValues(alpha: 0.5)),
-                    tooltip: 'Solicitar préstamo en esta franja',
-                    // pre-llena fecha y horas al tocar la franja
-                    onPressed: puedePrestar
-                        ? () {
-                            final partes = f.horaInicio.split(':');
-                            final partesF = f.horaFin.split(':');
-                            _abrirSolicitudPrestamo(
-                              horaInicio: TimeOfDay(
-                                hour: int.parse(partes[0]),
-                                minute: int.parse(partes[1]),
-                              ),
-                              horaFin: TimeOfDay(
-                                hour: int.parse(partesF[0]),
-                                minute: int.parse(partesF[1]),
-                              ),
-                            );
-                          }
-                        : null,
-                  ),
-              ],
-            ),
-
-          const SizedBox(height: 16),
-
-          // Botón deshabilitado si el salón no está disponible
-          if (!puedePrestar)
-            TarjetaBorde(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.block_rounded, color: AppColors.danado, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(
+                  )
+                // Franjas libres — al tocar una se pre-llena el formulario
+                else if (_franjas.isEmpty && !_cargandoDatos)
+                  const TarjetaBorde(
+                    padding: EdgeInsets.all(16),
                     child: Text(
-                      'Este salón no está disponible para préstamos (estado: ${s.estado})',
-                      style: const TextStyle(color: AppColors.danado, fontSize: 13),
+                      'No hay franjas libres este día (completamente ocupado por clases).',
+                      style: TextStyle(color: AppColors.textoSuave),
                     ),
-                  ),
-                ],
-              ),
-            )
-          else
-            FilledButton.icon(
-              icon: const Icon(Icons.event_available_rounded),
-              label: const Text('Solicitar préstamo de este salón'),
-              onPressed: _abrirSolicitudPrestamo,
-            ),
-
-          const SizedBox(height: 30),
-
-          // Sección de Horarios Académicos
-          Row(
-            children: [
-              const Text(
-                'Horarios Académicos (Clases)',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              Text('${_horarios.length} registrados', style: const TextStyle(color: AppColors.textoSuave)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_horarios.isEmpty)
-            const TarjetaBorde(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Aún no hay horarios de clases configurados para este salón.',
-                style: TextStyle(color: AppColors.textoSuave),
-              ),
-            )
-          else
-            for (final h in _horarios)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: TarjetaBorde(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.superficieAlta,
-                          borderRadius: BorderRadius.circular(8),
+                      for (final f in _franjas)
+                        ActionChip(
+                          avatar: const Icon(Icons.access_time_rounded,
+                              size: 16, color: AppColors.disponible),
+                          label: Text(
+                            '${f.horaInicio.substring(0, 5)} – ${f.horaFin.substring(0, 5)} libre',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13),
+                          ),
+                          backgroundColor: AppColors.superficieAlta,
+                          side: BorderSide(
+                              color:
+                                  AppColors.disponible.withValues(alpha: 0.5)),
+                          tooltip: 'Solicitar el salón en esta franja',
+                          // pre-llena fecha y horas al tocar la franja
+                          onPressed: puedePrestar
+                              ? () {
+                                  final partes = f.horaInicio.split(':');
+                                  final partesF = f.horaFin.split(':');
+                                  _abrirSolicitudPrestamo(
+                                    horaInicio: TimeOfDay(
+                                      hour: int.parse(partes[0]),
+                                      minute: int.parse(partes[1]),
+                                    ),
+                                    horaFin: TimeOfDay(
+                                      hour: int.parse(partesF[0]),
+                                      minute: int.parse(partesF[1]),
+                                    ),
+                                  );
+                                }
+                              : null,
                         ),
-                        child: Text(
-                          h.diaNombre.substring(0, 3).toUpperCase(),
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    ],
+                  ),
+
+                const SizedBox(height: 16),
+
+                // Botón deshabilitado si el salón no está disponible
+                if (!puedePrestar)
+                  TarjetaBorde(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.block_rounded,
+                            color: AppColors.danado, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Este salón no se puede solicitar ahora (estado: ${s.estado})',
+                            style: const TextStyle(
+                                color: AppColors.danado, fontSize: 13),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ],
+                    ),
+                  )
+                else
+                  FilledButton.icon(
+                    icon: const Icon(Icons.event_available_rounded),
+                    label: const Text('Solicitar este salón'),
+                    onPressed: _abrirSolicitudPrestamo,
+                  ),
+
+                const SizedBox(height: 30),
+
+                // Sección de Horarios Académicos
+                Row(
+                  children: [
+                    const Text(
+                      'Horarios Académicos (Clases)',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    Text('${_horarios.length} registrados',
+                        style: const TextStyle(color: AppColors.textoSuave)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (_horarios.isEmpty)
+                  const TarjetaBorde(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'Aún no hay horarios de clases configurados para este salón.',
+                      style: TextStyle(color: AppColors.textoSuave),
+                    ),
+                  )
+                else
+                  for (final h in _horarios)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TarjetaBorde(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
                           children: [
-                            Text(
-                              h.materia ?? 'Clase regular',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.superficieAlta,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                h.diaNombre.substring(0, 3).toUpperCase(),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 12),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    h.materia ?? 'Clase regular',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15),
+                                  ),
+                                  Text(
+                                    h.profesor != null
+                                        ? 'Prof. ${h.profesor}'
+                                        : 'Sin docente asignado',
+                                    style: const TextStyle(
+                                        color: AppColors.textoSuave,
+                                        fontSize: 13),
+                                  ),
+                                ],
+                              ),
                             ),
                             Text(
-                              h.profesor != null ? 'Prof. ${h.profesor}' : 'Sin docente asignado',
-                              style: const TextStyle(color: AppColors.textoSuave, fontSize: 13),
+                              '${h.horaInicio.substring(0, 5)} - ${h.horaFin.substring(0, 5)}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                           ],
                         ),
                       ),
-                      Text(
-                        '${h.horaInicio.substring(0, 5)} - ${h.horaFin.substring(0, 5)}',
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                    ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -464,26 +518,6 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
   String _formatFecha(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}';
   String _formatHora(DateTime dt) =>
       '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-}
-
-class _InfoItem extends StatelessWidget {
-  const _InfoItem({required this.icono, required this.titulo, required this.valor});
-  final IconData icono;
-  final String titulo;
-  final String valor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icono, color: AppColors.textoSuave, size: 20),
-        const SizedBox(height: 4),
-        Text(titulo, style: const TextStyle(color: AppColors.textoSuave, fontSize: 11)),
-        const SizedBox(height: 2),
-        Text(valor, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-      ],
-    );
-  }
 }
 
 // ─── Sheet: Solicitar préstamo de salón ────────────────────────────────────────
@@ -502,10 +536,12 @@ class _SolicitarPrestamoSalonSheet extends StatefulWidget {
   final TimeOfDay? horaFinInicial;
 
   @override
-  State<_SolicitarPrestamoSalonSheet> createState() => _SolicitarPrestamoSalonSheetState();
+  State<_SolicitarPrestamoSalonSheet> createState() =>
+      _SolicitarPrestamoSalonSheetState();
 }
 
-class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonSheet> {
+class _SolicitarPrestamoSalonSheetState
+    extends State<_SolicitarPrestamoSalonSheet> {
   final SalonesController _salones = sl<SalonesController>();
   final TextEditingController _motivoCtrl = TextEditingController();
 
@@ -522,7 +558,8 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
   void initState() {
     super.initState();
     _fecha = DateTime.now();
-    _horaInicio = widget.horaInicioInicial ?? const TimeOfDay(hour: 8, minute: 0);
+    _horaInicio =
+        widget.horaInicioInicial ?? const TimeOfDay(hour: 8, minute: 0);
     _horaFin = widget.horaFinInicial ?? const TimeOfDay(hour: 10, minute: 0);
   }
 
@@ -538,13 +575,19 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
     final dtFin = _dtFin;
     if (!dtFin.isAfter(dtInicio)) return null; // validación separada
     final minutos = dtFin.difference(dtInicio).inMinutes;
-    if (minutos < _minMinutos) return 'Duración mínima: $_minMinutos minutos (actual: ${minutos}min)';
-    if (minutos > _maxMinutos) return 'Duración máxima: ${_maxMinutos ~/ 60} horas (actual: ${minutos}min)';
+    if (minutos < _minMinutos) {
+      return 'Duración mínima: $_minMinutos minutos (actual: ${minutos}min)';
+    }
+    if (minutos > _maxMinutos) {
+      return 'Duración máxima: ${_maxMinutos ~/ 60} horas (actual: ${minutos}min)';
+    }
     return null;
   }
 
-  DateTime get _dtInicio => DateTime(_fecha.year, _fecha.month, _fecha.day, _horaInicio.hour, _horaInicio.minute);
-  DateTime get _dtFin => DateTime(_fecha.year, _fecha.month, _fecha.day, _horaFin.hour, _horaFin.minute);
+  DateTime get _dtInicio => DateTime(_fecha.year, _fecha.month, _fecha.day,
+      _horaInicio.hour, _horaInicio.minute);
+  DateTime get _dtFin => DateTime(
+      _fecha.year, _fecha.month, _fecha.day, _horaFin.hour, _horaFin.minute);
 
   Future<void> _elegirFecha() async {
     final picked = await showDatePicker(
@@ -557,12 +600,14 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
   }
 
   Future<void> _elegirHoraInicio() async {
-    final picked = await showTimePicker(context: context, initialTime: _horaInicio);
+    final picked =
+        await showTimePicker(context: context, initialTime: _horaInicio);
     if (picked != null) setState(() => _horaInicio = picked);
   }
 
   Future<void> _elegirHoraFin() async {
-    final picked = await showTimePicker(context: context, initialTime: _horaFin);
+    final picked =
+        await showTimePicker(context: context, initialTime: _horaFin);
     if (picked != null) setState(() => _horaFin = picked);
   }
 
@@ -572,12 +617,13 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
 
     // Validar que no sea en el pasado
     if (dtInicio.isBefore(DateTime.now())) {
-      mostrarMensaje(context, 'No puedes solicitar un préstamo en el pasado');
+      mostrarMensaje(context, 'No puedes solicitar el salón en el pasado');
       return;
     }
 
     if (!dtFin.isAfter(dtInicio)) {
-      mostrarMensaje(context, 'La hora de fin debe ser posterior a la de inicio');
+      mostrarMensaje(
+          context, 'La hora de fin debe ser posterior a la de inicio');
       return;
     }
 
@@ -588,7 +634,8 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
       return;
     }
     if (minutos > _maxMinutos) {
-      mostrarMensaje(context, 'La duración máxima es ${_maxMinutos ~/ 60} horas');
+      mostrarMensaje(
+          context, 'La duración máxima es ${_maxMinutos ~/ 60} horas');
       return;
     }
 
@@ -607,7 +654,7 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
     } else {
       Navigator.of(context).pop();
       widget.onExito();
-      mostrarMensaje(context, 'Solicitud de préstamo registrada con éxito');
+      mostrarMensaje(context, 'Solicitud enviada. El auxiliar te confirmará');
     }
   }
 
@@ -624,18 +671,22 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
             children: [
               Text(
                 'Prestar ${widget.salon.nombre}',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
+              IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop()),
             ],
           ),
           const SizedBox(height: 16),
           ListTile(
             tileColor: AppColors.superficieAlta,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             leading: const Icon(Icons.calendar_today_rounded),
-            title: const Text('Fecha del préstamo'),
+            title: const Text('Fecha de uso'),
             subtitle: Text('${_fecha.day}/${_fecha.month}/${_fecha.year}'),
             trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
             onTap: _elegirFecha,
@@ -646,10 +697,12 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
               Expanded(
                 child: ListTile(
                   tileColor: AppColors.superficieAlta,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   leading: const Icon(Icons.schedule),
                   title: const Text('Inicio', style: TextStyle(fontSize: 12)),
-                  subtitle: Text(_horaInicio.format(context), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(_horaInicio.format(context),
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   onTap: _elegirHoraInicio,
                 ),
               ),
@@ -657,10 +710,12 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
               Expanded(
                 child: ListTile(
                   tileColor: AppColors.superficieAlta,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   leading: const Icon(Icons.schedule),
                   title: const Text('Fin', style: TextStyle(fontSize: 12)),
-                  subtitle: Text(_horaFin.format(context), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(_horaFin.format(context),
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   onTap: _elegirHoraFin,
                 ),
               ),
@@ -671,12 +726,14 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.danado),
+                const Icon(Icons.info_outline_rounded,
+                    size: 14, color: AppColors.danado),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     advertencia,
-                    style: const TextStyle(color: AppColors.danado, fontSize: 12),
+                    style:
+                        const TextStyle(color: AppColors.danado, fontSize: 12),
                   ),
                 ),
               ],
@@ -686,7 +743,7 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
           TextField(
             controller: _motivoCtrl,
             decoration: const InputDecoration(
-              labelText: 'Motivo del préstamo (opcional)',
+              labelText: 'Motivo (opcional)',
               hintText: 'Ej. Grupo de estudio, monitoría...',
             ),
           ),
@@ -698,9 +755,10 @@ class _SolicitarPrestamoSalonSheetState extends State<_SolicitarPrestamoSalonShe
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.black),
                   )
-                : const Text('Confirmar préstamo'),
+                : const Text('Enviar solicitud'),
           ),
         ],
       ),
@@ -723,7 +781,8 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
   final SalonesController _salones = sl<SalonesController>();
   final TextEditingController _materiaCtrl = TextEditingController();
   final TextEditingController _profesorCtrl = TextEditingController();
-  final TextEditingController _semestreCtrl = TextEditingController(text: '2026-2');
+  final TextEditingController _semestreCtrl =
+      TextEditingController(text: '2026-2');
 
   int _diaSemana = 1;
   TimeOfDay _horaInicio = const TimeOfDay(hour: 8, minute: 0);
@@ -743,7 +802,8 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
     final inicioEnMinutos = _horaInicio.hour * 60 + _horaInicio.minute;
     final finEnMinutos = _horaFin.hour * 60 + _horaFin.minute;
     if (finEnMinutos <= inicioEnMinutos) {
-      mostrarMensaje(context, 'La hora de fin debe ser posterior a la hora de inicio');
+      mostrarMensaje(
+          context, 'La hora de fin debe ser posterior a la hora de inicio');
       return;
     }
 
@@ -777,8 +837,8 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
   @override
   Widget build(BuildContext context) {
     // Indicador visual de que fin <= inicio
-    final finInvalido =
-        (_horaFin.hour * 60 + _horaFin.minute) <= (_horaInicio.hour * 60 + _horaInicio.minute);
+    final finInvalido = (_horaFin.hour * 60 + _horaFin.minute) <=
+        (_horaInicio.hour * 60 + _horaInicio.minute);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -790,10 +850,13 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
             children: [
               Text(
                 'Horario para ${widget.salon.nombre}',
-                style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
+              IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop()),
             ],
           ),
           const SizedBox(height: 12),
@@ -818,11 +881,15 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
               Expanded(
                 child: ListTile(
                   tileColor: AppColors.superficieAlta,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  title: const Text('Hora Inicio', style: TextStyle(fontSize: 12)),
-                  subtitle: Text(_horaInicio.format(context), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  title:
+                      const Text('Hora Inicio', style: TextStyle(fontSize: 12)),
+                  subtitle: Text(_horaInicio.format(context),
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   onTap: () async {
-                    final picked = await showTimePicker(context: context, initialTime: _horaInicio);
+                    final picked = await showTimePicker(
+                        context: context, initialTime: _horaInicio);
                     if (picked != null) setState(() => _horaInicio = picked);
                   },
                 ),
@@ -830,7 +897,9 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
               const SizedBox(width: 12),
               Expanded(
                 child: ListTile(
-                  tileColor: finInvalido ? AppColors.danado.withValues(alpha: 0.12) : AppColors.superficieAlta,
+                  tileColor: finInvalido
+                      ? AppColors.danado.withValues(alpha: 0.12)
+                      : AppColors.superficieAlta,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: finInvalido
@@ -846,7 +915,8 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
                     ),
                   ),
                   onTap: () async {
-                    final picked = await showTimePicker(context: context, initialTime: _horaFin);
+                    final picked = await showTimePicker(
+                        context: context, initialTime: _horaFin);
                     if (picked != null) setState(() => _horaFin = picked);
                   },
                 ),
@@ -858,7 +928,8 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
             const SizedBox(height: 6),
             const Row(
               children: [
-                Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.danado),
+                Icon(Icons.warning_amber_rounded,
+                    size: 14, color: AppColors.danado),
                 SizedBox(width: 6),
                 Text(
                   'La hora de fin debe ser posterior a la de inicio',
@@ -891,7 +962,8 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.black),
                   )
                 : const Text('Guardar horario'),
           ),
