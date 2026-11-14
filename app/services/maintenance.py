@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.recurso_models import MantenimientoRecurso, Recurso
 from app.schemas.schemas import MantenimientoRecursoCreate, MantenimientoRecursoUpdate
+from app.services import auditoria
 
 
 def crear_mantenimiento(db: Session, datos: MantenimientoRecursoCreate,
@@ -30,13 +31,20 @@ def listar_mantenimientos(db: Session, recurso_id: int | None = None):
 
 
 def actualizar_mantenimiento(db: Session, mantenimiento_id: int,
-                             datos: MantenimientoRecursoUpdate):
+                             datos: MantenimientoRecursoUpdate, actor_id: int | None = None):
     item = db.query(MantenimientoRecurso).filter(
         MantenimientoRecurso.id == mantenimiento_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Mantenimiento no encontrado")
-    for campo, valor in datos.model_dump(exclude_unset=True).items():
+    cambios = datos.model_dump(exclude_unset=True)
+    estado_anterior = item.estado
+    for campo, valor in cambios.items():
         setattr(item, campo, valor)
+    auditoria.registrar(
+        db, "mantenimiento.actualizar", "mantenimiento", item.id, actor_id=actor_id,
+        detalle={"recurso_id": item.recurso_id, "estado_de": estado_anterior,
+                 "estado_a": item.estado, "campos": list(cambios)},
+    )
     if item.estado == "completado":
         recurso = db.query(Recurso).filter(Recurso.id == item.recurso_id).first()
         if recurso:

@@ -9,11 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import CORS_ORIGINS
 from app.routers import auth
 from app.core.database import Base  # noqa: F401  — Base expuesto para que conftest pueda usarlo
-from app.routers import health, resources, loans
+from app.routers import auditoria, health, resources, loans
 from app.routers import salones, salones_admin, horarios, prestamos_salon, maintenance, stats
 
 # Importar todos los modelos para que Base.metadata los registre
-from app.models import auth_models, recurso_models, salon_models  # noqa: F401
+from app.models import auth_models, auditoria_models, recurso_models, salon_models  # noqa: F401
 from app.messaging import models as messaging_models  # noqa: F401
 
 request_id_ctx: ContextVar[str] = ContextVar("request_id_ctx", default="system")
@@ -91,3 +91,4 @@ app.include_router(horarios.router, prefix="/horarios", tags=["horarios"])
 app.include_router(prestamos_salon.router, prefix="/prestamos-salon", tags=["prestamos-salon"])
 app.include_router(maintenance.router, prefix="/mantenimientos", tags=["mantenimientos"])
 app.include_router(stats.router)
+app.include_router(auditoria.router, prefix="/auditoria", tags=["auditoria"])

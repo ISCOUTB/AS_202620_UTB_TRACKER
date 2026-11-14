@@ -23,6 +23,7 @@ from app.models.salon_models import (
 )
 from app.schemas.enums import EstadoReporteSalon
 from app.schemas.salones_admin import PresenciaUpdate, ReporteSalonCreate
+from app.services import auditoria
 from app.services.salones import obtener_salon
 
 # Colombia no tiene horario de verano: un desfase fijo evita depender de tzdata.
@@ -176,6 +177,11 @@ def registrar_presencia(
         registro.profesor_presente = datos.profesor_presente
         registro.nota = datos.nota
         registro.registrado_por = auxiliar_id
+    auditoria.registrar(
+        db, "salon.presencia", "salon", salon_id, actor_id=auxiliar_id,
+        detalle={"horario_id": clase.id, "profesor": clase.profesor,
+                 "profesor_presente": datos.profesor_presente, "nota": datos.nota},
+    )
     db.commit()
     db.refresh(registro)
     return registro
@@ -192,6 +198,11 @@ def crear_reporte(
         descripcion=datos.descripcion.strip(),
     )
     db.add(reporte)
+    db.flush()
+    auditoria.registrar(
+        db, "salon.reporte.crear", "reporte_salon", reporte.id, actor_id=usuario_id,
+        detalle={"salon_id": salon_id, "tipo": reporte.tipo},
+    )
     db.commit()
     db.refresh(reporte)
     return reporte
@@ -208,7 +219,8 @@ def listar_reportes(
 
 
 def actualizar_estado_reporte(
-    db: Session, salon_id: int, reporte_id: int, nuevo_estado: EstadoReporteSalon
+    db: Session, salon_id: int, reporte_id: int, nuevo_estado: EstadoReporteSalon,
+    actor_id: Optional[int] = None,
 ) -> ReporteSalon:
     reporte = (
         db.query(ReporteSalon)
@@ -219,11 +231,16 @@ def actualizar_estado_reporte(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Reporte no encontrado"
         )
+    anterior = reporte.estado
     reporte.estado = nuevo_estado.value
     reporte.resuelto_en = (
         datetime.now(timezone.utc).replace(tzinfo=None)
         if nuevo_estado == EstadoReporteSalon.RESUELTO
         else None
+    )
+    auditoria.registrar(
+        db, "salon.reporte.estado", "reporte_salon", reporte.id, actor_id=actor_id,
+        detalle={"salon_id": salon_id, "de": anterior, "a": reporte.estado},
     )
     db.commit()
     db.refresh(reporte)

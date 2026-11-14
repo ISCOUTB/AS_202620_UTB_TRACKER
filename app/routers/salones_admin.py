@@ -96,4 +96,6 @@ def actualizar_reporte(
     current_user: AdminUser,
 ):
     """Marca un reporte como resuelto (o lo reabre). Solo auxiliar/administrador."""
-    return service.actualizar_estado_reporte(db, salon_id, reporte_id, datos.estado)
+    return service.actualizar_estado_reporte(
+        db, salon_id, reporte_id, datos.estado, actor_id=current_user.id
+    )

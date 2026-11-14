@@ -88,7 +88,9 @@ def actualizar_estado_prestamo_salon(
     Valida transiciones: pendiente→aprobado/rechazado/cancelado,
     aprobado→en_uso/cancelado, en_uso→finalizado.
     """
-    return ps_service.actualizar_estado_prestamo_salon(db, prestamo_id, datos.estado)
+    return ps_service.actualizar_estado_prestamo_salon(
+        db, prestamo_id, datos.estado, actor_id=current_user.id
+    )
 
 
 @router.delete("/{prestamo_id}", response_model=PrestamoSalonResponse)

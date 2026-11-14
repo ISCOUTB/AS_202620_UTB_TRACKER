@@ -33,4 +33,6 @@ def actualizar_mantenimiento(mantenimiento_id: int,
                               datos: schemas.MantenimientoRecursoUpdate,
                               db: Annotated[Session, Depends(get_db)],
                               current_user: AdminUser):
-    return maintenance_service.actualizar_mantenimiento(db, mantenimiento_id, datos)
+    return maintenance_service.actualizar_mantenimiento(
+        db, mantenimiento_id, datos, actor_id=current_user.id
+    )

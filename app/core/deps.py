@@ -77,3 +77,5 @@ def require_role(*roles: str):
 # Alias de tipo para patrones comunes de inyección
 CurrentUser = Annotated[Usuario, Depends(get_current_user)]
 AdminUser = Annotated[Usuario, Depends(require_role("administrador", "auxiliar"))]
+# La bitácora de auditoría solo la ve el administrador (el auxiliar opera, no supervisa).
+SoloAdministrador = Annotated[Usuario, Depends(require_role("administrador"))]

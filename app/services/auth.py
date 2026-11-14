@@ -18,6 +18,7 @@ from app.core.security import (
     verify_refresh_token,
 )
 from app.messaging.models import MensajeOutbox
+from app.services import auditoria
 from datetime import datetime, timezone
 import json
 import uuid
@@ -62,6 +63,11 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
             password=hash_password(schema.password),  # hash bcrypt — S9 req. 9.8
         )
         db.add(new_user)
+        db.flush()
+        auditoria.registrar(
+            db, "usuario.registro", "usuario", new_user.id, actor_id=new_user.id,
+            detalle={"rol": rol},
+        )
         db.commit()
         db.refresh(new_user)
         return new_user
@@ -81,6 +87,11 @@ def login(db: Session, schema: UsuarioLogin) -> dict:
     """
     user = db.query(Usuario).filter(Usuario.nombre == schema.nombre).first()
     if user is None or not verify_password(schema.password, user.password):
+        # Nunca se guarda la contraseña intentada: solo el nombre que se probó.
+        auditoria.registrar_y_confirmar(
+            db, "auth.login_fallido", "usuario", user.id if user else None,
+            detalle={"nombre_intentado": schema.nombre},
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Nombre de usuario o contraseña incorrectos",
@@ -90,6 +101,7 @@ def login(db: Session, schema: UsuarioLogin) -> dict:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cuenta desactivada",
         )
+    auditoria.registrar_y_confirmar(db, "auth.login", "usuario", user.id, actor_id=user.id)
     token = create_access_token({"sub": user.email})
     refresh_token = create_refresh_token({"sub": user.email})
     return {
@@ -124,7 +136,7 @@ def update_fcm_token(db: Session, user: Usuario, fcm_token: str) -> None:
     db.commit()
 
 
-def delete_user(db: Session, user_id: int) -> dict:
+def delete_user(db: Session, user_id: int, actor_id: Optional[int] = None) -> dict:
     user = db.query(Usuario).filter(Usuario.id == user_id).first()
     if user is None:
         raise HTTPException(
@@ -134,6 +146,10 @@ def delete_user(db: Session, user_id: int) -> dict:
         # Soft-delete: marcar como inactivo en vez de borrar
         if hasattr(user, "activo"):
             user.activo = False
+            auditoria.registrar(
+                db, "usuario.desactivar", "usuario", user.id, actor_id=actor_id,
+                detalle={"nombre": user.nombre},
+            )
             db.commit()
             return {"message": "Usuario desactivado correctamente"}
         else:
@@ -198,7 +214,9 @@ def get_all_users(
     return query.order_by(Usuario.id.asc()).offset(skip).limit(limit).all()
 
 
-def update_user_role(db: Session, user_id: int, new_role: str) -> Usuario:
+def update_user_role(
+    db: Session, user_id: int, new_role: str, actor_id: Optional[int] = None
+) -> Usuario:
     """
     Actualiza el rol de un usuario desde el panel administrativo.
     Roles válidos: usuario_utb, auxiliar, administrador.
@@ -217,7 +235,12 @@ def update_user_role(db: Session, user_id: int, new_role: str) -> Usuario:
         )
 
     try:
+        anterior = user.rol
         user.rol = rol_normalizado
+        auditoria.registrar(
+            db, "usuario.rol", "usuario", user.id, actor_id=actor_id,
+            detalle={"de": anterior, "a": rol_normalizado},
+        )
         db.commit()
         db.refresh(user)
         return user

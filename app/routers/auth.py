@@ -86,7 +86,7 @@ def delete_user_endpoint(
     current_user: AdminUser,
 ):
     """Elimina (soft-delete) un usuario. Requiere rol admin/auxiliar."""
-    return auth_service.delete_user(db, user_id)
+    return auth_service.delete_user(db, user_id, actor_id=current_user.id)
 
 
 @router.get("/user/{user_id}", response_model=UserResponse)
@@ -122,7 +122,7 @@ def update_user_role_endpoint(
     current_user: AdminUser,
 ):
     """Asigna o actualiza el rol de un usuario desde el panel administrativo. Requiere rol admin/auxiliar."""
-    return auth_service.update_user_role(db, user_id, body.rol)
+    return auth_service.update_user_role(db, user_id, body.rol, actor_id=current_user.id)
 
 
 @router.post("/forgot-password", status_code=202)

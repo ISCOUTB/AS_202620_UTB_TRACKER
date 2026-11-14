@@ -25,7 +25,7 @@ def crear_salon(
     current_user: AdminUser,
 ):
     """Crea un nuevo salón. Requiere rol administrador o auxiliar."""
-    return salones_service.crear_salon(db, salon)
+    return salones_service.crear_salon(db, salon, actor_id=current_user.id)
 
 
 @router.get("", response_model=list[SalonResponse])
@@ -61,7 +61,7 @@ def actualizar_salon(
     current_user: AdminUser,
 ):
     """Actualiza un salón existente. Requiere rol admin/auxiliar."""
-    return salones_service.actualizar_salon(db, salon_id, salon)
+    return salones_service.actualizar_salon(db, salon_id, salon, actor_id=current_user.id)
 
 
 @router.delete("/{salon_id}")
@@ -71,7 +71,7 @@ def eliminar_salon(
     current_user: AdminUser,
 ):
     """Soft-delete de un salón. Requiere rol admin/auxiliar."""
-    return salones_service.eliminar_salon(db, salon_id)
+    return salones_service.eliminar_salon(db, salon_id, actor_id=current_user.id)
 
 
 @router.get("/{salon_id}/disponibilidad")

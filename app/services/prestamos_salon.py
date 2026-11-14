@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models.salon_models import Horario, PrestamoSalon, Salon
 from app.schemas.prestamos_salon import PrestamoSalonCreate
+from app.services import auditoria
 
 MSG_PRESTAMO_NO_ENCONTRADO = "Préstamo de salón no encontrado"
 
@@ -93,6 +94,11 @@ def crear_prestamo_salon(db: Session, datos: PrestamoSalonCreate, usuario_id: in
         motivo=datos.motivo,
     )
     db.add(nuevo)
+    db.flush()
+    auditoria.registrar(
+        db, "salon.solicitud.crear", "prestamo_salon", nuevo.id, actor_id=usuario_id,
+        detalle={"salon_id": nuevo.salon_id, "inicio": nuevo.fecha_inicio, "fin": nuevo.fecha_fin},
+    )
     db.commit()
     db.refresh(nuevo)
     return nuevo
@@ -137,7 +143,9 @@ def obtener_prestamo_salon(
     return prestamo
 
 
-def actualizar_estado_prestamo_salon(db: Session, prestamo_id: int, nuevo_estado: str) -> PrestamoSalon:
+def actualizar_estado_prestamo_salon(
+    db: Session, prestamo_id: int, nuevo_estado: str, actor_id: int | None = None
+) -> PrestamoSalon:
     """Actualiza el estado de un préstamo de salón (aprobar, rechazar, cancelar, etc.)."""
     TRANSICIONES_VALIDAS = {
         "pendiente": ["aprobado", "rechazado", "cancelado"],
@@ -157,7 +165,12 @@ def actualizar_estado_prestamo_salon(db: Session, prestamo_id: int, nuevo_estado
                    f"Estados permitidos: {estados_permitidos}",
         )
 
+    anterior = prestamo.estado
     prestamo.estado = nuevo_estado
+    auditoria.registrar(
+        db, "salon.solicitud.estado", "prestamo_salon", prestamo.id, actor_id=actor_id,
+        detalle={"salon_id": prestamo.salon_id, "de": anterior, "a": nuevo_estado},
+    )
     db.commit()
     db.refresh(prestamo)
     return prestamo
@@ -182,6 +195,10 @@ def cancelar_prestamo_propio(db: Session, prestamo_id: int, usuario_id: int) -> 
             detail=f"Solo puedes cancelar préstamos en estado 'pendiente'. Estado actual: {prestamo.estado}",
         )
     prestamo.estado = "cancelado"
+    auditoria.registrar(
+        db, "salon.solicitud.cancelar", "prestamo_salon", prestamo.id, actor_id=usuario_id,
+        detalle={"salon_id": prestamo.salon_id, "de": "pendiente", "a": "cancelado"},
+    )
     db.commit()
     db.refresh(prestamo)
     return prestamo

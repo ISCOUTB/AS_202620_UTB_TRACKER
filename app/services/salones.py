@@ -12,9 +12,10 @@ from sqlalchemy.orm import Session
 
 from app.models.salon_models import Horario, PrestamoSalon, Salon
 from app.schemas.salones import SalonCreate, SalonUpdate
+from app.services import auditoria
 
 
-def crear_salon(db: Session, datos: SalonCreate) -> Salon:
+def crear_salon(db: Session, datos: SalonCreate, actor_id: Optional[int] = None) -> Salon:
     """Crea un salón nuevo. Rechaza con 409 si el nombre ya existe."""
     existente = db.query(Salon).filter(Salon.nombre == datos.nombre).first()
     if existente:
@@ -24,6 +25,11 @@ def crear_salon(db: Session, datos: SalonCreate) -> Salon:
         )
     nuevo = Salon(**datos.model_dump())
     db.add(nuevo)
+    db.flush()
+    auditoria.registrar(
+        db, "salon.crear", "salon", nuevo.id, actor_id=actor_id,
+        detalle={"nombre": nuevo.nombre, "capacidad": nuevo.capacidad},
+    )
     db.commit()
     db.refresh(nuevo)
     return nuevo
@@ -62,21 +68,34 @@ def obtener_salon(db: Session, salon_id: int) -> Salon:
     return salon
 
 
-def actualizar_salon(db: Session, salon_id: int, datos: SalonUpdate) -> Salon:
+def actualizar_salon(
+    db: Session, salon_id: int, datos: SalonUpdate, actor_id: Optional[int] = None
+) -> Salon:
     """Actualiza un salón existente. Solo modifica campos proporcionados."""
     salon = obtener_salon(db, salon_id)
     update_data = datos.model_dump(exclude_unset=True)
+    cambios = {
+        campo: {"de": getattr(salon, campo), "a": valor}
+        for campo, valor in update_data.items() if getattr(salon, campo) != valor
+    }
     for campo, valor in update_data.items():
         setattr(salon, campo, valor)
+    if cambios:
+        auditoria.registrar(
+            db, "salon.actualizar", "salon", salon.id, actor_id=actor_id, detalle=cambios
+        )
     db.commit()
     db.refresh(salon)
     return salon
 
 
-def eliminar_salon(db: Session, salon_id: int) -> dict:
+def eliminar_salon(db: Session, salon_id: int, actor_id: Optional[int] = None) -> dict:
     """Soft-delete: marca el salón como inactivo."""
     salon = obtener_salon(db, salon_id)
     salon.activo = False
+    auditoria.registrar(
+        db, "salon.eliminar", "salon", salon.id, actor_id=actor_id, detalle={"nombre": salon.nombre}
+    )
     db.commit()
     return {"message": "Salón eliminado correctamente"}
 
