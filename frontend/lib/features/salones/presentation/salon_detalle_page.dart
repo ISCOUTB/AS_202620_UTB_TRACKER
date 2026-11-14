@@ -756,7 +756,7 @@ class _SolicitarPrestamoSalonSheetState
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.black),
+                        strokeWidth: 2, color: Colors.white),
                   )
                 : const Text('Enviar solicitud'),
           ),
@@ -963,7 +963,7 @@ class _AgregarHorarioSheetState extends State<_AgregarHorarioSheet> {
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.black),
+                        strokeWidth: 2, color: Colors.white),
                   )
                 : const Text('Guardar horario'),
           ),

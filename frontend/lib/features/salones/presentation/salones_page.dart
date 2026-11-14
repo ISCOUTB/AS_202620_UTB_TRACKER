@@ -578,7 +578,7 @@ class _CrearSalonSheetState extends State<_CrearSalonSheet> {
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.black),
+                        strokeWidth: 2, color: Colors.white),
                   )
                 : const Text('Registrar salón'),
           ),

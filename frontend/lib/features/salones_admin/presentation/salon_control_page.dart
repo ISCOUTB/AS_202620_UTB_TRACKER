@@ -185,7 +185,7 @@ class _SalonControlPageState extends State<SalonControlPage> {
           ],
           if (_c.vigentes.isNotEmpty) ...[
             const SizedBox(height: 26),
-            _Titulo('Préstamos programados', cantidad: _c.vigentes.length),
+            _Titulo('Reservas programadas', cantidad: _c.vigentes.length),
             const SizedBox(height: 10),
             for (final s in _c.vigentes)
               _TarjetaSolicitud(
@@ -299,21 +299,57 @@ class _Encabezado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = ocupacion.situacion;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          ocupacion.salon.nombre,
-          style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w900, height: 1.05),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '${ocupacion.salon.detalleUbicacion} · ${ocupacion.salon.capacidad} personas',
-          style: const TextStyle(color: AppColors.textoSuave, fontSize: 15),
-        ),
-        const SizedBox(height: 12),
-        Insignia(texto: etiquetaDeSituacion(s), color: colorDeSituacion(s)),
-      ],
+    final salon = ocupacion.salon;
+    // Tarjeta en degradado con el código grande del salón (estilo UTB App).
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: BoxDecoration(
+        gradient: AppColors.degradado,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primario.withValues(alpha: 0.35),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            [
+              if (salon.edificio != null) 'ED. ${salon.edificio!.toUpperCase()}',
+              if (salon.piso != null) 'PISO ${salon.piso}',
+            ].join(' · '),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            salon.nombre,
+            style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.05),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${salon.ubicacion} · ${salon.capacidad} personas',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xCC111216),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Insignia(texto: etiquetaDeSituacion(s), color: colorDeSituacion(s)),
+          ),
+        ],
+      ),
     );
   }
 }

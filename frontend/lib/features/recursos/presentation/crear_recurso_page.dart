@@ -207,7 +207,7 @@ class _CrearRecursoPageState extends State<CrearRecursoPage> {
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                         )
                       : const Text('Guardar equipo'),
                 ),
