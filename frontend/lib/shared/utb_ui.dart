@@ -1,12 +1,10 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
 
-/// Piezas del lenguaje visual inspirado en la app oficial "UTB App": encabezado con degradado
-/// azul y arcos, tarjeta destacada con barra de estado, control segmentado en píldora,
-/// títulos con subtítulo y aparición escalonada de los elementos.
+/// Lenguaje visual propio de UTB Tracker (ADR-0011). Toma de UTB App solo los colores; la
+/// forma es nuestra: el motivo es el **plano de baldosas** del logo (cuatro salones, uno
+/// encendido), los encabezados se funden con el fondo sin bordes y las tarjetas son de vidrio.
 
 const _meses = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
@@ -25,13 +23,14 @@ String saludo(DateTime d) => d.hour < 12
         ? 'Buenas tardes'
         : 'Buenas noches';
 
-/// Encabezado con degradado azul → índigo, arcos finos de fondo y esquinas inferiores
-/// redondeadas. Va pegado arriba (detrás de la barra de estado).
+/// Encabezado de cada pestaña: degradado azul → índigo que se **desvanece hacia el fondo**
+/// (sin borde ni esquinas, no parece una caja) con el plano de baldosas del logo arriba a la
+/// derecha. Va pegado arriba (detrás de la barra de estado).
 class EncabezadoDegradado extends StatelessWidget {
   const EncabezadoDegradado({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.fromLTRB(20, 12, 20, 28),
+    this.padding = const EdgeInsets.fromLTRB(18, 10, 18, 30),
   });
 
   final Widget child;
@@ -40,56 +39,107 @@ class EncabezadoDegradado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final arriba = MediaQuery.paddingOf(context).top;
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: AppColors.degradado,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primario.withValues(alpha: 0.4),
-              blurRadius: 40,
-              offset: const Offset(0, 12),
+    return Stack(
+      children: [
+        // El degradado lleva su propia transparencia (llega a 0 abajo), así se funde con el
+        // fondo sin máscaras, igual en Android y en web.
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF1D3FE0), Color(0xB8383ED8), Color(0x004B3BDB)],
+                stops: [0, 0.5, 1],
+              ),
             ),
-          ],
-        ),
-        child: CustomPaint(
-          painter: _Arcos(),
-          child: Padding(
-            padding: EdgeInsets.only(top: arriba).add(padding),
-            child: child,
+            child: DecoratedBox(
+              // Brillo índigo desde la esquina superior derecha; se apaga antes del borde
+              // inferior (el radio es relativo al lado corto, la altura).
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topRight,
+                  radius: 0.95,
+                  colors: [Color(0x994B3BDB), Color(0x004B3BDB)],
+                ),
+              ),
+              child: CustomPaint(painter: _Plano()),
+            ),
           ),
         ),
-      ),
+        Padding(
+          padding: EdgeInsets.only(top: arriba).add(padding),
+          child: child,
+        ),
+      ],
     );
   }
 }
 
-class _Arcos extends CustomPainter {
+/// Motivo de la marca: rejilla de baldosas redondeadas que se apaga hacia la izquierda y hacia
+/// abajo, con una baldosa encendida (el salón libre del logo).
+class _Plano extends CustomPainter {
+  const _Plano();
+
   @override
   void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = Colors.white.withValues(alpha: 0.08);
-    final centro = Offset(size.width * 1.05, -size.height * 0.15);
-    for (var i = 1; i <= 7; i++) {
-      canvas.drawCircle(centro, size.width * 0.18 * i, p);
+    const lado = 22.0;
+    const paso = 30.0;
+    final columnas = (size.width * 0.5 / paso).ceil();
+    final filas = (size.height * 0.75 / paso).ceil();
+    final p = Paint();
+    for (var f = 0; f < filas; f++) {
+      for (var c = 0; c < columnas; c++) {
+        final x = size.width - (c + 1) * paso + 4;
+        final y = f * paso - 6.0;
+        // Más visible en la esquina superior derecha.
+        final peso = (1 - c / columnas) * (1 - f / filas);
+        final encendida = f == 1 && c == 1;
+        p.color = Colors.white.withValues(alpha: encendida ? 0.30 : 0.11 * peso);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(Rect.fromLTWH(x, y, lado, lado), const Radius.circular(6)),
+          p,
+        );
+      }
     }
-    // Brillo difuso en la esquina superior izquierda.
-    final brillo = Paint()
-      ..shader = RadialGradient(
-        colors: [Colors.white.withValues(alpha: 0.12), Colors.transparent],
-      ).createShader(Rect.fromCircle(center: Offset.zero, radius: size.width * 0.6));
-    canvas.drawCircle(Offset.zero, size.width * 0.6, brillo);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Tarjeta destacada (como "Próxima clase" en UTB App): fondo oscuro translúcido, barra de
-/// color a la izquierda que comunica el estado, y un dato grande opcional a la derecha.
+/// Contenedor con sombra y degradado que sí respeta las esquinas redondeadas al tocarlo.
+/// (Un `Ink` con `boxShadow` dibuja la sombra en un rectángulo: se veía una caja detrás.)
+class _Tocable extends StatelessWidget {
+  const _Tocable({
+    required this.decoration,
+    required this.radio,
+    required this.child,
+    this.onTap,
+  });
+
+  final BoxDecoration decoration;
+  final double radio;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final forma = BorderRadius.circular(radio);
+    return DecoratedBox(
+      decoration: decoration.copyWith(borderRadius: forma),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: forma,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(onTap: onTap, child: child),
+      ),
+    );
+  }
+}
+
+/// Tarjeta destacada de vidrio: deja ver el degradado de atrás, un punto luminoso con el color
+/// del estado junto a la etiqueta y, opcional, un dato grande en una baldosa a la derecha.
 class TarjetaDestacada extends StatelessWidget {
   const TarjetaDestacada({
     super.key,
@@ -112,95 +162,108 @@ class TarjetaDestacada extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(26),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-          decoration: BoxDecoration(
-            color: const Color(0xEE16171C),
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-            boxShadow: const [
-              BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(0, 10)),
-            ],
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  width: 5,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(3),
-                    boxShadow: [BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 10)],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
+    return _Tocable(
+      radio: 22,
+      onTap: onTap,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.16),
+            Colors.white.withValues(alpha: 0.05),
+          ],
+        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        etiqueta.toUpperCase(),
-                        style: const TextStyle(
-                          color: AppColors.textoTenue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.4,
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: color,
+                          boxShadow: [BoxShadow(color: color, blurRadius: 8)],
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        titulo,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                      ),
-                      if (detalle != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          detalle!,
-                          maxLines: 2,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          etiqueta.toUpperCase(),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: AppColors.textoSuave, fontSize: 13.5),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                          ),
                         ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (datoGrande != null) ...[
-                  const SizedBox(width: 12),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        datoGrande!,
-                        style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800, height: 1),
                       ),
-                      if (datoPequeno != null) ...[
-                        const SizedBox(height: 6),
-                        Text(datoPequeno!,
-                            style: const TextStyle(color: AppColors.textoSuave, fontSize: 13)),
-                      ],
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  Text(
+                    titulo,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800),
+                  ),
+                  if (detalle != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      detalle!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12.5),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
+            if (datoGrande != null) ...[
+              const SizedBox(width: 12),
+              Container(
+                constraints: const BoxConstraints(minWidth: 64),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: color.withValues(alpha: 0.16),
+                  border: Border.all(color: color.withValues(alpha: 0.45)),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      datoGrande!,
+                      style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, height: 1),
+                    ),
+                    if (datoPequeno != null) ...[
+                      const SizedBox(height: 3),
+                      Text(datoPequeno!,
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.8), fontSize: 11.5)),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
   }
 }
 
-/// Título de sección grande con subtítulo y flecha (como "Noticias" en UTB App).
+/// Título de sección con subtítulo y flecha.
 class TituloSeccion extends StatelessWidget {
   const TituloSeccion(this.titulo, {super.key, this.subtitulo, this.onVerTodo});
   final String titulo;
@@ -221,15 +284,15 @@ class TituloSeccion extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(titulo,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
                   if (subtitulo != null)
                     Text(subtitulo!,
-                        style: const TextStyle(color: AppColors.textoTenue, fontSize: 14)),
+                        style: const TextStyle(color: AppColors.textoTenue, fontSize: 12.5)),
                 ],
               ),
             ),
             if (onVerTodo != null)
-              const Icon(Icons.arrow_forward_rounded, color: AppColors.textoSuave, size: 26),
+              const Icon(Icons.arrow_forward_rounded, color: AppColors.textoSuave, size: 22),
           ],
         ),
       ),
@@ -237,8 +300,8 @@ class TituloSeccion extends StatelessWidget {
   }
 }
 
-/// Control segmentado en píldora (Horario | Eventos en UTB App). La opción activa se llena
-/// con el degradado y se desliza suavemente.
+/// Control segmentado en píldora. La opción activa se llena con el degradado y se desliza
+/// suavemente.
 class PildoraSegmentada extends StatelessWidget {
   const PildoraSegmentada({
     super.key,
@@ -254,7 +317,7 @@ class PildoraSegmentada extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 52,
+      height: 46,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
@@ -293,15 +356,15 @@ class PildoraSegmentada extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(opciones[i].$1, size: 19),
-                            const SizedBox(width: 8),
+                            Icon(opciones[i].$1, size: 17),
+                            const SizedBox(width: 7),
                             Flexible(
                               child: Text(
                                 opciones[i].$2,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 14,
                                   fontWeight: i == seleccion ? FontWeight.w800 : FontWeight.w600,
                                 ),
                               ),
@@ -320,7 +383,8 @@ class PildoraSegmentada extends StatelessWidget {
   }
 }
 
-/// Tarjeta promocional en degradado con figura a la derecha (como "Tu carnet digital").
+/// Acceso rápido compacto: baldosa en degradado con el ícono, título, una línea de detalle y
+/// la acción a la derecha. Ocupa poco alto para que quepa más información en pantalla.
 class TarjetaPromo extends StatelessWidget {
   const TarjetaPromo({
     super.key,
@@ -341,69 +405,62 @@ class TarjetaPromo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(28),
-        onTap: onTap,
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1B2D86), Color(0xFF2F55E4), Color(0xFF5B8CFF)],
+    return _Tocable(
+      radio: 18,
+      onTap: onTap,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            AppColors.primario.withValues(alpha: 0.30),
+            AppColors.indigo.withValues(alpha: 0.10),
+          ],
+        ),
+        border: Border.all(color: AppColors.primarioClaro.withValues(alpha: 0.28)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                gradient: AppColors.degradado,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icono, size: 22, color: Colors.white),
             ),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primario.withValues(alpha: 0.35),
-                blurRadius: 30,
-                offset: const Offset(0, 10),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(etiqueta.toUpperCase(),
+                      style: const TextStyle(
+                          color: AppColors.indigoClaro,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.1)),
+                  const SizedBox(height: 1),
+                  Text(titulo,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                  Text(detalle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: AppColors.textoSuave, fontSize: 12)),
+                ],
               ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                right: -18,
-                bottom: -22,
-                child: Transform.rotate(
-                  angle: -math.pi / 14,
-                  child: Icon(icono, size: 150, color: Colors.white.withValues(alpha: 0.16)),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 20, 110, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(etiqueta.toUpperCase(),
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.4)),
-                    const SizedBox(height: 6),
-                    Text(titulo,
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 6),
-                    Text(detalle,
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85), fontSize: 14)),
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                      ),
-                      child: Text(accion,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            Text(accion,
+                style: const TextStyle(
+                    color: AppColors.primarioClaro, fontSize: 12, fontWeight: FontWeight.w700)),
+            const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primarioClaro),
+          ],
         ),
       ),
     );
@@ -434,7 +491,7 @@ class Indicador extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
           child: Ink(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               gradient: LinearGradient(
@@ -448,7 +505,7 @@ class Indicador extends StatelessWidget {
               children: [
                 Text(valor,
                     style: TextStyle(
-                        fontSize: 26, fontWeight: FontWeight.w800, color: color, height: 1.1)),
+                        fontSize: 22, fontWeight: FontWeight.w800, color: color, height: 1.1)),
                 const SizedBox(height: 4),
                 Text(etiqueta,
                     textAlign: TextAlign.center,
@@ -464,7 +521,7 @@ class Indicador extends StatelessWidget {
   }
 }
 
-/// Fila de línea de tiempo: hora a la izquierda, nodo + línea, y contenido (UTB App, Agenda).
+/// Fila de línea de tiempo: hora a la izquierda, nodo + línea, y contenido.
 class FilaLineaTiempo extends StatelessWidget {
   const FilaLineaTiempo({
     super.key,

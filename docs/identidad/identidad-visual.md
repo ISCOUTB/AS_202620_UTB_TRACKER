@@ -71,18 +71,23 @@ dart run flutter_native_splash:create
 
 ## Lenguaje visual (ADR-0011)
 
-Las piezas viven en `frontend/lib/shared/utb_ui.dart` y se inspiran en la app oficial UTB App:
+Las piezas viven en `frontend/lib/shared/utb_ui.dart`. Desde ADR-0013 (2026-11-14) de UTB App
+solo se toman los **colores**; las formas son propias. El motivo de la marca es el **plano de
+baldosas** del logo (una rejilla de salones con uno encendido), que aparece en los encabezados y
+en la pestaña activa de la barra inferior.
 
 | Pieza | Uso |
 |---|---|
-| `EncabezadoDegradado` | Bloque superior de cada pestaña: degradado azul → índigo, arcos finos y esquinas inferiores redondeadas |
-| `TarjetaDestacada` | Lo más importante del momento ("Ahora en el campus"), con barra de color de estado y dato grande |
-| `TarjetaPromo` | Accesos en degradado con ícono grande de fondo (Inventario, Solicita un salón) |
+| `EncabezadoDegradado` | Parte superior de cada pestaña: degradado azul → índigo que se desvanece hacia el fondo (sin borde) y plano de baldosas arriba a la derecha |
+| `TarjetaDestacada` | Lo más importante del momento ("Ahora en el campus"): tarjeta de vidrio, punto luminoso del color del estado y el número dentro de una baldosa |
+| `TarjetaPromo` | Acceso compacto en una fila (Inventario, Solicita un salón, Mis solicitudes): ícono en baldosa, título, una línea y la acción |
 | `PildoraSegmentada` | Control segmentado (Solicitudes · Reportes) con la opción activa deslizándose |
 | `FilaLineaTiempo` | Clases en curso, reportes y auditoría como línea de tiempo con nodos luminosos |
 | `Indicador` | Números del resumen con degradado del color de su estado |
 | `Aparecer` | Entrada escalonada (desvanecer + subir) de los elementos de una lista |
 | Credencial (Perfil) | Tarjeta clara tipo carnet con iniciales, nombre, correo y franja del rol |
+| Barra inferior | Vidrio esmerilado con esquinas de baldosa; la pestaña activa se enciende como una baldosa en degradado |
+| `EscalaGlobal` (`app.dart`) | Toda la app se dibuja al 90 % para que quepa más información |
 
 Reglas: nada de colores planos en superficies grandes (fondo con brillos difuminados, tarjetas
 "de vidrio" con degradado sutil); transiciones de 250–420 ms con `easeOutCubic`; el color de

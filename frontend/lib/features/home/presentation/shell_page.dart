@@ -12,8 +12,7 @@ import '../../salones_admin/presentation/panel_salones_page.dart';
 import '../../salones_admin/presentation/salones_admin_controller.dart';
 import 'home_page.dart';
 
-/// Contenedor con la barra inferior flotante (Inicio · Salones · Control · Perfil), como la de
-/// UTB App. Los equipos no tienen pestaña propia: se ven por salón o desde el inventario.
+/// Contenedor con la barra inferior flotante (Inicio · Salones · Control · Perfil). Los equipos no tienen pestaña propia: se ven por salón o desde el inventario.
 class ShellPage extends StatefulWidget {
   const ShellPage({super.key});
 
@@ -79,18 +78,18 @@ class _BarraInferior extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(40),
+          borderRadius: BorderRadius.circular(22),
           // Vidrio esmerilado: se difumina lo que pasa por detrás.
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
-              height: 74,
-              padding: const EdgeInsets.all(6),
+              height: 60,
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.superficieAlta.withValues(alpha: 0.72),
-                borderRadius: BorderRadius.circular(40),
+                color: AppColors.superficie.withValues(alpha: 0.78),
+                borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: Row(
@@ -100,43 +99,45 @@ class _BarraInferior extends StatelessWidget {
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => onTap(i),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          decoration: BoxDecoration(
-                            gradient: i == indice
-                                ? LinearGradient(colors: [
-                                    AppColors.primario.withValues(alpha: 0.45),
-                                    AppColors.indigo.withValues(alpha: 0.30),
-                                  ])
-                                : null,
-                            borderRadius: BorderRadius.circular(32),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              AnimatedScale(
-                                duration: const Duration(milliseconds: 220),
-                                scale: i == indice ? 1.12 : 1,
-                                child: Icon(
-                                  _items[i].$1,
-                                  size: 24,
-                                  color: i == indice ? AppColors.indigoClaro : AppColors.textoSuave,
-                                ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // La pestaña activa se enciende como la baldosa del logo.
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              width: 44,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                gradient: i == indice ? AppColors.degradado : null,
+                                borderRadius: BorderRadius.circular(9),
+                                boxShadow: i == indice
+                                    ? [
+                                        BoxShadow(
+                                          color: AppColors.primario.withValues(alpha: 0.5),
+                                          blurRadius: 12,
+                                        ),
+                                      ]
+                                    : null,
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                _items[i].$2,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: i == indice ? FontWeight.w800 : FontWeight.w500,
-                                  color: i == indice ? AppColors.texto : AppColors.textoSuave,
-                                ),
+                              child: Icon(
+                                _items[i].$1,
+                                size: 19,
+                                color: i == indice ? Colors.white : AppColors.textoTenue,
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _items[i].$2,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: i == indice ? FontWeight.w800 : FontWeight.w500,
+                                color: i == indice ? AppColors.texto : AppColors.textoTenue,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

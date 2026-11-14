@@ -5,14 +5,20 @@
 En la terminal de VS Code, desde la raíz del repo:
 
 ```powershell
-.\iniciar.ps1                  # libera puertos, enciende backend y app, abre el navegador
-.\iniciar.ps1 -ReiniciarDatos  # igual, y recarga los datos de ejemplo (clases con la hora actual)
-.\iniciar.ps1 -SinCompilar     # más rápido: no recompila la app si no cambiaste el frontend
-.\detener.ps1                  # apaga todo
+.\iniciar.ps1                         # app web contra el SERVIDOR EN LA NUBE y abre el navegador
+.\iniciar.ps1 -SinCompilar            # más rápido: no recompila la app si no cambiaste el frontend
+.\iniciar.ps1 -Local                  # desarrollo: backend en tu PC con su propia base de datos
+.\iniciar.ps1 -Local -ReiniciarDatos  # igual, y recarga los datos de ejemplo locales
+.\detener.ps1                         # apaga todo
 ```
 
-Se abren dos ventanas, "UTB Tracker - BACKEND" y "UTB Tracker - APP": **no las cierres**
-mientras uses la app. La app queda en http://127.0.0.1:8080.
+Por defecto la web usa el mismo servidor en la nube que el APK del celular
+(`https://129-80-171-141.nip.io`): **las cuentas y los datos son los mismos en el PC y en el
+celular** (ADR-0013). Se abre la ventana "UTB Tracker - APP" (y con `-Local` también "UTB Tracker -
+BACKEND"): **no las cierres** mientras uses la app. La app queda en http://127.0.0.1:8080.
+
+Las cuentas de ejemplo de la sección 4 existen solo en el modo `-Local`; en la nube usa la cuenta
+que creaste.
 
 ## Forma manual
 

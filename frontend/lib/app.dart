@@ -17,7 +17,46 @@ class UtbTrackerApp extends StatelessWidget {
       theme: AppTheme.oscuro,
       darkTheme: AppTheme.oscuro,
       themeMode: ThemeMode.dark,
+      builder: (context, child) => EscalaGlobal(child: child!),
       home: const _Raiz(),
+    );
+  }
+}
+
+/// Dibuja toda la app (pantallas, hojas y diálogos) un poco más pequeña para que quepa más
+/// información, como bajar el "tamaño de pantalla" del teléfono. La app se diseña en un
+/// lienzo mayor (tamaño / [factor]) y se pinta reducida; los toques se convierten solos.
+class EscalaGlobal extends StatelessWidget {
+  const EscalaGlobal({super.key, required this.child, this.factor = 0.9});
+
+  final Widget child;
+  final double factor;
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final lienzo = mq.size / factor;
+    return OverflowBox(
+      alignment: Alignment.topLeft,
+      minWidth: lienzo.width,
+      maxWidth: lienzo.width,
+      minHeight: lienzo.height,
+      maxHeight: lienzo.height,
+      child: Transform.scale(
+        scale: factor,
+        alignment: Alignment.topLeft,
+        child: MediaQuery(
+          data: mq.copyWith(
+            size: lienzo,
+            devicePixelRatio: mq.devicePixelRatio * factor,
+            padding: mq.padding / factor,
+            viewPadding: mq.viewPadding / factor,
+            viewInsets: mq.viewInsets / factor,
+            systemGestureInsets: mq.systemGestureInsets / factor,
+          ),
+          child: child,
+        ),
+      ),
     );
   }
 }

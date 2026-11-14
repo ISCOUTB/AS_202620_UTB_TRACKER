@@ -464,6 +464,7 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0010](../adr/0010-auditoria.md) — Auditoría: bitácora de solo-agregar escrita en la misma transacción
 - [ADR-0011](../adr/0011-rediseno-interfaz-y-control.md) — Rediseño al estilo de UTB App y pestaña "Control" en lugar de préstamos de equipos
 - [ADR-0012](../adr/0012-contenedores-docker.md) — Empaquetar el sistema con Docker Compose (PostgreSQL, API, worker y web)
+- [ADR-0013](../adr/0013-identidad-propia-y-servidor-unico.md) — Identidad visual propia, interfaz más compacta y un solo servidor (la nube) para web y APK
 
 # Requisitos de calidad
 

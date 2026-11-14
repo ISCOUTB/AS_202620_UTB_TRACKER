@@ -17,7 +17,7 @@ import '../../salones_admin/presentation/salon_control_page.dart';
 import '../../salones_admin/presentation/salones_admin_controller.dart';
 import '../../salones_admin/presentation/salones_admin_estilos.dart';
 
-/// Inicio, al estilo de UTB App: encabezado en degradado con saludo, una tarjeta destacada con
+/// Inicio: encabezado en degradado con saludo, una tarjeta destacada de vidrio con
 /// lo más importante del momento y, debajo, lo que hay que atender. Cambia según el rol:
 /// el auxiliar ve el estado del campus; el usuario UTB, los salones que puede pedir.
 class HomePage extends StatefulWidget {
@@ -71,7 +71,7 @@ class _HomePageState extends State<HomePage> {
               destacada: _esAuxiliar ? _destacadaAuxiliar() : _destacadaUsuario(),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: _esAuxiliar ? _cuerpoAuxiliar(context) : _cuerpoUsuario(context),
@@ -148,7 +148,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      const SizedBox(height: 22),
+      const SizedBox(height: 14),
       Aparecer(
         orden: 1,
         child: TarjetaPromo(
@@ -164,7 +164,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-      const SizedBox(height: 28),
+      const SizedBox(height: 20),
       TituloSeccion(
         'Por atender',
         subtitulo: atencion.isEmpty
@@ -222,24 +222,25 @@ class _HomePageState extends State<HomePage> {
         child: TarjetaPromo(
           etiqueta: 'Solicitud',
           titulo: 'Solicita un salón',
-          detalle: 'Elige el salón, la hora y el motivo. El auxiliar te confirma.',
+          detalle: 'Elige salón, hora y motivo; el auxiliar confirma',
           accion: 'Ver salones',
+          icono: Icons.add_location_alt_rounded,
           onTap: () => widget.onIrSalones(null),
         ),
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 10),
       Aparecer(
         orden: 1,
         child: TarjetaPromo(
           etiqueta: 'Mis solicitudes',
           titulo: 'Sigue tus pedidos',
-          detalle: 'Mira si tus salones fueron aprobados y tus reportes atendidos.',
+          detalle: 'Aprobaciones de salones y reportes',
           accion: 'Abrir control',
           icono: Icons.fact_check_rounded,
           onTap: widget.onIrControl,
         ),
       ),
-      const SizedBox(height: 28),
+      const SizedBox(height: 20),
       TituloSeccion('Libres ahora',
           subtitulo: 'Salones disponibles en el campus', onVerTodo: () => widget.onIrSalones(null)),
       const SizedBox(height: 12),
@@ -282,7 +283,7 @@ class _Encabezado extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
@@ -293,12 +294,12 @@ class _Encabezado extends StatelessWidget {
                       fechaLarga(ahora),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 13,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text.rich(
                       TextSpan(
                         text: '${saludo(ahora)}, ',
@@ -310,23 +311,22 @@ class _Encabezado extends StatelessWidget {
                           ),
                         ],
                       ),
-                      style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w800),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white,
-                  boxShadow: [BoxShadow(color: Color(0x55000000), blurRadius: 16)],
+                  color: Colors.white.withValues(alpha: 0.92),
                 ),
-                child: AvatarIniciales(nombre: nombre, tamano: 62, color: AppColors.primario),
+                child: AvatarIniciales(nombre: nombre, tamano: 46, color: AppColors.primario),
               ),
             ],
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
           Aparecer(child: destacada),
         ],
       ),

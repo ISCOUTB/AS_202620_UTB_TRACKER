@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceptado
+Aceptado. El punto 4 (lenguaje visual) fue modificado por ADR-0013
 
 ## Contexto
 
