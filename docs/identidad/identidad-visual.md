@@ -36,9 +36,12 @@ texto `#C5C8D0` sobre el fondo negro supera 12:1.
 `frontend/assets/figuras/logo.svg` (copia en `docs/identidad/logo.svg`; versión con nombre en
 `docs/identidad/logo-horizontal.svg`).
 
-Es un cuadrado redondeado índigo con **un plano de cuatro salones**: tres tenues (ocupados) y uno
-verde con visto (confirmado). Resume el producto —saber qué salón está en qué situación— y repite la
-forma de baldosa del plano de la app, así que el logo y la pantalla principal hablan el mismo idioma.
+Desde el 2026-11-14 es un **pin de ubicación blanco** sobre el degradado azul → índigo de la app
+(`#1D3FE0` → `#4B3BDB`). Dentro del pin hay **un plano de cuatro salones**: tres tenues (ocupados) y
+uno azul con visto (libre/confirmado). El pin dice "tracker" (saber dónde está cada cosa) y las
+baldosas repiten el plano de salones de la app, así que el logo y la pantalla principal hablan el
+mismo idioma. Reemplaza al cuadrado índigo con baldosa verde anterior, que no combinaba con la
+paleta azul de UTB App.
 
 Reglas de uso: no estirar, no cambiar los colores, margen libre mínimo igual al ancho de una baldosa,
 y no combinarlo con el logosímbolo de la Universidad en el mismo cuerpo (la UTB va como "Campus
@@ -51,9 +54,20 @@ UTB", en texto).
 | Paleta y tema de la app | `frontend/lib/core/theme/app_theme.dart` |
 | Logo en la app | `frontend/assets/figuras/logo.svg` |
 | Iconos web / PWA y favicon | `frontend/web/icons/`, `frontend/web/favicon.png`, `frontend/web/manifest.json` |
-| Icono de Android | `frontend/android/app/src/main/res/mipmap-*/ic_launcher.png` |
+| Fuentes del ícono | `frontend/assets/icono/icono_cuadrado.svg` (ícono completo) y `primer_plano.svg` (solo el pin, para el ícono adaptativo) |
+| Icono de Android | `frontend/android/app/src/main/res/mipmap-*/ic_launcher.png` y el adaptativo en `mipmap-anydpi-v26/` (pin sobre fondo `#2F55E4`) |
+| Pantalla de arranque (splash) | `drawable*/`, `values-v31/` (Android 12+) y `frontend/web/splash/`: logo sobre fondo negro |
 
-Los PNG se generan desde el SVG; si cambia el logo hay que regenerarlos.
+Los PNG de `frontend/assets/icono/` se generan desde los SVG. Si cambia el logo, se regeneran esos
+PNG y luego los íconos y el splash con:
+
+```powershell
+cd frontend
+dart run flutter_launcher_icons
+dart run flutter_native_splash:create
+```
+
+(la configuración está en `frontend/pubspec.yaml`, secciones `flutter_launcher_icons` y `flutter_native_splash`).
 
 ## Lenguaje visual (ADR-0011)
 

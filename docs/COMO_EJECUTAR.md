@@ -98,14 +98,39 @@ las clases ya hayan terminado y quieras verlas en curso otra vez:
 .\venv\Scripts\python scripts\seed_demo.py
 ```
 
-## 6. Pruebas
+## 6. Instalar la app en un celular Android (APK)
+
+El APK ya compilado apunta al **servidor en la nube** (`https://129-80-171-141.nip.io`), así que en
+el celular funciona con datos móviles o cualquier Wi-Fi, sin tener el PC encendido.
+
+Para generarlo de nuevo (tarda de 10 a 30 minutos la primera vez):
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+cd frontend
+flutter build apk --release
+```
+
+Queda en `frontend\build\app\outputs\flutter-apk\app-release.apk`. Pásalo al celular (cable,
+Drive o WhatsApp a ti mismo), ábrelo y acepta "instalar apps de origen desconocido".
+
+- Para que la app use **tu PC** en vez de la nube, agrega
+  `--dart-define=API_BASE_URL=http://<IP-de-tu-PC>:8000` (y el celular en la misma Wi-Fi).
+  Ojo: Android bloquea `http://` sin cifrar, así que en ese caso es más fácil probar con el
+  emulador o la versión web.
+- No hace falta `google-services.json` para compilar: Firebase se configura desde
+  `lib/firebase_options.dart`. Si el archivo existe en `frontend/android/app/`, se usa.
+- Si pide licencias de Android: `flutter doctor --android-licenses` y aceptar todo con `y`.
+
+## 7. Pruebas
 
 ```powershell
 .\venv\Scripts\python -m pytest tests/ -v          # backend
 cd frontend; flutter test                          # frontend
 ```
 
-## 7. Problemas comunes
+## 8. Problemas comunes
 
 | Síntoma | Solución |
 |---|---|

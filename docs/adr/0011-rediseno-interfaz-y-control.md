@@ -62,3 +62,4 @@ Había además dos problemas visibles:
 | Reportes de todos los salones | `app/routers/salones_admin.py` (`GET /salones/reportes`) | `tests/test_salones_admin.py::test_reportes_de_todos_los_salones_traen_nombre_del_salon` |
 | Pestaña Control | `frontend/lib/features/control/` | `frontend/test/control_test.dart` |
 | Lenguaje visual | `frontend/lib/shared/utb_ui.dart`, `frontend/lib/core/theme/app_theme.dart` | revisión visual (capturas) |
+| Logo, ícono y splash (2026-11-14) | `frontend/assets/icono/`, `frontend/pubspec.yaml`, `docs/identidad/identidad-visual.md` | revisión visual (capturas); `flutter build apk --release` |
