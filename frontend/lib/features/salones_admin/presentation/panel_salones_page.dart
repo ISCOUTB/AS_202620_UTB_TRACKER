@@ -244,13 +244,13 @@ class _Filtros extends StatelessWidget {
                 label: Text('${f.etiqueta} · ${controller.contar(f)}'),
                 selected: controller.filtro == f,
                 onSelected: (_) => controller.fijarFiltro(f),
-                selectedColor: AppColors.texto,
+                selectedColor: AppColors.primario,
                 backgroundColor: AppColors.superficieAlta,
                 side: BorderSide.none,
                 shape: const StadiumBorder(),
-                labelStyle: TextStyle(
+                labelStyle: const TextStyle(
                   fontWeight: FontWeight.w700,
-                  color: controller.filtro == f ? Colors.black : AppColors.texto,
+                  color: AppColors.texto,
                 ),
               ),
             ),

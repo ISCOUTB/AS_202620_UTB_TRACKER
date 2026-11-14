@@ -67,4 +67,4 @@ conoce JSON y HTTP. Estado con `ChangeNotifier` + `ListenableBuilder`, sin paque
 Autenticación (`/auth/login`, `/auth/register`, `/auth/me`, `/auth/users`), `/recursos` (con reportes),
 `/prestamos` (con `X-Idempotency-Key` y devolución), `/salones`, `/horarios`, `/prestamos-salon` y, para el
 panel del auxiliar, `/salones/ocupacion`, `/salones/{id}/presencia` y `/salones/{id}/reportes`
-(ver [ADR-0007](../docs/adr/0007-administracion-de-salones.md)). La app no inventa endpoints.
+(ver [ADR-0009](../docs/adr/0009-administracion-de-salones.md)). La app no inventa endpoints.

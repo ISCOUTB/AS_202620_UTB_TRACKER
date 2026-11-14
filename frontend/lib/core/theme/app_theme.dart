@@ -1,23 +1,45 @@
 import 'package:flutter/material.dart';
 
-/// Paleta oscura inspirada en la propuesta de interfaz del equipo (fondo carbón, tarjetas
-/// con borde sutil, botón principal blanco). Colores propios del proyecto.
+/// Identidad visual de UTB Tracker (ver `docs/identidad/identidad-visual.md`).
+///
+/// Paleta alineada con la app oficial "UTB App": azul real [primario] como color de acción,
+/// degradado azul → índigo para encabezados, fondo negro puro y superficies gris carbón
+/// neutras (sin tinte), de modo que el azul sea el único color dominante.
 class AppColors {
   AppColors._();
 
-  static const fondo = Color(0xFF141414);
-  static const superficie = Color(0xFF1E1E1E);
-  static const superficieAlta = Color(0xFF2A2A2A);
-  static const borde = Color(0xFF3A3A3A);
-  static const texto = Color(0xFFFFFFFF);
-  static const textoSuave = Color(0xFFB3B3B3);
-  static const textoTenue = Color(0xFF7D7D7D);
+  // Marca.
+  static const primario = Color(0xFF2F55E4);
+  static const primarioClaro = Color(0xFF6B93FF); // texto/íconos azules sobre fondo oscuro
+  static const indigo = Color(0xFF4B3BDB);
+  static const indigoClaro = Color(0xFFA9BFFF);
+  static const sobrePrimario = Color(0xFFFFFFFF);
+  static const seleccion = Color(0xFF1E2C57); // píldora activa (barra inferior, botón "Hoy")
 
+  /// Degradado de encabezados, como el de "Inicio" y "Agenda" en UTB App.
+  static const degradado = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF1D3FE0), indigo],
+  );
+
+  // Fondos y superficies (negro y gris carbón neutro).
+  static const fondo = Color(0xFF000000);
+  static const superficie = Color(0xFF1B1C21);
+  static const superficieAlta = Color(0xFF2A2C33);
+  static const borde = Color(0xFF3A3D46);
+
+  // Texto.
+  static const texto = Color(0xFFFFFFFF);
+  static const textoSuave = Color(0xFFC5C8D0);
+  static const textoTenue = Color(0xFF8C9099);
+
+  // Estados (semánticos: no cambian con la marca).
   static const disponible = Color(0xFF3DDC97);
   static const prestado = Color(0xFFFFB84D);
   static const danado = Color(0xFFFF6B6B);
   static const mantenimiento = Color(0xFF6CB4FF);
-  static const neutro = Color(0xFF9A9A9A);
+  static const neutro = Color(0xFF9EA3AE);
 }
 
 class AppTheme {
@@ -25,9 +47,10 @@ class AppTheme {
 
   static ThemeData get oscuro {
     const esquema = ColorScheme.dark(
-      primary: AppColors.texto,
-      onPrimary: Colors.black,
-      secondary: AppColors.disponible,
+      primary: AppColors.primario,
+      onPrimary: AppColors.sobrePrimario,
+      secondary: AppColors.indigoClaro,
+      onSecondary: Colors.black,
       surface: AppColors.superficie,
       onSurface: AppColors.texto,
       error: AppColors.danado,
@@ -60,14 +83,14 @@ class AppTheme {
             const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: borde(AppColors.borde),
         enabledBorder: borde(AppColors.borde),
-        focusedBorder: borde(AppColors.texto, 1.5),
+        focusedBorder: borde(AppColors.primarioClaro, 1.5),
         errorBorder: borde(AppColors.danado),
         focusedErrorBorder: borde(AppColors.danado, 1.5),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.texto,
-          foregroundColor: Colors.black,
+          backgroundColor: AppColors.primario,
+          foregroundColor: AppColors.sobrePrimario,
           minimumSize: const Size.fromHeight(54),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -87,13 +110,14 @@ class AppTheme {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: AppColors.texto),
+        style: TextButton.styleFrom(foregroundColor: AppColors.primarioClaro),
       ),
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.superficieAlta,
         contentTextStyle: TextStyle(color: AppColors.texto),
       ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(color: AppColors.primarioClaro),
       dividerColor: AppColors.borde,
     );
   }

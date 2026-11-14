@@ -274,13 +274,13 @@ class _Titulo extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.texto,
+              color: AppColors.primario,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               '$cantidad',
               style: const TextStyle(
-                color: Colors.black,
+                color: AppColors.sobrePrimario,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),

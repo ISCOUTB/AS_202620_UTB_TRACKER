@@ -29,7 +29,7 @@ class BotonPildora extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (fondo, frente, borde) = switch (estilo) {
-      EstiloBoton.principal => (AppColors.texto, Colors.black, AppColors.texto),
+      EstiloBoton.principal => (AppColors.primario, AppColors.sobrePrimario, AppColors.primario),
       EstiloBoton.secundario => (AppColors.superficieAlta, AppColors.texto, AppColors.superficieAlta),
       EstiloBoton.peligro => (AppColors.danado.withValues(alpha: 0.14), AppColors.danado, AppColors.danado.withValues(alpha: 0.4)),
     };

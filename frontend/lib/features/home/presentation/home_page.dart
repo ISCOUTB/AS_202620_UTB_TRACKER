@@ -162,14 +162,25 @@ class _HomePageState extends State<HomePage> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 130),
               children: [
-                _Cabecera(
-                  salon: _recursos.salon,
-                  vencidos: vencidos,
-                  onSalon: _elegirSalon,
-                  onAvisos: () => widget.onVerActividad(filtro: 1),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.degradado,
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: Column(
+                    children: [
+                      _Cabecera(
+                        salon: _recursos.salon,
+                        vencidos: vencidos,
+                        onSalon: _elegirSalon,
+                        onAvisos: () => widget.onVerActividad(filtro: 1),
+                      ),
+                      const SizedBox(height: 14),
+                      _ResumenOperativo(stats: _stats),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 14),
-                _ResumenOperativo(stats: _stats),
                 const SizedBox(height: 22),
                 _Pestanas(onPrestamos: () => widget.onVerActividad()),
                 const Divider(height: 1),
@@ -264,7 +275,7 @@ class _Cabecera extends StatelessWidget {
                     width: 14,
                     height: 14,
                     decoration: const BoxDecoration(
-                      color: Color(0xFF2F8CFF),
+                      color: AppColors.primarioClaro,
                       shape: BoxShape.circle,
                     ),
                   ),

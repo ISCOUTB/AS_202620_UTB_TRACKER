@@ -140,7 +140,7 @@ class _Baldosa extends StatelessWidget {
 class _CuadriculaPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final fondo = Paint()..color = const Color(0xFF181818);
+    final fondo = Paint()..color = AppColors.superficie;
     canvas.drawRect(Offset.zero & size, fondo);
     final linea = Paint()
       ..color = AppColors.borde.withValues(alpha: 0.35)

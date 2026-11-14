@@ -112,7 +112,7 @@ class _BarraPildora extends StatelessWidget {
           height: 74,
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: AppColors.fondo.withValues(alpha: 0.96),
+            color: AppColors.superficieAlta.withValues(alpha: 0.96),
             borderRadius: BorderRadius.circular(40),
             border: Border.all(color: AppColors.borde),
           ),
@@ -126,7 +126,7 @@ class _BarraPildora extends StatelessWidget {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       decoration: BoxDecoration(
-                        color: i == indice ? AppColors.superficieAlta : Colors.transparent,
+                        color: i == indice ? AppColors.seleccion : Colors.transparent,
                         borderRadius: BorderRadius.circular(32),
                       ),
                       child: Column(
@@ -135,7 +135,7 @@ class _BarraPildora extends StatelessWidget {
                           Icon(
                             _items[i].$1,
                             size: 24,
-                            color: i == indice ? AppColors.texto : AppColors.textoSuave,
+                            color: i == indice ? AppColors.primarioClaro : AppColors.textoSuave,
                           ),
                           const SizedBox(height: 3),
                           Text(

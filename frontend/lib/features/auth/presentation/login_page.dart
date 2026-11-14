@@ -465,14 +465,14 @@ class _Selector extends StatelessWidget {
               height: 44,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: activo ? AppColors.texto : Colors.transparent,
+                color: activo ? AppColors.primario : Colors.transparent,
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Text(
                 texto,
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
-                  color: activo ? Colors.black : AppColors.textoSuave,
+                  color: activo ? AppColors.sobrePrimario : AppColors.textoSuave,
                 ),
               ),
             ),
