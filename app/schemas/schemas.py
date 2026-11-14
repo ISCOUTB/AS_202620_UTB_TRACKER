@@ -45,6 +45,9 @@ class RecursoOut(BaseModel):
     id: int
     categoria: str
     salon_id: Optional[int] = None
+    salon_nombre: Optional[str] = None
+    salon_edificio: Optional[str] = None
+    salon_ubicacion: Optional[str] = None
     serial: str
     estado: str
     descripcion: Optional[str] = None

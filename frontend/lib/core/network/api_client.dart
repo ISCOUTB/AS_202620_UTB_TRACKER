@@ -45,6 +45,19 @@ class ApiClient {
 
   String? get token => _token;
 
+  /// Lee todas las páginas de un listado paginado con skip/limit (la API devuelve como
+  /// máximo 100 por página).
+  Future<List<dynamic>> getTodo(String ruta, {Map<String, dynamic>? parametros}) async {
+    const tamano = 100;
+    final todo = <dynamic>[];
+    for (var skip = 0;; skip += tamano) {
+      final pagina = await get(ruta,
+          parametros: {...?parametros, 'skip': skip, 'limit': tamano}) as List<dynamic>;
+      todo.addAll(pagina);
+      if (pagina.length < tamano) return todo;
+    }
+  }
+
   Future<dynamic> get(
     String ruta, {
     Map<String, dynamic>? parametros,

@@ -42,6 +42,64 @@ class AppColors {
   static const neutro = Color(0xFF9EA3AE);
 }
 
+/// Fondo de todas las pantallas: negro con dos brillos difuminados (azul arriba, índigo abajo),
+/// en lugar de un color plano.
+class FondoDifuminado extends StatelessWidget {
+  const FondoDifuminado({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: AppColors.fondo),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(-0.9, -1.0),
+            radius: 1.25,
+            colors: [Color(0x552F55E4), Color(0x00000000)],
+          ),
+        ),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment(1.1, 1.0),
+              radius: 1.1,
+              colors: [Color(0x334B3BDB), Color(0x00000000)],
+            ),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Transición entre pantallas: aparece desvaneciendo y subiendo un poco (suave, sin el
+/// "deslizamiento" brusco por defecto). Cada pantalla lleva su propio [FondoDifuminado],
+/// así la de atrás no se transparenta.
+class _TransicionSuave extends PageTransitionsBuilder {
+  const _TransicionSuave();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final entrada = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+    return FadeTransition(
+      opacity: entrada,
+      child: SlideTransition(
+        position: Tween(begin: const Offset(0, 0.04), end: Offset.zero).animate(entrada),
+        child: FondoDifuminado(child: child),
+      ),
+    );
+  }
+}
+
 class AppTheme {
   AppTheme._();
 
@@ -64,11 +122,21 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: esquema,
-      scaffoldBackgroundColor: AppColors.fondo,
+      // Transparente: el fondo difuminado lo pone la transición de cada pantalla.
+      scaffoldBackgroundColor: Colors.transparent,
       canvasColor: AppColors.fondo,
       fontFamily: null,
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final p in TargetPlatform.values) p: const _TransicionSuave(),
+        },
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.superficie,
+        modalBackgroundColor: AppColors.superficie,
+      ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.fondo,
+        backgroundColor: Colors.transparent,
         foregroundColor: AppColors.texto,
         elevation: 0,
         scrolledUnderElevation: 0,

@@ -29,54 +29,85 @@ class BotonPildora extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (fondo, frente, borde) = switch (estilo) {
-      EstiloBoton.principal => (AppColors.primario, AppColors.sobrePrimario, AppColors.primario),
-      EstiloBoton.secundario => (AppColors.superficieAlta, AppColors.texto, AppColors.superficieAlta),
-      EstiloBoton.peligro => (AppColors.danado.withValues(alpha: 0.14), AppColors.danado, AppColors.danado.withValues(alpha: 0.4)),
+      EstiloBoton.principal => (
+          AppColors.primario,
+          AppColors.sobrePrimario,
+          AppColors.primario
+        ),
+      EstiloBoton.secundario => (
+          AppColors.superficieAlta,
+          AppColors.texto,
+          AppColors.superficieAlta
+        ),
+      EstiloBoton.peligro => (
+          AppColors.danado.withValues(alpha: 0.14),
+          AppColors.danado,
+          AppColors.danado.withValues(alpha: 0.4)
+        ),
     };
     final alto = compacto ? 40.0 : 56.0;
     final activo = onPressed != null && !cargando;
 
+    final principal = estilo == EstiloBoton.principal;
     return Opacity(
       opacity: onPressed == null && !cargando ? 0.45 : 1,
-      child: Material(
-        color: fondo,
-        shape: StadiumBorder(side: BorderSide(color: borde)),
-        child: InkWell(
-          customBorder: const StadiumBorder(),
-          onTap: activo ? onPressed : null,
-          child: SizedBox(
-            height: alto,
-            child: Center(
-              child: cargando
-                  ? SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.5, color: frente),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (icono != null) ...[
-                            Icon(icono, size: compacto ? 18 : 22, color: frente),
-                            const SizedBox(width: 8),
-                          ],
-                          Flexible(
-                            child: Text(
-                              texto,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: frente,
-                                fontSize: compacto ? 14 : 16,
-                                fontWeight: FontWeight.w700,
+      child: DecoratedBox(
+        // El principal lleva el degradado azul → índigo y un halo, como en UTB App.
+        decoration: ShapeDecoration(
+          shape: const StadiumBorder(),
+          gradient: principal ? AppColors.degradado : null,
+          shadows: principal && activo
+              ? [
+                  BoxShadow(
+                      color: AppColors.primario.withValues(alpha: 0.35),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6))
+                ]
+              : null,
+        ),
+        child: Material(
+          color: principal ? Colors.transparent : fondo,
+          shape: StadiumBorder(
+              side: BorderSide(color: principal ? Colors.transparent : borde)),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: activo ? onPressed : null,
+            child: SizedBox(
+              height: alto,
+              child: Center(
+                child: cargando
+                    ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5, color: frente),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (icono != null) ...[
+                              Icon(icono,
+                                  size: compacto ? 18 : 22, color: frente),
+                              const SizedBox(width: 8),
+                            ],
+                            Flexible(
+                              child: Text(
+                                texto,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: frente,
+                                  fontSize: compacto ? 14 : 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
         ),
@@ -107,17 +138,20 @@ class AsaHoja extends StatelessWidget {
 
 /// Círculo con las iniciales de una persona (como el avatar del conductor en Uber).
 class AvatarIniciales extends StatelessWidget {
-  const AvatarIniciales({super.key, required this.nombre, this.tamano = 52, this.color});
+  const AvatarIniciales(
+      {super.key, required this.nombre, this.tamano = 52, this.color});
 
   final String nombre;
   final double tamano;
   final Color? color;
 
   static String iniciales(String nombre) {
-    final partes = nombre.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final partes =
+        nombre.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (partes.isEmpty) return '?';
     if (partes.length == 1) return partes.first.substring(0, 1).toUpperCase();
-    return (partes.first.substring(0, 1) + partes[1].substring(0, 1)).toUpperCase();
+    return (partes.first.substring(0, 1) + partes[1].substring(0, 1))
+        .toUpperCase();
   }
 
   @override
@@ -127,7 +161,8 @@ class AvatarIniciales extends StatelessWidget {
       height: tamano,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: (color ?? AppColors.superficieAlta).withValues(alpha: color == null ? 1 : 0.18),
+        color: (color ?? AppColors.superficieAlta)
+            .withValues(alpha: color == null ? 1 : 0.18),
         shape: BoxShape.circle,
         border: Border.all(color: color ?? AppColors.borde),
       ),

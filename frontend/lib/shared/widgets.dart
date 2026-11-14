@@ -27,16 +27,26 @@ class FiguraCircular extends StatelessWidget {
       width: tamano,
       height: tamano,
       padding: EdgeInsets.all(tamano * relleno),
-      decoration: const BoxDecoration(
-        color: AppColors.superficie,
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
+        gradient: const RadialGradient(
+          center: Alignment(-0.3, -0.4),
+          colors: [Color(0xFF2A3570), AppColors.superficie],
+        ),
+        border: Border.all(color: AppColors.primarioClaro.withValues(alpha: 0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primario.withValues(alpha: 0.22),
+            blurRadius: tamano * 0.3,
+          ),
+        ],
       ),
       child: SvgPicture.asset(figura, fit: BoxFit.contain),
     );
   }
 }
 
-/// Tarjeta con borde sutil, como las de la propuesta de interfaz.
+/// Tarjeta "de vidrio": degradado gris carbón con un toque de azul y borde luminoso tenue.
 class TarjetaBorde extends StatelessWidget {
   const TarjetaBorde({
     super.key,
@@ -54,13 +64,18 @@ class TarjetaBorde extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         onTap: onTap,
         child: Ink(
           padding: padding,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.borde),
+            borderRadius: BorderRadius.circular(22),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xE6202434), Color(0xE6141519)],
+            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
           ),
           child: child,
         ),

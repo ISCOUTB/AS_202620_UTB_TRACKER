@@ -64,13 +64,34 @@ class Recurso {
     required this.salonId,
     required this.serial,
     required this.estadoCodigo,
+    this.salonNombre,
+    this.salonEdificio,
+    this.salonUbicacion,
+    this.descripcion,
   });
 
   final int id;
   final String categoriaCodigo;
+
+  /// Id interno del salón: solo para filtrar. Para mostrar se usa [salonTexto].
   final String salonId;
   final String serial;
   final String estadoCodigo;
+
+  /// Código real del salón (p. ej. "A4-204"), edificio y ubicación legible.
+  final String? salonNombre;
+  final String? salonEdificio;
+  final String? salonUbicacion;
+  final String? descripcion;
+
+  /// "A4-204" o "Sin salón asignado"; nunca el id interno.
+  String get salonTexto => (salonNombre == null || salonNombre!.isEmpty)
+      ? 'Sin salón asignado'
+      : salonNombre!;
+
+  /// "Ed. Aulas 4"
+  String? get edificioTexto =>
+      (salonEdificio == null || salonEdificio!.isEmpty) ? null : 'Ed. $salonEdificio';
 
   CategoriaRecurso get categoria => CategoriaRecurso.desde(categoriaCodigo);
   EstadoRecurso get estado => EstadoRecurso.desde(estadoCodigo);

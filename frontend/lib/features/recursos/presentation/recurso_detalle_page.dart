@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/utilidades.dart';
+import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
-import '../../prestamos/domain/entities/prestamo.dart';
-import '../../prestamos/presentation/prestamos_controller.dart';
-import '../../prestamos/presentation/solicitar_prestamo_sheet.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/recurso.dart';
 import 'recursos_controller.dart';
 
+/// Ficha de un equipo fijo: dónde está (salón real), su estado y las acciones de control.
+/// Los equipos no se prestan (ADR-0010), así que no hay historial de préstamos.
 class RecursoDetallePage extends StatefulWidget {
   const RecursoDetallePage({super.key, required this.recurso});
   final Recurso recurso;
@@ -20,7 +20,8 @@ class RecursoDetallePage extends StatefulWidget {
 
 class _RecursoDetallePageState extends State<RecursoDetallePage> {
   final RecursosController _recursos = sl<RecursosController>();
-  final PrestamosController _prestamos = sl<PrestamosController>();
+  final AuthController _auth = sl<AuthController>();
+  bool _reparando = false;
 
   @override
   void initState() {
@@ -31,64 +32,108 @@ class _RecursoDetallePageState extends State<RecursoDetallePage> {
     });
   }
 
+  Future<void> _marcarReparado(Recurso r) async {
+    setState(() => _reparando = true);
+    final error = await _recursos.reportar(
+      recursoId: r.id,
+      estadoReportado: 'disponible',
+      descripcion: 'Reparado y verificado por el auxiliar',
+    );
+    if (!mounted) return;
+    setState(() => _reparando = false);
+    mostrarMensaje(context, error ?? 'Equipo marcado como funcionando');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Detalle del equipo')),
       body: ListenableBuilder(
-        listenable: Listenable.merge([_recursos, _prestamos]),
+        listenable: _recursos,
         builder: (context, _) {
-          // El estado puede haber cambiado (alguien lo prestó): se toma la versión más reciente.
+          // El estado puede haber cambiado (alguien lo reportó): se toma la versión más reciente.
           final r = _recursos.porId(widget.recurso.id) ?? widget.recurso;
-          final historial = _prestamos.historialDeRecurso(r.id);
+          final color = colorDeEstado(r.estado);
           return Column(
             children: [
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                  padding: EdgeInsets.zero,
                   children: [
-                    Center(child: FiguraCircular(figura: r.categoria.figura, tamano: 150)),
-                    const SizedBox(height: 18),
-                    Center(
-                      child: Text(
-                        r.categoria.etiqueta,
-                        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Center(
-                      child: Insignia(
-                        texto: r.estado.etiqueta,
-                        color: colorDeEstado(r.estado),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    TarjetaBorde(
+                    EncabezadoDegradado(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 20, 26),
                       child: Column(
                         children: [
-                          _Dato('Serial', r.serial),
-                          const Divider(height: 22),
-                          _Dato('Salón', r.salonId),
-                          const Divider(height: 22),
-                          _Dato('Categoría', r.categoria.etiqueta),
-                          const Divider(height: 22),
-                          _Dato('Código interno', '#${r.id}'),
+                          const Align(alignment: Alignment.centerLeft, child: BackButton()),
+                          Hero(
+                            tag: 'recurso-${r.id}',
+                            child: FiguraCircular(figura: r.categoria.figura, tamano: 130),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            r.categoria.etiqueta,
+                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(r.serial,
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8), fontSize: 15)),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: const Color(0xCC111216),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: color.withValues(alpha: 0.5)),
+                            ),
+                            child: Insignia(texto: r.estado.etiqueta, color: color),
+                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Historial de préstamos',
-                      style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Aparecer(
+                            child: TarjetaDestacada(
+                              etiqueta: 'Ubicación',
+                              titulo: r.edificioTexto == null
+                                  ? r.salonTexto
+                                  : '${r.edificioTexto} · ${r.salonTexto}',
+                              detalle: r.salonUbicacion,
+                              datoGrande: r.salonNombre == null ? null : r.salonTexto.split('-').last,
+                              datoPequeno: r.salonNombre == null ? null : 'Salón',
+                              color: AppColors.primarioClaro,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Aparecer(
+                            orden: 1,
+                            child: TarjetaBorde(
+                              child: Column(
+                                children: [
+                                  _Dato('Categoría', r.categoria.etiqueta),
+                                  const Divider(height: 22),
+                                  _Dato('Serial', r.serial),
+                                  if (r.descripcion != null && r.descripcion!.isNotEmpty) ...[
+                                    const Divider(height: 22),
+                                    _Dato('Descripción', r.descripcion!),
+                                  ],
+                                  const Divider(height: 22),
+                                  _Dato('Código interno', '#${r.id}'),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Aparecer(
+                            orden: 2,
+                            child: _AvisoEstado(recurso: r),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    if (historial.isEmpty)
-                      const Text(
-                        'Este equipo todavía no se ha prestado.',
-                        style: TextStyle(color: AppColors.textoSuave),
-                      )
-                    else
-                      for (final p in historial.take(6)) _FilaHistorial(prestamo: p),
                   ],
                 ),
               ),
@@ -103,32 +148,25 @@ class _RecursoDetallePageState extends State<RecursoDetallePage> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.danado,
                             side: const BorderSide(color: AppColors.danado),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: const StadiumBorder(),
                           ),
                           icon: const Icon(Icons.report_problem_outlined, size: 20),
                           label: const Text('Reportar'),
                           onPressed: () => _mostrarReporte(context, r),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: r.disponible
-                            ? FilledButton(
-                                style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                ),
-                                onPressed: () => mostrarSolicitudPrestamo(context, r),
-                                child: const Text('Solicitar préstamo'),
-                              )
-                            : FilledButton(
-                                style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                ),
-                                onPressed: null,
-                                child: Text('No disponible · ${r.estado.etiqueta}'),
-                              ),
-                      ),
+                      if (_auth.esAdministrador && !r.disponible) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(shape: const StadiumBorder()),
+                            onPressed: _reparando ? null : () => _marcarReparado(r),
+                            icon: const Icon(Icons.build_circle_outlined),
+                            label: const Text('Marcar reparado'),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -156,6 +194,62 @@ class _RecursoDetallePageState extends State<RecursoDetallePage> {
   }
 }
 
+/// Mensaje según el estado: qué significa y qué hacer.
+class _AvisoEstado extends StatelessWidget {
+  const _AvisoEstado({required this.recurso});
+  final Recurso recurso;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icono, titulo, texto) = switch (recurso.estado) {
+      EstadoRecurso.disponible => (
+          Icons.check_circle_rounded,
+          'Funcionando',
+          'El equipo está operativo en su salón. Si notas una falla, repórtala.',
+        ),
+      EstadoRecurso.danado => (
+          Icons.error_rounded,
+          'Requiere atención',
+          'Hay una falla reportada. El auxiliar debe gestionar la reparación.',
+        ),
+      EstadoRecurso.mantenimiento => (
+          Icons.build_rounded,
+          'En mantenimiento',
+          'El equipo está siendo revisado y vuelve a su salón al terminar.',
+        ),
+      _ => (Icons.help_rounded, 'Sin estado', 'No hay información del estado.'),
+    };
+    final color = colorDeEstado(recurso.estado);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: LinearGradient(
+          colors: [color.withValues(alpha: 0.16), color.withValues(alpha: 0.03)],
+        ),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icono, color: color, size: 30),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(titulo,
+                    style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 2),
+                Text(texto, style: const TextStyle(color: AppColors.textoSuave, fontSize: 13.5)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Dato extends StatelessWidget {
   const _Dato(this.etiqueta, this.valor);
   final String etiqueta;
@@ -164,60 +258,18 @@ class _Dato extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(etiqueta, style: const TextStyle(color: AppColors.textoSuave, fontSize: 15)),
-        const Spacer(),
-        Flexible(
+        const SizedBox(width: 16),
+        Expanded(
           child: Text(
             valor,
             textAlign: TextAlign.end,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _FilaHistorial extends StatelessWidget {
-  const _FilaHistorial({required this.prestamo});
-  final Prestamo prestamo;
-
-  @override
-  Widget build(BuildContext context) {
-    final estado = prestamo.estadoEn(DateTime.now());
-    final etiqueta = switch (estado) {
-      EstadoPrestamo.activo => 'En préstamo',
-      EstadoPrestamo.vencido => 'Vencido',
-      EstadoPrestamo.devuelto => 'Devuelto',
-    };
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(Icons.circle, size: 10, color: colorDePrestamo(estado)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Usuario #${prestamo.usuarioId} · ${formatearFechaHora(prestamo.fechaPrestamo)}',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  prestamo.devuelto
-                      ? 'Devuelto ${formatearFechaHora(prestamo.fechaDevolucionReal!)}'
-                      : 'Devolución esperada ${formatearFechaHora(prestamo.fechaDevolucionEsperada)}',
-                  style: const TextStyle(color: AppColors.textoSuave, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          Text(etiqueta,
-              style: TextStyle(color: colorDePrestamo(estado), fontWeight: FontWeight.w700)),
-        ],
-      ),
     );
   }
 }
@@ -326,7 +378,7 @@ class _ReporteSheetState extends State<_ReporteSheet> {
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
                 : const Text('Enviar reporte'),
           ),

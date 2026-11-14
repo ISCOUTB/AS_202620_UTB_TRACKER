@@ -12,6 +12,10 @@ class RecursoModel {
         salonId: (j['salon_id'] ?? '').toString(),
         serial: (j['serial'] ?? '').toString(),
         estadoCodigo: (j['estado'] ?? '').toString(),
+        salonNombre: j['salon_nombre'] as String?,
+        salonEdificio: j['salon_edificio'] as String?,
+        salonUbicacion: j['salon_ubicacion'] as String?,
+        descripcion: j['descripcion'] as String?,
       );
 }
 
@@ -20,7 +24,7 @@ class RecursosRemoteDataSource {
   final ApiClient _api;
 
   Future<List<Recurso>> listar() async {
-    final cuerpo = await _api.get('/recursos') as List<dynamic>;
+    final cuerpo = await _api.getTodo('/recursos');
     return cuerpo
         .map((e) => RecursoModel.desdeJson(e as Map<String, dynamic>))
         .toList();
