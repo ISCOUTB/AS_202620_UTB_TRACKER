@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "docs/arc42/arc42.md": {
-    "mtime": 1794628204.0119967,
-    "seen": 1794629628.8670695,
-    "ast_hash": "10305d86f5e6064955ebb997e163a348",
+    "mtime": 1794640037.2237267,
+    "seen": 1794640100.0938916,
+    "ast_hash": "f46a115e9c10b58f50335877e41159ba",
     "semantic_hash": ""
   },
   "docs/aspectos.md": {
@@ -156,9 +156,9 @@
     "semantic_hash": ""
   },
   "docs/ia.md": {
-    "mtime": 1794636010.6850545,
-    "seen": 1794636129.1117318,
-    "ast_hash": "5a598f469c997293a150b94782c99c28",
+    "mtime": 1794640025.0292308,
+    "seen": 1794640100.093963,
+    "ast_hash": "5e7647ff091d2e53797c65b286062c1d",
     "semantic_hash": ""
   },
   "docs/matriz_estilos.md": {
@@ -438,9 +438,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/app.dart": {
-    "mtime": 1792971477.2859926,
-    "seen": 1792971506.7889688,
-    "ast_hash": "d72398ea2b094608689e80058a0dd764",
+    "mtime": 1794638528.4200025,
+    "seen": 1794640100.0931263,
+    "ast_hash": "6a21d9dc1c76a6db5c9f940cc9a61e23",
     "semantic_hash": ""
   },
   "frontend/lib/core/assets/figuras.dart": {
@@ -540,15 +540,15 @@
     "semantic_hash": ""
   },
   "frontend/lib/features/home/presentation/home_page.dart": {
-    "mtime": 1794625895.2156932,
-    "seen": 1794626277.3107424,
-    "ast_hash": "9c62dc5be26e668a5f0c7663b66edba3",
+    "mtime": 1794638568.2702887,
+    "seen": 1794640100.0933447,
+    "ast_hash": "83e1347c725b086090639f3270cd93b1",
     "semantic_hash": ""
   },
   "frontend/lib/features/home/presentation/shell_page.dart": {
-    "mtime": 1794625317.365423,
-    "seen": 1794626277.3107457,
-    "ast_hash": "498542243a49e713305f010f24ca136f",
+    "mtime": 1794638593.4593227,
+    "seen": 1794640100.0933511,
+    "ast_hash": "cb61663d6c3fa5b35434cc3a780f13d7",
     "semantic_hash": ""
   },
   "frontend/lib/features/prestamos/data/prestamos_data.dart": {
@@ -1074,9 +1074,9 @@
     "semantic_hash": ""
   },
   "docs/COMO_EJECUTAR.md": {
-    "mtime": 1794636041.3071167,
-    "seen": 1794636129.1114976,
-    "ast_hash": "ebe9a3043f5d41a6fd2d48e96934cdd6",
+    "mtime": 1794640025.02823,
+    "seen": 1794640100.0938213,
+    "ast_hash": "1538a9e73b0831e1f70a2068110f191c",
     "semantic_hash": ""
   },
   "frontend/web/index.html": {
@@ -1140,9 +1140,9 @@
     "semantic_hash": ""
   },
   "iniciar.ps1": {
-    "mtime": 1794617381.7430947,
-    "seen": 1794617564.7720988,
-    "ast_hash": "f8b1f06985f44b9cbb4b01be54106b4d",
+    "mtime": 1794638684.6907876,
+    "seen": 1794640100.0936837,
+    "ast_hash": "017fdbd7b96376f0fe1c40dafedbf60e",
     "semantic_hash": ""
   },
   "docs/adr/0007-identificadores-enteros-autoincrementales.md": {
@@ -1356,9 +1356,9 @@
     "semantic_hash": ""
   },
   "docs/identidad/identidad-visual.md": {
-    "mtime": 1794636010.6818604,
-    "seen": 1794636129.1117358,
-    "ast_hash": "9298880c6ac94b82d43cfa741576381a",
+    "mtime": 1794640025.025652,
+    "seen": 1794640100.0939746,
+    "ast_hash": "f1d1d33eb88b685064ac03fc6ee68692",
     "semantic_hash": ""
   },
   "docs/identidad/logo-horizontal.svg": {
@@ -1374,9 +1374,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/shared/utb_ui.dart": {
-    "mtime": 1794624376.3958344,
-    "seen": 1794624795.7047596,
-    "ast_hash": "40f538f5b75a30ff4e310a7c33aa8725",
+    "mtime": 1794639165.9911497,
+    "seen": 1794640100.093595,
+    "ast_hash": "8ee41bdc0fd9b12ff69d08e018e00ef6",
     "semantic_hash": ""
   },
   "frontend/lib/features/auditoria/auditoria.dart": {
@@ -1416,9 +1416,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0011-rediseno-interfaz-y-control.md": {
-    "mtime": 1794636077.6082785,
-    "seen": 1794636129.1116557,
-    "ast_hash": "e867d4cce238ec244a708434cfaa17c4",
+    "mtime": 1794640025.0270753,
+    "seen": 1794640100.0938752,
+    "ast_hash": "2cf5bef9b132a68a28597d92747a95d4",
     "semantic_hash": ""
   },
   "docs/adr/0012-contenedores-docker.md": {
@@ -1635,6 +1635,12 @@
     "mtime": 1794631356.400287,
     "seen": 1794636129.11209,
     "ast_hash": "bd2841dae971c96fc0e8b5ca8281257c",
+    "semantic_hash": ""
+  },
+  "docs/adr/0013-identidad-propia-y-servidor-unico.md": {
+    "mtime": 1794640015.7640579,
+    "seen": 1794640100.0938847,
+    "ast_hash": "e366437e4dbb7cbf3f7560697fa4d565",
     "semantic_hash": ""
   }
 }
