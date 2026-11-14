@@ -7,10 +7,11 @@ import 'package:flutter/foundation.dart';
 typedef FcmTokenRegistrar = Future<void> Function(String token);
 
 class FcmRegistration {
-  FcmRegistration({FirebaseMessaging? messaging})
-      : _messaging = messaging ?? FirebaseMessaging.instance;
+  FcmRegistration({FirebaseMessaging? messaging}) : _injected = messaging;
 
-  final FirebaseMessaging _messaging;
+  final FirebaseMessaging? _injected;
+  // Perezoso: en web Firebase no se inicializa y `instance` fallaría al construir.
+  FirebaseMessaging get _messaging => _injected ?? FirebaseMessaging.instance;
   StreamSubscription<String>? _tokenSubscription;
 
   Future<void> start(FcmTokenRegistrar registrar) async {

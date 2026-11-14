@@ -9,7 +9,9 @@ param(
     [switch]$ReiniciarDatos,
     [switch]$SinCompilar
 )
-$ErrorActionPreference = 'Stop'
+# 'Continue': en PowerShell 5.1 los avisos por stderr de Python/Flutter (p. ej. SECRET_KEY)
+# con 'Stop' abortan el script; cada paso ya valida su $LASTEXITCODE.
+$ErrorActionPreference = 'Continue'
 $raiz = $PSScriptRoot
 $py = Join-Path $raiz 'venv\Scripts\python.exe'
 $web = Join-Path $raiz 'frontend\build\web'

@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'app.dart';
@@ -15,10 +16,13 @@ Future<void> _manejarMensajeEnSegundoPlano(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  FirebaseMessaging.onBackgroundMessage(_manejarMensajeEnSegundoPlano);
+  // Firebase solo está configurado para Android; en web se omite (sin push).
+  if (!kIsWeb) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    FirebaseMessaging.onBackgroundMessage(_manejarMensajeEnSegundoPlano);
+  }
   await configurarDependencias();
   runApp(const UtbTrackerApp());
 }
