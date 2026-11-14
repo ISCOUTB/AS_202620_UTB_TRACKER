@@ -362,6 +362,23 @@ gestionados. La decisión de no usar microservicios está formalizada en
 
 ## Infrastructure Level 2
 
+### Despliegue reproducible con Docker Compose (ADR-0012)
+
+Para desarrollo y demostraciones el sistema completo se levanta con `docker compose up --build`:
+
+```mermaid
+flowchart LR
+    nav[Navegador :8080] --> web[web · nginx + Flutter web]
+    nav -->|HTTP JSON| api[api · FastAPI :8000]
+    api --> db[(db · PostgreSQL 16)]
+    worker[worker · python -m app.messaging] --> db
+    worker -->|SMTP / FCM| ext[Servicios externos]
+    seed[seed · perfil demo] -.-> db
+```
+
+`api`, `worker` y `seed` usan la misma imagen (`Dockerfile`): es un monolito modular (ADR-0005),
+no microservicios. La API aplica `alembic upgrade head` al arrancar.
+
 ### Estimación de costos mensuales (S8 — req. 8.10)
 
 Costos aproximados para el entorno de producción del proyecto académico:
@@ -445,6 +462,8 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0008](../adr/0008-control-acceso-granular-recurso.md) — Control de acceso granular por recurso (mitigación BOLA/IDOR) (S13)
 - [ADR-0009](../adr/0009-administracion-de-salones.md) — Administración de salones: ocupación en vivo, presencia del profesor y reportes
 - [ADR-0010](../adr/0010-auditoria.md) — Auditoría: bitácora de solo-agregar escrita en la misma transacción
+- [ADR-0011](../adr/0011-rediseno-interfaz-y-control.md) — Rediseño al estilo de UTB App y pestaña "Control" en lugar de préstamos de equipos
+- [ADR-0012](../adr/0012-contenedores-docker.md) — Empaquetar el sistema con Docker Compose (PostgreSQL, API, worker y web)
 
 # Requisitos de calidad
 

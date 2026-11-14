@@ -196,6 +196,15 @@ El CI no usa `continue-on-error` ni exclusiones silenciosas. Una vulnerabilidad
 sin corregir bloquea el despliegue; cualquier excepción temporal debe quedar
 documentada con responsable, justificación y fecha de vencimiento.
 
+## Ejecutar con Docker (ADR-0012)
+
+```bash
+docker compose up --build                 # PostgreSQL, API, worker y app web
+docker compose --profile demo up seed     # (una vez) datos de ejemplo
+```
+
+App web: <http://localhost:8080> · API: <http://localhost:8000/docs>
+
 ## Despliegue
 
 El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml):

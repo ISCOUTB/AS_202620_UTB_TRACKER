@@ -1,0 +1,11 @@
+.git
+venv
+**/__pycache__
+*.db
+*.db.*
+logs
+graphify-out
+frontend
+docs
+.github
+tests

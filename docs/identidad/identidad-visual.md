@@ -55,6 +55,25 @@ UTB", en texto).
 
 Los PNG se generan desde el SVG; si cambia el logo hay que regenerarlos.
 
+## Lenguaje visual (ADR-0011)
+
+Las piezas viven en `frontend/lib/shared/utb_ui.dart` y se inspiran en la app oficial UTB App:
+
+| Pieza | Uso |
+|---|---|
+| `EncabezadoDegradado` | Bloque superior de cada pestaña: degradado azul → índigo, arcos finos y esquinas inferiores redondeadas |
+| `TarjetaDestacada` | Lo más importante del momento ("Ahora en el campus"), con barra de color de estado y dato grande |
+| `TarjetaPromo` | Accesos en degradado con ícono grande de fondo (Inventario, Solicita un salón) |
+| `PildoraSegmentada` | Control segmentado (Solicitudes · Reportes) con la opción activa deslizándose |
+| `FilaLineaTiempo` | Clases en curso, reportes y auditoría como línea de tiempo con nodos luminosos |
+| `Indicador` | Números del resumen con degradado del color de su estado |
+| `Aparecer` | Entrada escalonada (desvanecer + subir) de los elementos de una lista |
+| Credencial (Perfil) | Tarjeta clara tipo carnet con iniciales, nombre, correo y franja del rol |
+
+Reglas: nada de colores planos en superficies grandes (fondo con brillos difuminados, tarjetas
+"de vidrio" con degradado sutil); transiciones de 250–420 ms con `easeOutCubic`; el color de
+estado nunca va solo, siempre con texto.
+
 ## Tono
 
 Directo y breve, en español, sin tecnicismos: "Libre ahora", "Profesor sin confirmar", "Por atender".

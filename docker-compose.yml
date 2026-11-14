@@ -1,0 +1,79 @@
+# UTB Tracker completo con un comando (ADR-0012):
+#
+#   docker compose up --build                 # base de datos, API, worker y app web
+#   docker compose --profile demo up seed     # (una vez) carga los datos de ejemplo
+#
+# App web: http://localhost:8080 · API: http://localhost:8000/docs
+# Los valores de abajo son SOLO para desarrollo local; en producción van en un .env fuera del repo.
+name: utb-tracker
+
+x-backend: &backend
+  build: .
+  environment:
+    DATABASE_URL: postgresql+psycopg://utb:utb@db:5432/utb_tracker
+    SECRET_KEY: ${SECRET_KEY:-solo-desarrollo-cambiar-en-produccion-123456}
+    FORGET_PWD_SECRET_KEY: ${FORGET_PWD_SECRET_KEY:-solo-desarrollo-reset-cambiar-123456}
+    CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+    ENVIRONMENT: development
+  depends_on:
+    db:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: utb
+      POSTGRES_PASSWORD: utb
+      POSTGRES_DB: utb_tracker
+    volumes:
+      - datos-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U utb -d utb_tracker"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    <<: *backend
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/salud')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  # Entrega los eventos del outbox (correo / notificaciones push) con reintentos.
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.messaging"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        API_BASE_URL: http://localhost:8000
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Carga los datos de demostración. Solo corre si se pide el perfil "demo".
+  seed:
+    <<: *backend
+    command: ["python", "scripts/seed_demo.py"]
+    restart: "no"
+    profiles: ["demo"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  datos-postgres:
