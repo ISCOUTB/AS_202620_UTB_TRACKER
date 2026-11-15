@@ -60,6 +60,9 @@ WORKER_MAX_DELAY = float(os.getenv("WORKER_MAX_DELAY", "60.0"))         # segund
 # Variable para forzar fallos del notificador en pruebas/staging
 WORKER_FORZAR_FALLOS = int(os.getenv("WORKER_FORZAR_FALLOS", "0"))
 
+# Motivo guardado en el outbox cuando el usuario apagó ese canal (ADR-0016).
+OMITIDO_POR_PREFERENCIA = "omitido por preferencia del usuario"
+
 
 # --------------------------------------------------------------------------
 # Interfaz del notificador (protocolo estructural)
@@ -267,25 +270,19 @@ def _procesar_un_mensaje(
         return
     try:
         payload_dict = _leer_payload(msg.payload)
-    except (json.JSONDecodeError, KeyError, AttributeError, ValueError) as exc:
+    except (KeyError, AttributeError, ValueError) as exc:
         _marcar_muerto(db, msg, f"Payload inválido: {exc}", mid, cid)
         return
 
     usuario_id = payload_dict.get("usuario_id")
     email = payload_dict.get("email") or _resolver_email(db, usuario_id)
     fcm_token = payload_dict.get("fcm_token") or _resolver_fcm_token(db, usuario_id)
-    # Avisos de salones y préstamos: respetan las preferencias del usuario (ADR-0016). La
-    # recuperación de contraseña antigua es de seguridad y sale siempre.
-    if msg.tipo != "password.reset solicitado":
-        if not _preferencia_permite(db, usuario_id, "salones", "push"):
-            fcm_token = None
-        if not _preferencia_permite(db, usuario_id, "salones", "correo") and not fcm_token:
-            msg.ultimo_error = "omitido por preferencia del usuario"
-            _marcar_enviado(db, msg, (ahora.replace(tzinfo=None) if ahora.tzinfo else ahora),
-                            mid, cid, payload_dict.get("prestamo_id"))
-            return
-        if not _preferencia_permite(db, usuario_id, "salones", "correo"):
-            email = "__sin_correo__"
+    email, fcm_token, omitido = _aplicar_preferencias(db, msg, usuario_id, email, fcm_token)
+    if omitido:
+        msg.ultimo_error = OMITIDO_POR_PREFERENCIA
+        _marcar_enviado(db, msg, (ahora.replace(tzinfo=None) if ahora.tzinfo else ahora),
+                        mid, cid, payload_dict.get("prestamo_id"))
+        return
     if not email:
         _marcar_muerto(db, msg, f"Usuario {usuario_id} no encontrado en BD", mid, cid)
         return
@@ -309,6 +306,26 @@ def _procesar_un_mensaje(
     _marcar_enviado(db, msg, ahora_naive, mid, cid, payload_dict.get("prestamo_id"))
 
 
+def _aplicar_preferencias(
+    db: Session, msg: MensajeOutbox, usuario_id: Optional[int],
+    email: Optional[str], fcm_token: Optional[str],
+) -> tuple[Optional[str], Optional[str], bool]:
+    """Avisos de salones y préstamos: respetan las preferencias del usuario (ADR-0016).
+
+    La recuperación de contraseña antigua es de seguridad y sale siempre. Devuelve
+    (email, fcm_token, omitido); omitido=True si el usuario apagó ambos canales.
+    """
+    if msg.tipo == "password.reset solicitado":
+        return email, fcm_token, False
+    if not _preferencia_permite(db, usuario_id, "salones", "push"):
+        fcm_token = None
+    if _preferencia_permite(db, usuario_id, "salones", "correo"):
+        return email, fcm_token, False
+    if not fcm_token:
+        return email, fcm_token, True
+    return "__sin_correo__", fcm_token, False
+
+
 def _procesar_correo(
     db: Session,
     msg: MensajeOutbox,
@@ -327,7 +344,7 @@ def _procesar_correo(
     try:
         p = _leer_payload(msg.payload)
         destino, plantilla, datos = p["destino"], p["plantilla"], p.get("datos") or {}
-    except (json.JSONDecodeError, KeyError, AttributeError, ValueError) as exc:
+    except (KeyError, AttributeError, ValueError) as exc:
         _marcar_muerto(db, msg, f"Payload de correo inválido: {type(exc).__name__}", mid, cid)
         return
 
@@ -335,7 +352,7 @@ def _procesar_correo(
     if not _preferencia_permite(db, p.get("usuario_id"), p.get("categoria"), "correo"):
         logger.info("[worker] message_id=%s correlation_id=%s OMITIDO_POR_PREFERENCIA plantilla=%s",
                     mid, cid, plantilla)
-        msg.ultimo_error = "omitido por preferencia del usuario"
+        msg.ultimo_error = OMITIDO_POR_PREFERENCIA
         _marcar_enviado(db, msg, ahora_naive, mid, cid, None)
         return
 
@@ -462,7 +479,7 @@ def _marcar_enviado(
     db.add(NotificacionProcesada(message_id=mid, procesado_en=ahora))
     msg.estado = "enviado"
     msg.procesado_en = ahora
-    if msg.ultimo_error != "omitido por preferencia del usuario":
+    if msg.ultimo_error != OMITIDO_POR_PREFERENCIA:
         msg.ultimo_error = None
     db.commit()
     logger.info(

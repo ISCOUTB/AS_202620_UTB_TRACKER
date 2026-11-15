@@ -75,7 +75,8 @@ def test_confirmar_presencia_deja_quien_cuando_y_que(client, admin_headers):
     assert len(registros) == 1
     r = registros[0]
     assert r["actor_nombre"] == "Admin prueba"
-    assert r["entidad"] == "salon" and r["entidad_id"] == salon_id
+    assert r["entidad"] == "salon"
+    assert r["entidad_id"] == salon_id
     detalle = json.loads(r["detalle"])
     assert detalle["profesor_presente"] is True
     assert detalle["profesor"] == "Ana Pérez"

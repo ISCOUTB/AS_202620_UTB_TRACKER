@@ -3,9 +3,9 @@ Identidad de las cuentas (ADR-0014, Fase 0): correo normalizado y único sin dis
 mayúsculas, login por correo o por nombre, política de contraseña y mensajes en español.
 """
 from app.core.politica import (
-    MSG_PASSWORD_CORTA,
-    MSG_PASSWORD_IGUAL_CORREO,
-    MSG_PASSWORD_IGUAL_NOMBRE,
+    MSG_CLAVE_CORTA,
+    MSG_CLAVE_IGUAL_CORREO,
+    MSG_CLAVE_IGUAL_NOMBRE,
     error_password,
 )
 from app.models.auth_models import Usuario
@@ -62,15 +62,15 @@ def test_politica_de_contrasena_en_espanol(client):
     assert "al menos 8 caracteres" in " ".join(_mensajes(corta))
 
     igual_correo = _registrar(client, password="ana@utb.edu.co")
-    assert MSG_PASSWORD_IGUAL_CORREO in _mensajes(igual_correo)
+    assert MSG_CLAVE_IGUAL_CORREO in _mensajes(igual_correo)
 
     igual_nombre = _registrar(client, nombre="Juanito Perez", password="juanito perez")
-    assert MSG_PASSWORD_IGUAL_NOMBRE in _mensajes(igual_nombre)
+    assert MSG_CLAVE_IGUAL_NOMBRE in _mensajes(igual_nombre)
 
 
 def test_politica_unidad():
-    assert error_password("corta") == MSG_PASSWORD_CORTA
-    assert error_password("ana12345", correo="Ana12345@utb.edu.co") == MSG_PASSWORD_IGUAL_CORREO
+    assert error_password("corta") == MSG_CLAVE_CORTA
+    assert error_password("ana12345", correo="Ana12345@utb.edu.co") == MSG_CLAVE_IGUAL_CORREO
     assert error_password("ClaveSegura1", correo="ana@utb.edu.co", nombre="Ana") is None
 
 

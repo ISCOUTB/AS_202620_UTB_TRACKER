@@ -31,7 +31,8 @@ def test_tipo_por_defecto_y_descripcion_recortada(client, admin_headers):
     s = _salon(client, admin_headers, "A1-101", descripcion="   Aula   con  ventanas  ")
     assert s["tipo"] == "aula"
     assert s["descripcion"] == "Aula con ventanas"
-    assert s["equipamiento"] == [] and s["tipo_sugerido"] is None
+    assert s["equipamiento"] == []
+    assert s["tipo_sugerido"] is None
     vacia = _salon(client, admin_headers, "A1-102", descripcion="   ")
     assert vacia["descripcion"] is None
 
@@ -69,7 +70,8 @@ def test_la_sugerencia_desaparece_al_aceptarla_y_el_cambio_queda_auditado(client
     _recursos(db_session, s["id"], "computador", 10)
     r = client.put(f"/salones/{s['id']}", headers=admin_headers, json={"tipo": "laboratorio_computo"})
     assert r.status_code == 200
-    assert r.json()["tipo"] == "laboratorio_computo" and r.json()["tipo_sugerido"] is None
+    assert r.json()["tipo"] == "laboratorio_computo"
+    assert r.json()["tipo_sugerido"] is None
     reg = (db_session.query(RegistroAuditoria)
            .filter(RegistroAuditoria.accion == "salon.actualizar").one())
     assert json.loads(reg.detalle)["tipo"] == {"de": "aula", "a": "laboratorio_computo"}

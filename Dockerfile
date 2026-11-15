@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Dependencias primero (capa cacheable). requirements.txt trae hashes: se instalan verificados.
 COPY requirements.txt .
-RUN pip install --require-hashes -r requirements.txt
+RUN pip install --require-hashes --only-binary :all: -r requirements.txt
 
 COPY alembic.ini .
 COPY alembic ./alembic

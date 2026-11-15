@@ -108,16 +108,19 @@ def test_cambio_de_correo_solo_al_abrir_el_enlace_y_avisa_al_anterior(client, db
     aviso = next(p for n, p in archivos.items() if "user1@utb.edu.co" in n)
     texto_aviso = message_from_bytes(aviso.read_bytes(), policy=policy.default).get_body(
         preferencelist=("plain",)).get_content()
-    assert "nu***@utb.edu.co" in texto_aviso and "nuevo@utb.edu.co" not in texto_aviso
+    assert "nu***@utb.edu.co" in texto_aviso
+    assert "nuevo@utb.edu.co" not in texto_aviso
     texto_nuevo = message_from_bytes(nuevo.read_bytes(), policy=policy.default).get_body(
         preferencelist=("plain",)).get_content()
     token = re.search(r"token=([\w\-.]+)", texto_nuevo).group(1)
 
     pagina = client.get("/auth/verificar-correo", params={"token": token})
-    assert pagina.status_code == 200 and "Correo actualizado" in pagina.text
+    assert pagina.status_code == 200
+    assert "Correo actualizado" in pagina.text
     # La sesión abierta ANTES del cambio sigue valiendo (sub = id).
     me = client.get("/auth/me", headers=headers)
-    assert me.status_code == 200 and me.json()["email"] == "nuevo@utb.edu.co"
+    assert me.status_code == 200
+    assert me.json()["email"] == "nuevo@utb.edu.co"
     assert client.post("/auth/refresh", json={"refresh_token": refresh}).status_code == 200
     _sesion(client, "nuevo@utb.edu.co")
     assert _acciones(db_session, "usuario.cambio_correo")
@@ -168,7 +171,8 @@ def test_desactivar_mi_cuenta(client, db_session):
     assert client.post("/auth/me/desactivar", headers=headers,
                        json={"password": CLAVE}).status_code == 200
     r = client.post("/auth/login", json={"nombre": "user1@utb.edu.co", "password": CLAVE})
-    assert r.status_code == 403 and r.json()["detail"] == "Cuenta desactivada"
+    assert r.status_code == 403
+    assert r.json()["detail"] == "Cuenta desactivada"
     assert _acciones(db_session, "usuario.desactivar_propia")
 
 
@@ -176,7 +180,8 @@ def test_password_actual_tiene_limite_de_intentos(client):
     headers, _ = _sesion(client)
     codigos = [client.post("/auth/me/desactivar", headers=headers,
                            json={"password": "Mala12345"}).status_code for _ in range(6)]
-    assert codigos[:5] == [403] * 5 and codigos[5] == 429
+    assert codigos[:5] == [403] * 5
+    assert codigos[5] == 429
 
 
 def test_worker_respeta_preferencias_salvo_seguridad(client, db_session, buzon):
@@ -195,7 +200,8 @@ def test_worker_respeta_preferencias_salvo_seguridad(client, db_session, buzon):
     assert _plantillas(buzon) == ["cambio"]  # solo el de seguridad
     omitido = db_session.query(MensajeOutbox).filter(MensajeOutbox.tipo == TIPO_EVENTO,
                                                      MensajeOutbox.payload.contains("bienvenida")).one()
-    assert omitido.estado == "enviado" and omitido.ultimo_error == "omitido por preferencia del usuario"
+    assert omitido.estado == "enviado"
+    assert omitido.ultimo_error == "omitido por preferencia del usuario"
 
 
 def test_worker_respeta_preferencia_de_avisos_de_salones(client, db_session):

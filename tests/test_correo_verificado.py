@@ -175,7 +175,8 @@ def test_recuperacion_completa_y_de_un_solo_uso(client, db_session, buzon):
     assert token in _texto(msg)  # también va como código para la app
 
     pagina = client.get("/auth/restablecer", params={"token": token})
-    assert pagina.status_code == 200 and "nueva contraseña" in pagina.text
+    assert pagina.status_code == 200
+    assert "nueva contraseña" in pagina.text
 
     corta = client.post("/auth/reset-password", json={"token": token, "new_password": "corta"})
     assert corta.status_code == 422
@@ -224,7 +225,8 @@ def test_token_de_sesion_viejo_con_correo_sigue_valiendo(client):
     from app.core.security import create_access_token, create_refresh_token
     viejo = create_access_token({"sub": "user1@utb.edu.co"})
     r = client.get("/auth/me", headers={"Authorization": f"Bearer {viejo}"})
-    assert r.status_code == 200 and r.json()["email"] == "user1@utb.edu.co"
+    assert r.status_code == 200
+    assert r.json()["email"] == "user1@utb.edu.co"
     refresco = client.post("/auth/refresh", json={"refresh_token": create_refresh_token({"sub": "user1@utb.edu.co"})})
     assert refresco.status_code == 200
     # El nuevo par ya identifica por id
@@ -239,7 +241,8 @@ def test_plantilla_escapa_html(buzon):
     correo.enviar("ana@utb.edu.co", "bienvenida", {"nombre": "<script>alert(1)</script>"}, buzon)
     [msg] = _correos(buzon)
     html = msg.get_body(preferencelist=("html",)).get_content()
-    assert "<script>" not in html and "&lt;script&gt;" in html
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
 
 
 def test_no_permite_inyeccion_de_cabeceras(buzon):
@@ -262,7 +265,9 @@ def test_worker_reintenta_si_el_proveedor_falla(client, db_session, buzon):
     caido = Caido()
     procesar_pendientes(db_session, NotificadorSimulado(), proveedor_correo=caido)
     msg = db_session.query(MensajeOutbox).filter_by(tipo=correo.TIPO_EVENTO).one()
-    assert msg.estado == "pendiente" and msg.intentos == 1 and "SMTP caído" in msg.ultimo_error
+    assert msg.estado == "pendiente"
+    assert msg.intentos == 1
+    assert "SMTP caído" in msg.ultimo_error
     # Al recuperarse el proveedor, el siguiente ciclo (ya pasado el backoff) lo entrega.
     procesar_pendientes(db_session, NotificadorSimulado(),
                         ahora=datetime.now(timezone.utc) + timedelta(minutes=5), proveedor_correo=buzon)
@@ -284,7 +289,8 @@ def test_payload_del_outbox_identifica_plantilla_y_categoria(client, db_session)
     _registrar(client)
     msg = db_session.query(MensajeOutbox).filter_by(tipo=correo.TIPO_EVENTO).one()
     p = json.loads(msg.payload)
-    assert p["plantilla"] == "verificacion" and p["categoria"] == "seguridad"
+    assert p["plantilla"] == "verificacion"
+    assert p["categoria"] == "seguridad"
 
 
 def test_sin_correo_real_la_cuenta_nace_verificada_y_no_se_encola_nada(

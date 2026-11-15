@@ -7,8 +7,9 @@ WORKDIR /src
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get --enforce-lockfile
 COPY . .
-RUN flutter build web --release --no-wasm-dry-run --dart-define=API_BASE_URL=${API_BASE_URL}
+RUN flutter build web --release --no-wasm-dry-run "--dart-define=API_BASE_URL=${API_BASE_URL}"
 
-FROM nginx:1.27-alpine
+# Variante sin privilegios de nginx: corre como usuario "nginx" (no root) y escucha en 8080.
+FROM nginxinc/nginx-unprivileged:1.27-alpine
 COPY --from=compilar /src/build/web /usr/share/nginx/html
-EXPOSE 80
+EXPOSE 8080

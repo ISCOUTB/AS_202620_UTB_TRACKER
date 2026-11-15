@@ -22,7 +22,8 @@ from app.services.auth import (
     emitir_tokens,
 )
 
-MSG_PASSWORD_ACTUAL = "La contraseña actual no es correcta."
+MSG_CLAVE_ACTUAL = "La contraseña actual no es correcta."
+MSG_CORREO_EN_USO = "Ese correo ya está en uso en otra cuenta."
 _INTENTOS_PASSWORD = 5
 
 
@@ -34,7 +35,7 @@ def exigir_password(db: Session, user: Usuario, password: str) -> None:
     if not verify_password(password or "", user.password):
         limites.anotar(db, clave)
         db.commit()
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MSG_PASSWORD_ACTUAL)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=MSG_CLAVE_ACTUAL)
     limites.limpiar(db, clave)
 
 
@@ -111,7 +112,7 @@ def solicitar_cambio_correo(db: Session, user: Usuario, nuevo: str, password: st
     if nuevo == normalizar_correo(user.email):
         raise HTTPException(status_code=409, detail="Ese ya es tu correo.")
     if buscar_por_correo(db, nuevo):
-        raise HTTPException(status_code=409, detail="Ese correo ya está en uso en otra cuenta.")
+        raise HTTPException(status_code=409, detail=MSG_CORREO_EN_USO)
     for clave in (f"cambio-correo:{user.id}", f"cambio-correo-ip:{ip}"):
         limites.exigir(db, clave, config.CORREO_RATE_LIMIT,
                        config.CORREO_RATE_WINDOW_SECONDS, MSG_LIMITE_CORREO)
@@ -143,7 +144,7 @@ def confirmar_cambio_correo(db: Session, token: str) -> Usuario:
     if not nuevo or normalizar_correo(user.email) != payload.get("anterior"):
         raise HTTPException(status_code=400, detail=MSG_TOKEN_INVALIDO)
     if buscar_por_correo(db, nuevo):
-        raise HTTPException(status_code=409, detail="Ese correo ya está en uso en otra cuenta.")
+        raise HTTPException(status_code=409, detail=MSG_CORREO_EN_USO)
     anterior = user.email
     user.email = nuevo
     user.email_verificado = True
@@ -155,5 +156,5 @@ def confirmar_cambio_correo(db: Session, token: str) -> Usuario:
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Ese correo ya está en uso en otra cuenta.") from exc
+        raise HTTPException(status_code=409, detail=MSG_CORREO_EN_USO) from exc
     return user
