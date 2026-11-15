@@ -77,6 +77,16 @@ def crear_reporte(
     return service.crear_reporte(db, salon_id, datos, current_user.id)
 
 
+@router.get("/reportes", response_model=list[ReporteSalonResponse])
+def listar_todos_los_reportes(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: AdminUser,
+    estado: Optional[EstadoReporteSalon] = None,
+):
+    """Reportes de todos los salones (solo auxiliar/administrador)."""
+    return service.listar_todos_los_reportes(db, estado.value if estado else None)
+
+
 @router.get("/{salon_id}/reportes", response_model=list[ReporteSalonResponse])
 def listar_reportes(
     salon_id: int,
@@ -96,4 +106,6 @@ def actualizar_reporte(
     current_user: AdminUser,
 ):
     """Marca un reporte como resuelto (o lo reabre). Solo auxiliar/administrador."""
-    return service.actualizar_estado_reporte(db, salon_id, reporte_id, datos.estado)
+    return service.actualizar_estado_reporte(
+        db, salon_id, reporte_id, datos.estado, actor_id=current_user.id
+    )

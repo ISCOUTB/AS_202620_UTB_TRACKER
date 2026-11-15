@@ -14,7 +14,12 @@ abstract class SalonesRepository {
     String? edificio,
     int? piso,
     required int capacidad,
+    TipoSalon tipo = TipoSalon.aula,
+    String? descripcion,
   });
+
+  /// PUT /salones/{id} (tipo y descripción, ADR-0017)
+  Future<Salon> actualizarTipoYDescripcion(int id, TipoSalon tipo, String descripcion);
 
   /// GET /salones/{id}/disponibilidad?dia_semana={dia}
   Future<List<FranjaDisponible>> consultarDisponibilidad(

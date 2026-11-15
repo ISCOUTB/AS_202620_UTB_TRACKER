@@ -99,18 +99,18 @@ class _ReporteSalonSheetState extends State<_ReporteSalonSheet> {
                       avatar: Icon(
                         iconoDeTipoReporte(t),
                         size: 18,
-                        color: _tipo == t ? Colors.black : AppColors.texto,
+                        color: AppColors.texto,
                       ),
                       label: Text(t.etiqueta),
                       selected: _tipo == t,
                       onSelected: _enviando ? null : (_) => setState(() => _tipo = t),
-                      selectedColor: AppColors.texto,
+                      selectedColor: AppColors.primario,
                       backgroundColor: AppColors.superficieAlta,
                       side: BorderSide.none,
                       shape: const StadiumBorder(),
-                      labelStyle: TextStyle(
+                      labelStyle: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: _tipo == t ? Colors.black : AppColors.texto,
+                        color: AppColors.texto,
                       ),
                     ),
                 ],

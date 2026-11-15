@@ -42,6 +42,19 @@ class Recurso(Base):
     reportes = relationship("Reporte", back_populates="recurso", cascade="all, delete-orphan")
     salon = relationship("Salon", back_populates="recursos")
 
+    # Datos legibles del salón para la API: la app muestra "A4-204", no el id interno.
+    @property
+    def salon_nombre(self):
+        return self.salon.nombre if self.salon else None
+
+    @property
+    def salon_edificio(self):
+        return self.salon.edificio if self.salon else None
+
+    @property
+    def salon_ubicacion(self):
+        return self.salon.ubicacion if self.salon else None
+
 
 class Prestamo(Base):
     __tablename__ = "prestamos"

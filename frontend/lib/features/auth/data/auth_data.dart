@@ -12,6 +12,13 @@ class UsuarioModel {
         nombre: (j['nombre'] ?? '').toString(),
         email: (j['email'] ?? '').toString(),
         rol: (j['rol'] ?? '').toString(),
+        // Servidores anteriores a ADR-0014 no mandan el campo: se asume verificado.
+        emailVerificado: j['email_verificado'] as bool? ?? true,
+        nombreMostrar: j['nombre_mostrar'] as String?,
+        telefono: j['telefono'] as String?,
+        dependencia: j['dependencia'] as String?,
+        colorAvatar: j['color_avatar'] as String?,
+        preferencias: Preferencias.desdeJson(j['preferencias']),
       );
 }
 
@@ -93,6 +100,10 @@ class AuthRemoteDataSource {
     );
   }
 
+  Future<void> reenviarVerificacion() async {
+    await _api.post('/auth/reenviar-verificacion');
+  }
+
   Future<bool> salud() async {
     try {
       final r = await _api.get('/salud', reintentos: 0);
@@ -127,13 +138,14 @@ class AuthRepositoryImpl implements AuthRepository {
         'El servidor no devolvió un token de acceso.',
       );
     }
-    _api.fijarToken(token);
+    final refresh = r['refresh_token']?.toString();
+    _api.fijarTokens(token, refresh);
 
     try {
       final usuario = conocido ?? await _identificar(r, token, nombre);
-      return Sesion(token: token, usuario: usuario);
+      return Sesion(token: token, refreshToken: refresh, usuario: usuario);
     } catch (_) {
-      _api.fijarToken(null);
+      _api.fijarTokens(null, null);
       rethrow;
     }
   }
@@ -224,4 +236,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<bool> servidorSaludable() => _remoto.salud();
+
+  @override
+  Future<void> reenviarVerificacion() => _remoto.reenviarVerificacion();
 }

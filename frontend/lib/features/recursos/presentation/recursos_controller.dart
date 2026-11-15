@@ -141,10 +141,10 @@ class RecursosController extends ChangeNotifier {
     return _todos.where((r) {
       if (_categoria != null && r.categoria != _categoria) return false;
       if (_estado != null && r.estado != _estado) return false;
-      if (_salon != null && r.salonId != _salon) return false;
+      if (_salon != null && r.salonTexto != _salon) return false;
       if (q.isNotEmpty) {
         final texto =
-            '${r.serial} ${r.salonId} ${r.categoria.etiqueta} ${r.estado.etiqueta}'
+            '${r.serial} ${r.salonTexto} ${r.salonEdificio ?? ''} ${r.categoria.etiqueta} ${r.estado.etiqueta}'
                 .toLowerCase();
         if (!texto.contains(q)) return false;
       }
@@ -152,9 +152,19 @@ class RecursosController extends ChangeNotifier {
     }).toList();
   }
 
+  /// Códigos reales de los salones con equipos ("A1-101", "A4-204"...).
   List<String> get salones {
-    final s = _todos.map((r) => r.salonId).toSet().toList()..sort();
+    final s = _todos.map((r) => r.salonTexto).toSet().toList()..sort();
     return s;
+  }
+
+  /// Equipos agrupados por salón, en el orden de [salones].
+  Map<String, List<Recurso>> get porSalon {
+    final m = <String, List<Recurso>>{};
+    for (final r in filtrados) {
+      m.putIfAbsent(r.salonTexto, () => []).add(r);
+    }
+    return Map.fromEntries(m.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
   }
 
   int disponiblesDe(CategoriaRecurso c) =>

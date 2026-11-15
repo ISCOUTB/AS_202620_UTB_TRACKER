@@ -64,6 +64,8 @@ class ReporteSalonModel {
         resueltoEn: j['resuelto_en'] != null
             ? parsearFechaServidor(j['resuelto_en'].toString())
             : null,
+        salonNombre: j['salon_nombre'] as String?,
+        usuarioNombre: j['usuario_nombre'] as String?,
       );
 }
 
@@ -141,6 +143,22 @@ class SalonesAdminRemoteDataSource {
         .toList();
   }
 
+  /// GET /salones/reportes: novedades de todos los salones (auxiliar).
+  Future<List<ReporteSalon>> listarTodosLosReportes() async {
+    final cuerpo = await _api.get('/salones/reportes') as List<dynamic>;
+    return cuerpo
+        .map((e) => ReporteSalonModel.desdeJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// GET /prestamos-salon: el auxiliar ve todas; el usuario UTB, solo las suyas.
+  Future<List<PrestamoSalon>> listarTodasLasSolicitudes() async {
+    final cuerpo = await _api.getTodo('/prestamos-salon');
+    return cuerpo
+        .map((e) => PrestamoSalonModel.desdeJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<PrestamoSalon> cambiarEstadoSolicitud(int prestamoId, String estado) async {
     final cuerpo = await _api.patch(
       '/prestamos-salon/$prestamoId',
@@ -191,4 +209,11 @@ class SalonesAdminRepositoryImpl implements SalonesAdminRepository {
   @override
   Future<PrestamoSalon> cambiarEstadoSolicitud(int prestamoId, String estado) =>
       _remoto.cambiarEstadoSolicitud(prestamoId, estado);
+
+  @override
+  Future<List<ReporteSalon>> listarTodosLosReportes() => _remoto.listarTodosLosReportes();
+
+  @override
+  Future<List<PrestamoSalon>> listarTodasLasSolicitudes() =>
+      _remoto.listarTodasLasSolicitudes();
 }

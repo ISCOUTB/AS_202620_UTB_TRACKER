@@ -120,3 +120,32 @@ Todas las medidas en esta sección corresponden a **PROPUESTO — NO IMPLEMENTAD
    Diseñar una rutina SQL semestral que desvincule los préstamos antiguos mayores a 2 años asignando `usuario_id = NULL` (o a un usuario genérico de auditoría `0`), preservando los indicadores estadísticos de uso del inventario pero eliminando la asociación directa con la persona física.
 3. **Endpoint de Ejercicio de Derechos ARCO (Acceso, Rectificación, Cancelación, Oposición):**  
    Habilitar un endpoint dedicado `DELETE /auth/me` que permita al usuario solicitar la desactivación de su cuenta y la supresión de sus datos de contacto activos conforme al marco de Hábeas Data.
+
+## 6. Datos nuevos de la cuenta (ADR-0014 / ADR-0016, 2026-11-14)
+
+| Dato | Tabla y columna | Para qué | Quién lo ve | Obligatorio |
+|---|---|---|---|---|
+| Correo verificado y fecha | `usuarios.email_verificado`, `email_verificado_en` | Saber que el correo es de quien se registró (requisito para solicitar salones) | La persona; el panel de usuarios | Automático |
+| Nombre para mostrar | `usuarios.nombre_mostrar` | Mostrar un nombre amable en la app | La persona; auxiliares en solicitudes | No |
+| Teléfono | `usuarios.telefono` | Que el auxiliar pueda contactar a quien pidió un salón | La persona (no se expone en listados) | No |
+| Dependencia o cargo | `usuarios.dependencia` | Contexto de la solicitud ("Laboratorios", "Docente") | La persona | No |
+| Color del avatar | `usuarios.color_avatar` | Personalización visual | La persona | No |
+| Preferencias | `usuarios.preferencias` (JSON) | Qué avisos recibir (correo/push por tipo), tamaño de texto, pantalla de inicio | La persona y el worker (para decidir si envía) | No |
+| Versión de sesión | `usuarios.sesion_version` | Invalidar tokens al cambiar la contraseña o "cerrar las demás sesiones" | Nadie (técnico) | Automático |
+| Tokens usados | `tokens_usados` (`jti`, propósito, usuario, fechas) | Que un enlace de correo sirva una sola vez. **No se guarda el token** | Nadie (técnico) | Automático |
+| Intentos limitados | `intentos_limitados` (clave con IP y usuario/correo, fecha) | Frenar fuerza bruta y abuso de envío de correos. Se purgan a los 2 días | Nadie (técnico) | Automático |
+| Correos pendientes | `mensajes_outbox.payload` (destino, plantilla, datos con enlaces) | Entregar el correo con reintentos | Nadie (técnico). Los enlaces vencen en 30 min – 24 h | Automático |
+
+Reglas aplicadas:
+
+- **Minimización en la auditoría:** al editar el perfil se registran los *nombres* de los campos
+  cambiados, nunca los valores (el teléfono no queda en la bitácora). En el cambio de correo se
+  guardan los correos ocultos (`an***@utb.edu.co`). Nunca se registran contraseñas ni tokens.
+- **Logs:** el worker no escribe el contenido de los correos; el modo desarrollo escribe el
+  enlace solo si `ENVIRONMENT != production`. Los correos de desarrollo quedan en `logs/correos/`
+  (fuera de git).
+- **Derecho de cancelación:** `POST /auth/me/desactivar` (con la contraseña) desactiva la cuenta
+  propia y cierra todas sus sesiones. Esto cubre parcialmente la propuesta 3 de la sección 5; la
+  supresión de los datos de contacto sigue pendiente.
+- **Avisos de seguridad:** el cambio de correo avisa al correo anterior y el cambio de contraseña
+  avisa al correo actual; esos avisos no se pueden apagar desde las preferencias.

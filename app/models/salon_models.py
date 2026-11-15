@@ -38,6 +38,9 @@ class Salon(Base):
     edificio = Column(String, nullable=True)
     piso = Column(Integer, nullable=True)
     capacidad = Column(Integer, nullable=False)
+    # aula | laboratorio_computo | sala_audiovisual | auditorio | sala_reuniones | otro (ADR-0017)
+    tipo = Column(String(30), nullable=False, default="aula", server_default="aula")
+    descripcion = Column(String(500), nullable=True)
     estado = Column(String, nullable=False, default="disponible")
     # valores válidos: disponible | ocupado | mantenimiento | fuera_servicio
     activo = Column(Boolean, nullable=False, default=True)
@@ -86,6 +89,15 @@ class PrestamoSalon(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     salon = relationship("Salon", back_populates="prestamos_salon")
+    usuario = relationship("Usuario")
+
+    @property
+    def salon_nombre(self):
+        return self.salon.nombre if self.salon else None
+
+    @property
+    def usuario_nombre(self):
+        return self.usuario.nombre if self.usuario else None
 
 
 class PresenciaSalon(Base):
@@ -124,3 +136,15 @@ class ReporteSalon(Base):
     # valores válidos: abierto | resuelto
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     resuelto_en = Column(DateTime, nullable=True)
+
+    salon = relationship("Salon")
+    usuario = relationship("Usuario")
+
+    # Datos legibles para el listado de reportes de todos los salones.
+    @property
+    def salon_nombre(self):
+        return self.salon.nombre if self.salon else None
+
+    @property
+    def usuario_nombre(self):
+        return self.usuario.nombre if self.usuario else None

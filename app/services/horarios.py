@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.salon_models import Horario, Salon
 from app.schemas.horarios import HorarioCreate, HorarioUpdate
+from app.services import auditoria
 
 
 def _validar_salon_existe(db: Session, salon_id: int) -> Salon:
@@ -45,19 +46,27 @@ def _detectar_conflicto(db: Session, salon_id: int, dia_semana: int, hora_inicio
         )
 
 
-def crear_horario(db: Session, datos: HorarioCreate) -> Horario:
+def crear_horario(db: Session, datos: HorarioCreate, actor_id: int | None = None) -> Horario:
     """Crea un horario académico validando que no haya conflictos temporales."""
     _validar_salon_existe(db, datos.salon_id)
     _detectar_conflicto(db, datos.salon_id, datos.dia_semana, datos.hora_inicio, datos.hora_fin)
 
     nuevo = Horario(**datos.model_dump())
     db.add(nuevo)
+    db.flush()
+    auditoria.registrar(
+        db, "horario.crear", "horario", nuevo.id, actor_id=actor_id,
+        detalle={"salon_id": nuevo.salon_id, "dia": nuevo.dia_semana, "profesor": nuevo.profesor,
+                 "materia": nuevo.materia},
+    )
     db.commit()
     db.refresh(nuevo)
     return nuevo
 
 
-def crear_horarios_bulk(db: Session, items: list[HorarioCreate]) -> list[Horario]:
+def crear_horarios_bulk(
+    db: Session, items: list[HorarioCreate], actor_id: int | None = None
+) -> list[Horario]:
     """
     Carga masiva de horarios. Totalmente atómica: valida TODOS los registros primero
     y solo persiste si no hay ningún conflicto. Si falla uno, no se guarda ninguno.
@@ -72,6 +81,10 @@ def crear_horarios_bulk(db: Session, items: list[HorarioCreate]) -> list[Horario
     # Fase 2 — persistir solo cuando todas las validaciones pasaron
     for h in horarios_nuevos:
         db.add(h)
+    auditoria.registrar(
+        db, "horario.carga_masiva", "horario", None, actor_id=actor_id,
+        detalle={"cantidad": len(horarios_nuevos)},
+    )
     db.commit()
     for h in horarios_nuevos:
         db.refresh(h)
@@ -107,7 +120,9 @@ def obtener_horario(db: Session, horario_id: int) -> Horario:
     return horario
 
 
-def actualizar_horario(db: Session, horario_id: int, datos: HorarioUpdate) -> Horario:
+def actualizar_horario(
+    db: Session, horario_id: int, datos: HorarioUpdate, actor_id: int | None = None
+) -> Horario:
     """Actualiza un horario existente validando conflictos si cambian las horas."""
     horario = obtener_horario(db, horario_id)
     update_data = datos.model_dump(exclude_unset=True)
@@ -119,16 +134,28 @@ def actualizar_horario(db: Session, horario_id: int, datos: HorarioUpdate) -> Ho
     if any(k in update_data for k in ("dia_semana", "hora_inicio", "hora_fin")):
         _detectar_conflicto(db, horario.salon_id, dia, inicio, fin, excluir_id=horario_id)
 
+    cambios = {
+        campo: {"de": getattr(horario, campo), "a": valor}
+        for campo, valor in update_data.items() if getattr(horario, campo) != valor
+    }
     for campo, valor in update_data.items():
         setattr(horario, campo, valor)
+    if cambios:
+        auditoria.registrar(
+            db, "horario.actualizar", "horario", horario.id, actor_id=actor_id, detalle=cambios
+        )
     db.commit()
     db.refresh(horario)
     return horario
 
 
-def eliminar_horario(db: Session, horario_id: int) -> dict:
+def eliminar_horario(db: Session, horario_id: int, actor_id: int | None = None) -> dict:
     """Soft-delete: marca el horario como inactivo."""
     horario = obtener_horario(db, horario_id)
     horario.activo = False
+    auditoria.registrar(
+        db, "horario.eliminar", "horario", horario.id, actor_id=actor_id,
+        detalle={"salon_id": horario.salon_id},
+    )
     db.commit()
     return {"message": "Horario eliminado correctamente"}

@@ -9,14 +9,40 @@ Mejoras aplicadas:
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.core.politica import (
+    MSG_CORREO_INVALIDO,
+    PASSWORD_MINIMO,
+    correo_valido,
+    error_password,
+    normalizar_correo,
+    normalizar_nombre,
+)
+
+
+def _correo(v: str) -> str:
+    v = normalizar_correo(v)
+    if not correo_valido(v):
+        raise ValueError(MSG_CORREO_INVALIDO)
+    return v
 
 
 class UsuarioCreate(BaseModel):
     nombre: str = Field(..., min_length=1, max_length=100)
-    email: str = Field(..., min_length=5)
+    email: str = Field(..., min_length=5, max_length=254)
     rol: str = Field(default="usuario_utb")
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=PASSWORD_MINIMO, max_length=128)
+
+    _nombre = field_validator("nombre")(lambda v: normalizar_nombre(v))
+    _email = field_validator("email")(_correo)
+
+    @model_validator(mode="after")
+    def _politica(self):
+        error = error_password(self.password, self.email, self.nombre)
+        if error:
+            raise ValueError(error)
+        return self
 
 
 class UsuarioRoleUpdate(BaseModel):
@@ -30,7 +56,9 @@ class UsuarioRoleUpdate(BaseModel):
 
 
 class UsuarioLogin(BaseModel):
-    nombre: str
+    # Se llama "nombre" por compatibilidad con el contrato, pero acepta el nombre de usuario
+    # O el correo (ADR-0014).
+    nombre: str = Field(..., description="Nombre de usuario o correo")
     password: str
 
 
@@ -49,6 +77,7 @@ class UserResponse(BaseModel):
     email: str
     fecha_registro: datetime
     rol: str
+    email_verificado: bool = True
 
 
 class UserMeResponse(BaseModel):
@@ -59,6 +88,8 @@ class UserMeResponse(BaseModel):
     nombre: str
     email: str
     rol: str
+    # Campo nuevo con valor por defecto: no rompe el contrato (ADR-0014).
+    email_verificado: bool = True
 
 
 class UsuarioDelete(BaseModel):
@@ -67,12 +98,19 @@ class UsuarioDelete(BaseModel):
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: str = Field(..., min_length=5)
+    email: str = Field(..., min_length=5, max_length=254)
+
+    _email = field_validator("email")(lambda v: normalizar_correo(v))
 
 
 class ResetPasswordRequest(BaseModel):
     token: str = Field(..., min_length=10)
-    new_password: str = Field(..., min_length=6)
+    new_password: str = Field(..., min_length=PASSWORD_MINIMO, max_length=128)
+
+
+class CambiarCorreoRequest(BaseModel):
+    correo_nuevo: str = Field(..., min_length=5, max_length=254)
+    password: str = Field(..., min_length=1, max_length=128, description="Contraseña actual")
 
 
 class RefreshTokenRequest(BaseModel):

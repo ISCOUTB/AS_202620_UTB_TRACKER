@@ -18,14 +18,13 @@ import logging
 import uuid
 import pytest
 
-from app.messaging.events import VERSIONES_SOPORTADAS, EventoPrestamoCreado, PayloadPrestamoCreado
 from app.messaging.models import MensajeOutbox, NotificacionProcesada
 from app.messaging.worker import (
     NotificadorSimulado,
-    _calcular_siguiente_intento,
     procesar_pendientes,
 )
 from app.models.recurso_models import Recurso
+import contextlib
 
 
 def _crear_recurso(client, admin_headers, serial="VB-MSG-001"):
@@ -474,7 +473,7 @@ def test_rollback_real_forzando_fallo_en_commit(
     """
     from app.main import app
     from app.core.database import get_db
-    from app.models.recurso_models import Prestamo, Recurso
+    from app.models.recurso_models import Prestamo
 
     recurso_id = _crear_recurso(client, admin_headers, serial="VB-RBACK-01")
 
@@ -505,10 +504,8 @@ def test_rollback_real_forzando_fallo_en_commit(
         try:
             yield session
         finally:
-            try:
+            with contextlib.suppress(StopIteration):
                 next(gen)
-            except StopIteration:
-                pass
 
     app.dependency_overrides[get_db] = sabotaged_get_db
 

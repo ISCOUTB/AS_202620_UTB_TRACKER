@@ -31,7 +31,7 @@ def crear_recurso(
     current_user: AdminUser,
 ):
     """Crea un recurso nuevo. Requiere rol admin/auxiliar."""
-    return resources_service.crear_recurso(db, recurso)
+    return resources_service.crear_recurso(db, recurso, actor_id=current_user.id)
 
 
 @router.get("", response_model=list[schemas.RecursoOut])
@@ -82,7 +82,7 @@ def actualizar_recurso(
     current_user: AdminUser,
 ):
     """Actualiza un recurso existente. Requiere rol admin/auxiliar."""
-    return resources_service.actualizar_recurso(db, recurso_id, recurso)
+    return resources_service.actualizar_recurso(db, recurso_id, recurso, actor_id=current_user.id)
 
 
 @router.delete("/{recurso_id}")
@@ -92,7 +92,7 @@ def eliminar_recurso(
     current_user: AdminUser,
 ):
     """Soft-delete de un recurso. Requiere rol admin/auxiliar."""
-    return resources_service.eliminar_recurso(db, recurso_id)
+    return resources_service.eliminar_recurso(db, recurso_id, actor_id=current_user.id)
 
 
 @router.post(

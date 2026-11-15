@@ -7,7 +7,9 @@ import '../../../core/utils/utilidades.dart';
 import '../../../shared/uber_widgets.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/domain/auth_domain.dart';
+import '../../../shared/equipamiento_chips.dart';
 import '../../salones/domain/entities/salon.dart';
+import '../../salones/presentation/tipo_salon_campos.dart';
 import '../domain/entities/ocupacion.dart';
 import '../domain/repositories/salones_admin_repository.dart';
 import 'reporte_salon_sheet.dart';
@@ -145,6 +147,33 @@ class _SalonControlPageState extends State<SalonControlPage> {
               ),
             ),
           ],
+          // Tipo, descripción y equipamiento calculado (ADR-0017).
+          const SizedBox(height: 26),
+          Row(
+            children: [
+              const Expanded(child: _Titulo('Equipamiento')),
+              TextButton.icon(
+                onPressed: () async {
+                  await mostrarEditarTipoSalon(context, o.salon);
+                  if (mounted) _c.cargar(silencioso: true);
+                },
+                icon: const Icon(Icons.edit_rounded, size: 18),
+                label: const Text('Editar'),
+              ),
+            ],
+          ),
+          Text(
+            o.salon.tipoSugerido == null
+                ? o.salon.tipo.etiqueta
+                : '${o.salon.tipo.etiqueta} · sugerido: ${o.salon.tipoSugerido!.etiqueta}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          if (o.salon.descripcion != null) ...[
+            const SizedBox(height: 4),
+            Text(o.salon.descripcion!, style: const TextStyle(color: AppColors.textoSuave)),
+          ],
+          const SizedBox(height: 10),
+          EquipamientoChips(equipamiento: o.salon.equipamiento),
           if (_c.pendientes.isNotEmpty) ...[
             const SizedBox(height: 26),
             _Titulo('Solicitudes por decidir', cantidad: _c.pendientes.length),
@@ -185,7 +214,7 @@ class _SalonControlPageState extends State<SalonControlPage> {
           ],
           if (_c.vigentes.isNotEmpty) ...[
             const SizedBox(height: 26),
-            _Titulo('Préstamos programados', cantidad: _c.vigentes.length),
+            _Titulo('Reservas programadas', cantidad: _c.vigentes.length),
             const SizedBox(height: 10),
             for (final s in _c.vigentes)
               _TarjetaSolicitud(
@@ -268,19 +297,24 @@ class _Titulo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(texto, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+        Flexible(
+          child: Text(texto,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+        ),
         if (cantidad != null && cantidad! > 0) ...[
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.texto,
+              color: AppColors.primario,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               '$cantidad',
               style: const TextStyle(
-                color: Colors.black,
+                color: AppColors.sobrePrimario,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
@@ -299,21 +333,57 @@ class _Encabezado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = ocupacion.situacion;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          ocupacion.salon.nombre,
-          style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w900, height: 1.05),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '${ocupacion.salon.detalleUbicacion} · ${ocupacion.salon.capacidad} personas',
-          style: const TextStyle(color: AppColors.textoSuave, fontSize: 15),
-        ),
-        const SizedBox(height: 12),
-        Insignia(texto: etiquetaDeSituacion(s), color: colorDeSituacion(s)),
-      ],
+    final salon = ocupacion.salon;
+    // Tarjeta en degradado con el código grande del salón (estilo UTB App).
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: BoxDecoration(
+        gradient: AppColors.degradado,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primario.withValues(alpha: 0.35),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            [
+              if (salon.edificio != null) 'ED. ${salon.edificio!.toUpperCase()}',
+              if (salon.piso != null) 'PISO ${salon.piso}',
+            ].join(' · '),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            salon.nombre,
+            style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.05),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${salon.ubicacion} · ${salon.capacidad} personas',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xCC111216),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Insignia(texto: etiquetaDeSituacion(s), color: colorDeSituacion(s)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -377,7 +447,10 @@ class _TarjetaOcupante extends StatelessWidget {
                     children: [
                       const Icon(Icons.schedule_rounded, size: 16, color: AppColors.textoSuave),
                       const SizedBox(width: 6),
-                      Text(detalle.join(' · '), style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Expanded(
+                        child: Text(detalle.join(' · '),
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ),
                     ],
                   ),
                 ],

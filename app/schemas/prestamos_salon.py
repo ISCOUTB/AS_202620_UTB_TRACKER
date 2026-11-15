@@ -55,3 +55,5 @@ class PrestamoSalonResponse(BaseModel):
     motivo: Optional[str] = None
     estado: str
     created_at: Optional[datetime] = None
+    salon_nombre: Optional[str] = None
+    usuario_nombre: Optional[str] = None

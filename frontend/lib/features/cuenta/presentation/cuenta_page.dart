@@ -3,11 +3,42 @@ import 'package:flutter/material.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/politica.dart';
+import '../../../shared/servidor.dart';
+import '../../../shared/uber_widgets.dart';
+import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
 import '../../admin/presentation/panel_administrativo_page.dart';
+import '../../auditoria/auditoria_page.dart';
+import '../../auth/domain/auth_domain.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../auth/presentation/cambiar_correo_sheet.dart';
+import '../../recursos/presentation/equipos_page.dart';
 import '../../recursos/presentation/mantenimiento_page.dart';
 
+/// Versión mostrada en el perfil (la de pubspec.yaml).
+const String versionApp = '0.1.1';
+
+/// Colores que se pueden elegir para el avatar (todos de [AppColors]).
+const List<Color> coloresAvatar = [
+  AppColors.primario,
+  AppColors.indigo,
+  AppColors.disponible,
+  AppColors.prestado,
+  AppColors.danado,
+  AppColors.mantenimiento,
+];
+
+String hexDe(Color c) =>
+    '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+
+Color? colorDeHex(String? hex) {
+  if (hex == null || !RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(hex)) return null;
+  return Color(int.parse(hex.substring(1), radix: 16) | 0xFF000000);
+}
+
+/// Perfil (ADR-0016): cabecera, datos personales, seguridad, preferencias, servidor y cuenta.
+/// Todo lo que se cambia aquí se guarda en el servidor.
 class CuentaPage extends StatefulWidget {
   const CuentaPage({super.key});
 
@@ -22,226 +53,674 @@ class _CuentaPageState extends State<CuentaPage> {
   void initState() {
     super.initState();
     _auth.comprobarServidor();
+    _auth.actualizarPerfil();
+  }
+
+  void _abrir(Widget pagina) =>
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => pagina));
+
+  /// Muestra el aviso o el error de la última acción y lo limpia.
+  void _resultado(bool ok) {
+    if (!mounted) return;
+    final texto = ok ? _auth.aviso : _auth.error;
+    if (texto != null) mostrarMensaje(context, texto);
+    ok ? _auth.limpiarAviso() : _auth.limpiarError();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: ListenableBuilder(
-        listenable: _auth,
-        builder: (context, _) {
-          final u = _auth.usuario;
-          if (u == null) return const SizedBox.shrink();
-          final inicial =
-              u.nombre.isEmpty ? '?' : u.nombre.substring(0, 1).toUpperCase();
-          final ok = _auth.servidorOk;
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 130),
+    return ListenableBuilder(
+      listenable: _auth,
+      builder: (context, _) {
+        final u = _auth.usuario;
+        if (u == null) return const SizedBox.shrink();
+        final p = u.preferencias;
+        return RefreshIndicator(
+          onRefresh: _auth.actualizarPerfil,
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 130),
             children: [
-              const Text('Cuenta',
-                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 36,
-                    backgroundColor: AppColors.superficieAlta,
-                    child: Text(inicial,
-                        style: const TextStyle(
-                            fontSize: 30, fontWeight: FontWeight.w800)),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(u.nombre,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.w800)),
-                        Text(u.email,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style:
-                                const TextStyle(color: AppColors.textoSuave)),
-                        const SizedBox(height: 8),
-                        Insignia(
-                          texto: u.rolLegible,
-                          color: u.esAdministrador
-                              ? AppColors.mantenimiento
-                              : AppColors.neutro,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              EncabezadoDegradado(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
+                child: _Cabecera(usuario: u, onEditar: () => _editarDatos(u)),
               ),
-              const SizedBox(height: 28),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final ok = await _auth.actualizarPerfil();
-                  if (!context.mounted) return;
-                  if (ok) mostrarMensaje(context, 'Perfil actualizado');
-                },
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Actualizar datos de cuenta'),
-              ),
-              const SizedBox(height: 12),
-              if (u.esAdministrador) ...[
-                TarjetaBorde(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const MantenimientoPage()),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.build_outlined,
-                          color: AppColors.mantenimiento),
-                      SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Mantenimiento',
-                                style: TextStyle(fontWeight: FontWeight.w700)),
-                            Text('Revisar equipos dañados y reportes abiertos',
-                                style: TextStyle(
-                                    color: AppColors.textoSuave, fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.chevron_right, color: AppColors.textoSuave),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TarjetaBorde(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PanelAdministrativoPage(),
-                      ),
-                    );
-                  },
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color:
-                              AppColors.mantenimiento.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.admin_panel_settings_rounded,
-                          color: AppColors.mantenimiento,
-                          size: 26,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Panel Administrativo',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Gestionar usuarios y asignación de roles',
-                              style: TextStyle(
-                                color: AppColors.textoSuave,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right,
-                          color: AppColors.textoSuave),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-              TarjetaBorde(
-                onTap: _auth.comprobarServidor,
-                child: Row(
+              if (_auth.cargando) const LinearProgressIndicator(minHeight: 2),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      ok == true
-                          ? Icons.cloud_done_outlined
-                          : Icons.cloud_off_outlined,
-                      color: ok == null
-                          ? AppColors.neutro
-                          : ok
-                              ? AppColors.disponible
-                              : AppColors.danado,
+                    if (u.esAdministrador) ...[
+                      const _Titulo('Herramientas'),
+                      _Fila(
+                        icono: Icons.devices_other_rounded,
+                        color: AppColors.primarioClaro,
+                        titulo: 'Inventario de equipos',
+                        onTap: () => _abrir(const EquiposPage()),
+                      ),
+                      _Fila(
+                        icono: Icons.build_rounded,
+                        color: AppColors.mantenimiento,
+                        titulo: 'Mantenimiento',
+                        onTap: () => _abrir(const MantenimientoPage()),
+                      ),
+                      _Fila(
+                        icono: Icons.history_rounded,
+                        color: AppColors.prestado,
+                        titulo: 'Auditoría',
+                        onTap: () => _abrir(const AuditoriaPage()),
+                      ),
+                      _Fila(
+                        icono: Icons.admin_panel_settings_rounded,
+                        color: AppColors.indigoClaro,
+                        titulo: 'Usuarios y roles',
+                        onTap: () => _abrir(const PanelAdministrativoPage()),
+                      ),
+                    ],
+                    const _Titulo('Datos personales'),
+                    _Fila(
+                      icono: Icons.badge_rounded,
+                      color: AppColors.primarioClaro,
+                      titulo: 'Nombre para mostrar',
+                      detalle: u.nombreMostrar ?? 'Sin definir (se usa ${u.nombre})',
+                      onTap: () => _editarDatos(u),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
+                    _Fila(
+                      icono: Icons.phone_rounded,
+                      color: AppColors.primarioClaro,
+                      titulo: 'Teléfono',
+                      detalle: u.telefono ?? 'Sin definir',
+                      onTap: () => _editarDatos(u),
+                    ),
+                    _Fila(
+                      icono: Icons.apartment_rounded,
+                      color: AppColors.primarioClaro,
+                      titulo: 'Dependencia o cargo',
+                      detalle: u.dependencia ?? 'Sin definir',
+                      onTap: () => _editarDatos(u),
+                    ),
+                    const _Titulo('Seguridad'),
+                    _Fila(
+                      icono: Icons.alternate_email_rounded,
+                      color: AppColors.indigoClaro,
+                      titulo: 'Cambiar correo',
+                      detalle: u.email,
+                      onTap: () => mostrarCambiarCorreo(context),
+                    ),
+                    _Fila(
+                      icono: Icons.password_rounded,
+                      color: AppColors.indigoClaro,
+                      titulo: 'Cambiar contraseña',
+                      detalle: 'Cierra las sesiones en otros dispositivos',
+                      onTap: () => _cambiarPassword(u),
+                    ),
+                    _Fila(
+                      icono: Icons.devices_rounded,
+                      color: AppColors.indigoClaro,
+                      titulo: 'Cerrar las demás sesiones',
+                      detalle: 'Este dispositivo sigue conectado',
+                      onTap: () => _confirmar(
+                        titulo: '¿Cerrar las demás sesiones?',
+                        texto: 'Se cerrará tu sesión en todos los demás celulares y navegadores.',
+                        accion: 'Cerrar sesiones',
+                        alAceptar: () async => _resultado(await _auth.cerrarOtrasSesiones()),
+                      ),
+                    ),
+                    const _Titulo('Preferencias'),
+                    _Seccion(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            ok == null
-                                ? 'Comprobando servidor…'
-                                : ok
-                                    ? 'Servidor conectado'
-                                    : 'Sin respuesta del servidor',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          const Text('Tamaño del texto',
+                              style: TextStyle(fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 8),
+                          SegmentedButton<TamanoTexto>(
+                            showSelectedIcon: false,
+                            segments: [
+                              for (final t in TamanoTexto.values)
+                                ButtonSegment(value: t, label: Text(t.etiqueta)),
+                            ],
+                            selected: {p.tamanoTexto},
+                            onSelectionChanged: _auth.cargando
+                                ? null
+                                : (s) => _auth.guardarPreferencias(p.conTamano(s.first)),
                           ),
-                          Text(ApiConfig.baseUrl,
-                              style: const TextStyle(
-                                  color: AppColors.textoSuave, fontSize: 13)),
+                          const SizedBox(height: 14),
+                          const Text('Avisos', style: TextStyle(fontWeight: FontWeight.w700)),
+                          const Text(
+                            'Los de seguridad (contraseña, correo) siempre llegan.',
+                            style: TextStyle(color: AppColors.textoTenue, fontSize: 12),
+                          ),
+                          for (final canal in CanalAviso.values)
+                            for (final cat in CategoriaAviso.values)
+                              SwitchListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(cat.etiqueta),
+                                subtitle: Text(canal.etiqueta),
+                                value: p.aviso(canal, cat),
+                                onChanged: _auth.cargando
+                                    ? null
+                                    : (v) => _auth.guardarPreferencias(p.conAviso(canal, cat, v)),
+                              ),
+                          if (u.esAdministrador) ...[
+                            const SizedBox(height: 6),
+                            const Text('Abrir la app en',
+                                style: TextStyle(fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 8),
+                            SegmentedButton<String>(
+                              showSelectedIcon: false,
+                              segments: const [
+                                ButtonSegment(value: 'inicio', label: Text('Inicio')),
+                                ButtonSegment(value: 'salones', label: Text('Salones')),
+                                ButtonSegment(value: 'control', label: Text('Control')),
+                              ],
+                              selected: {p.pantallaInicio},
+                              onSelectionChanged: _auth.cargando
+                                  ? null
+                                  : (s) => _auth.guardarPreferencias(p.conPantallaInicio(s.first)),
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                    const Icon(Icons.refresh, color: AppColors.textoSuave),
+                    const _Titulo('Servidor y versión'),
+                    _Seccion(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(ApiConfig.describir(),
+                                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                                Text(ApiConfig.baseUrl,
+                                    style: const TextStyle(color: AppColors.textoTenue, fontSize: 12)),
+                                const SizedBox(height: 4),
+                                const Text('App $versionApp',
+                                    style: TextStyle(color: AppColors.textoTenue, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          const InsigniaServidor(compacta: true),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    BotonPildora(
+                      texto: 'Cerrar sesión',
+                      icono: Icons.logout_rounded,
+                      estilo: EstiloBoton.secundario,
+                      onPressed: () => _confirmar(
+                        titulo: '¿Cerrar sesión?',
+                        texto: 'Tendrás que iniciar sesión de nuevo en este dispositivo.',
+                        accion: 'Cerrar sesión',
+                        alAceptar: () async => _auth.cerrarSesion(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () => _desactivar(context),
+                      icon: const Icon(Icons.no_accounts_rounded, color: AppColors.danado),
+                      label: const Text('Desactivar mi cuenta',
+                          style: TextStyle(color: AppColors.danado)),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
-              OutlinedButton.icon(
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    backgroundColor: AppColors.superficie,
-                    title: const Text('¿Cerrar sesión?'),
-                    content: const Text('Tendrás que iniciar sesión de nuevo.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        child: const Text('Cancelar'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(ctx).pop();
-                          _auth.cerrarSesion();
-                        },
-                        child: const Text('Cerrar sesión'),
-                      ),
-                    ],
-                  ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Acciones ───────────────────────────────────────────────────────────
+
+  Future<void> _editarDatos(Usuario u) async {
+    final guardado = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _EditarDatosSheet(usuario: u),
+    );
+    if (guardado == true) _resultado(true);
+  }
+
+  Future<void> _cambiarPassword(Usuario u) async {
+    final form = GlobalKey<FormState>();
+    final actual = TextEditingController();
+    final nueva = TextEditingController();
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.viewInsetsOf(ctx).bottom),
+        child: ListenableBuilder(
+          listenable: _auth,
+          builder: (ctx, _) => Form(
+            key: form,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Cambiar contraseña',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: actual,
+                  obscureText: true,
+                  autofillHints: const [AutofillHints.password],
+                  decoration: const InputDecoration(labelText: 'Contraseña actual'),
+                  validator: (v) => (v ?? '').isEmpty ? 'Escribe tu contraseña actual' : null,
                 ),
-                icon: const Icon(Icons.logout),
-                label: const Text('Cerrar sesión'),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: nueva,
+                  obscureText: true,
+                  autofillHints: const [AutofillHints.newPassword],
+                  decoration: const InputDecoration(labelText: 'Contraseña nueva'),
+                  validator: (v) => Politica.errorPassword(v ?? '', correo: u.email, nombre: u.nombre),
+                ),
+                if (_auth.error != null) ...[
+                  const SizedBox(height: 10),
+                  Text(_auth.error!, style: const TextStyle(color: AppColors.danado)),
+                ],
+                const SizedBox(height: 14),
+                BotonPildora(
+                  texto: 'Guardar',
+                  cargando: _auth.cargando,
+                  onPressed: () async {
+                    if (!form.currentState!.validate()) return;
+                    final listo = await _auth.cambiarPassword(actual.text, nueva.text);
+                    if (listo && ctx.mounted) Navigator.pop(ctx, true);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    actual.dispose();
+    nueva.dispose();
+    ok == true ? _resultado(true) : _auth.limpiarError();
+  }
+
+  Future<void> _desactivar(BuildContext context) async {
+    final clave = TextEditingController();
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.superficie,
+        icon: const Icon(Icons.warning_amber_rounded, color: AppColors.danado),
+        title: const Text('¿Desactivar tu cuenta?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'No podrás volver a entrar. Tus solicitudes y registros se conservan. Solo un '
+              'administrador puede reactivarla.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: clave,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Tu contraseña para confirmar'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Desactivar', style: TextStyle(color: AppColors.danado)),
+          ),
+        ],
+      ),
+    );
+    final texto = clave.text;
+    clave.dispose();
+    if (confirmado != true) return;
+    final ok = await _auth.desactivarCuenta(texto);
+    if (!ok) _resultado(false);
+  }
+
+  void _confirmar({
+    required String titulo,
+    required String texto,
+    required String accion,
+    required Future<void> Function() alAceptar,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.superficie,
+        title: Text(titulo),
+        content: Text(texto),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              alAceptar();
+            },
+            child: Text(accion),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Piezas ───────────────────────────────────────────────────────────────
+
+class _Cabecera extends StatelessWidget {
+  const _Cabecera({required this.usuario, required this.onEditar});
+  final Usuario usuario;
+  final VoidCallback onEditar;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = colorDeHex(usuario.colorAvatar) ?? AppColors.primario;
+    final verificado = usuario.emailVerificado;
+    return Row(
+      children: [
+        Semantics(
+          button: true,
+          label: 'Avatar de ${usuario.nombreVisible}. Toca para editar tus datos.',
+          child: InkWell(
+            onTap: onEditar,
+            customBorder: const CircleBorder(),
+            child: Container(
+              width: 64,
+              height: 64,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2),
               ),
-              const SizedBox(height: 20),
-              const Center(
-                child: Text('UTB Tracker · v1.0.0',
-                    style:
-                        TextStyle(color: AppColors.textoTenue, fontSize: 12)),
+              child: Text(
+                AvatarIniciales.iniciales(usuario.nombreVisible),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(usuario.nombreVisible,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              Text(usuario.email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13)),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  _Chip(
+                    icono: verificado ? Icons.verified_rounded : Icons.mark_email_unread_rounded,
+                    texto: verificado ? 'Verificado' : 'Sin verificar',
+                    color: verificado ? AppColors.disponible : AppColors.prestado,
+                  ),
+                  _Chip(
+                    icono: Icons.badge_outlined,
+                    texto: usuario.rolLegible,
+                    color: AppColors.indigoClaro,
+                  ),
+                ],
               ),
             ],
-          );
-        },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.icono, required this.texto, required this.color});
+  final IconData icono;
+  final String texto;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0x66000000),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icono, size: 13, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(texto,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11.5, color: color, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Titulo extends StatelessWidget {
+  const _Titulo(this.texto);
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 14, 2, 8),
+      child: Semantics(
+        header: true,
+        child: Text(texto.toUpperCase(),
+            style: const TextStyle(
+                color: AppColors.textoTenue,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.1)),
+      ),
+    );
+  }
+}
+
+class _Seccion extends StatelessWidget {
+  const _Seccion({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      TarjetaBorde(padding: const EdgeInsets.fromLTRB(14, 12, 14, 12), child: child);
+}
+
+class _Fila extends StatelessWidget {
+  const _Fila({
+    required this.icono,
+    required this.color,
+    required this.titulo,
+    required this.onTap,
+    this.detalle,
+  });
+
+  final IconData icono;
+  final Color color;
+  final String titulo;
+  final String? detalle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: TarjetaBorde(
+        onTap: onTap,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Icon(icono, color: color, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(titulo, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+                  if (detalle != null)
+                    Text(detalle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.textoSuave, fontSize: 12.5)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textoTenue),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Hoja para editar nombre para mostrar, teléfono, dependencia y color del avatar.
+class _EditarDatosSheet extends StatefulWidget {
+  const _EditarDatosSheet({required this.usuario});
+  final Usuario usuario;
+
+  @override
+  State<_EditarDatosSheet> createState() => _EditarDatosSheetState();
+}
+
+class _EditarDatosSheetState extends State<_EditarDatosSheet> {
+  final _auth = sl<AuthController>();
+  final _form = GlobalKey<FormState>();
+  late final _nombre = TextEditingController(text: widget.usuario.nombreMostrar ?? '');
+  late final _telefono = TextEditingController(text: widget.usuario.telefono ?? '');
+  late final _dependencia = TextEditingController(text: widget.usuario.dependencia ?? '');
+  late String? _color = widget.usuario.colorAvatar;
+
+  @override
+  void dispose() {
+    _nombre.dispose();
+    _telefono.dispose();
+    _dependencia.dispose();
+    _auth.limpiarError();
+    super.dispose();
+  }
+
+  Future<void> _guardar() async {
+    if (!_form.currentState!.validate()) return;
+    final ok = await _auth.guardarPerfil({
+      'nombre_mostrar': _nombre.text.trim(),
+      'telefono': _telefono.text.trim(),
+      'dependencia': _dependencia.text.trim(),
+      'color_avatar': _color ?? '',
+    }, avisoOk: 'Datos guardados');
+    if (ok && mounted) Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
+      child: ListenableBuilder(
+        listenable: _auth,
+        builder: (context, _) => Form(
+          key: _form,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Datos personales',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _nombre,
+                maxLength: 100,
+                decoration: InputDecoration(
+                  labelText: 'Nombre para mostrar',
+                  hintText: widget.usuario.nombre,
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _telefono,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Teléfono (opcional)'),
+                validator: (v) {
+                  final t = (v ?? '').trim();
+                  if (t.isEmpty) return null;
+                  return RegExp(r'^[0-9+()\- ]{7,20}$').hasMatch(t)
+                      ? null
+                      : 'Usa solo números, espacios, +, - o paréntesis';
+                },
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _dependencia,
+                maxLength: 120,
+                decoration: const InputDecoration(
+                  labelText: 'Dependencia o cargo (opcional)',
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Color del avatar', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                children: [
+                  for (final c in coloresAvatar)
+                    Semantics(
+                      button: true,
+                      selected: _color == hexDe(c),
+                      label: 'Color ${hexDe(c)}',
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => setState(() => _color = hexDe(c)),
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: c,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _color == hexDe(c) ? Colors.white : Colors.transparent,
+                              width: 3,
+                            ),
+                          ),
+                          child: _color == hexDe(c)
+                              ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
+                              : null,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (_auth.error != null) ...[
+                const SizedBox(height: 10),
+                Text(_auth.error!, style: const TextStyle(color: AppColors.danado)),
+              ],
+              const SizedBox(height: 14),
+              BotonPildora(texto: 'Guardar', cargando: _auth.cargando, onPressed: _guardar),
+            ],
+          ),
+        ),
       ),
     );
   }

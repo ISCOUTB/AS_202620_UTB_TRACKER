@@ -29,7 +29,7 @@ def crear_horario(
     current_user: AdminUser,
 ):
     """Crea un horario académico. Valida conflictos temporales."""
-    return horarios_service.crear_horario(db, horario)
+    return horarios_service.crear_horario(db, horario, actor_id=current_user.id)
 
 
 @router.post("/bulk", response_model=list[HorarioResponse], status_code=201)
@@ -39,7 +39,7 @@ def crear_horarios_bulk(
     current_user: AdminUser,
 ):
     """Carga masiva de horarios para un semestre completo."""
-    return horarios_service.crear_horarios_bulk(db, datos.items)
+    return horarios_service.crear_horarios_bulk(db, datos.items, actor_id=current_user.id)
 
 
 @router.get("", response_model=list[HorarioResponse])
@@ -72,7 +72,7 @@ def actualizar_horario(
     current_user: AdminUser,
 ):
     """Actualiza un horario existente. Valida conflictos si cambian las horas."""
-    return horarios_service.actualizar_horario(db, horario_id, horario)
+    return horarios_service.actualizar_horario(db, horario_id, horario, actor_id=current_user.id)
 
 
 @router.delete("/{horario_id}")
@@ -82,4 +82,4 @@ def eliminar_horario(
     current_user: AdminUser,
 ):
     """Soft-delete de un horario."""
-    return horarios_service.eliminar_horario(db, horario_id)
+    return horarios_service.eliminar_horario(db, horario_id, actor_id=current_user.id)

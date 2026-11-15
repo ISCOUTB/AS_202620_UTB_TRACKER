@@ -43,7 +43,7 @@ def test_registro_usuario_duplicado_rechazado(client):
 
     r2 = client.post("/auth/register", json=payload)
     assert r2.status_code == 409
-    assert "Ya existe un usuario" in r2.json()["detail"]
+    assert "ya está en uso" in r2.json()["detail"]
 
 
 def test_login_exitoso_genera_jwt(client):

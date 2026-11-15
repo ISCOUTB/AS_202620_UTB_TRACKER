@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AdminUser, CurrentUser
+from app.core.deps import AdminUser, CurrentUser, VerifiedUser
 from app.schemas.prestamos_salon import (
     PrestamoSalonCreate,
     PrestamoSalonResponse,
@@ -26,10 +26,11 @@ router = APIRouter()
 def crear_prestamo_salon(
     prestamo: PrestamoSalonCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: VerifiedUser,
 ):
     """
-    Solicita un préstamo de salón.
+    Solicita un préstamo de salón. Exige correo verificado (ADR-0014): una cuenta sin
+    verificar puede entrar y consultar, pero no pedir salones.
     Valida conflictos con horarios académicos y otros préstamos existentes.
     El usuario autenticado queda asociado como solicitante.
     """
@@ -88,7 +89,9 @@ def actualizar_estado_prestamo_salon(
     Valida transiciones: pendiente→aprobado/rechazado/cancelado,
     aprobado→en_uso/cancelado, en_uso→finalizado.
     """
-    return ps_service.actualizar_estado_prestamo_salon(db, prestamo_id, datos.estado)
+    return ps_service.actualizar_estado_prestamo_salon(
+        db, prestamo_id, datos.estado, actor_id=current_user.id
+    )
 
 
 @router.delete("/{prestamo_id}", response_model=PrestamoSalonResponse)

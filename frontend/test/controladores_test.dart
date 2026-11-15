@@ -59,6 +59,9 @@ class _AuthFalso implements AuthRepository {
 
   @override
   Future<bool> servidorSaludable() async => true;
+
+  @override
+  Future<void> reenviarVerificacion() async {}
 }
 
 class _RecursosFalso implements RecursosRepository {
@@ -139,14 +142,14 @@ class _PrestamosFalso implements PrestamosRepository {
 const _vb = Recurso(
   id: 1,
   categoriaCodigo: 'video_beam',
-  salonId: 'A1-304',
+  salonId: '1', salonNombre: 'A1-304',
   serial: 'VB-1',
   estadoCodigo: 'disponible',
 );
 const _pc = Recurso(
   id: 2,
   categoriaCodigo: 'computador',
-  salonId: 'B2-101',
+  salonId: '2', salonNombre: 'B2-101',
   serial: 'PC-24',
   estadoCodigo: 'dañado',
 );
