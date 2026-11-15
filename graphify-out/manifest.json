@@ -276,9 +276,9 @@
     "semantic_hash": ""
   },
   "app/messaging/worker.py": {
-    "mtime": 1794688225.0386152,
-    "seen": 1794701923.6212258,
-    "ast_hash": "f5d4084ca5b21d6aec23d915eff346c9",
+    "mtime": 1794705047.2706654,
+    "seen": 1794705429.4553041,
+    "ast_hash": "a6d112184379ecd09fd35c3334bcc981",
     "semantic_hash": ""
   },
   "app/models/__init__.py": {
@@ -1080,9 +1080,9 @@
     "semantic_hash": ""
   },
   "frontend/web/index.html": {
-    "mtime": 1794631357.9472296,
-    "seen": 1794636129.1118133,
-    "ast_hash": "61eacbc40efe09abe9b9784a054d09bb",
+    "mtime": 1794705047.278219,
+    "seen": 1794705429.4559748,
+    "ast_hash": "1e923fd8b7d846739a836d4ad07eb8bf",
     "semantic_hash": ""
   },
   "frontend/windows/CMakeLists.txt": {
@@ -1338,9 +1338,9 @@
     "semantic_hash": ""
   },
   "tests/test_auditoria.py": {
-    "mtime": 1794619044.9747186,
-    "seen": 1794623945.6663294,
-    "ast_hash": "7769094fa9de6ffb704254d132b6894b",
+    "mtime": 1794705047.2802188,
+    "seen": 1794705429.4558454,
+    "ast_hash": "a48ba9fe01d3ec5727540e455cf8f075",
     "semantic_hash": ""
   },
   "docs/adr/0009-administracion-de-salones.md": {
@@ -1410,9 +1410,9 @@
     "semantic_hash": ""
   },
   "docker-compose.yml": {
-    "mtime": 1794701098.5550709,
-    "seen": 1794701923.6215281,
-    "ast_hash": "dcabf938324e23e715943da26f37285d",
+    "mtime": 1794705047.2736576,
+    "seen": 1794705429.4555185,
+    "ast_hash": "52b7b960557811ed40db5c6c4fa2a07b",
     "semantic_hash": ""
   },
   "docs/adr/0011-rediseno-interfaz-y-control.md": {
@@ -1668,9 +1668,9 @@
     "semantic_hash": ""
   },
   "app/core/politica.py": {
-    "mtime": 1794684962.9821885,
-    "seen": 1794701923.6211677,
-    "ast_hash": "d49997807b43930f2d7a2717516f136f",
+    "mtime": 1794705047.2686703,
+    "seen": 1794705429.4552627,
+    "ast_hash": "7f726cb852d0c239de1e4a8eff72d4fa",
     "semantic_hash": ""
   },
   "app/models/seguridad_models.py": {
@@ -1710,9 +1710,9 @@
     "semantic_hash": ""
   },
   "app/services/perfil.py": {
-    "mtime": 1794688188.6088831,
-    "seen": 1794701923.6214688,
-    "ast_hash": "13c91ba011891d959eaaf6742bfe6d5f",
+    "mtime": 1794705047.2716632,
+    "seen": 1794705429.455476,
+    "ast_hash": "0c9512b5d93b2188e40e66588072123d",
     "semantic_hash": ""
   },
   "app/services/plantillas_correo.py": {
@@ -1806,21 +1806,21 @@
     "semantic_hash": ""
   },
   "tests/test_correo_verificado.py": {
-    "mtime": 1794701479.0569153,
-    "seen": 1794701923.6222577,
-    "ast_hash": "4fc481234f414fc0da9c05ad70b5092d",
+    "mtime": 1794705047.2822127,
+    "seen": 1794705429.4558523,
+    "ast_hash": "db744f3fe5d20e9f3e204387f974b1d2",
     "semantic_hash": ""
   },
   "tests/test_identidad.py": {
-    "mtime": 1794686158.9747264,
-    "seen": 1794701923.6222692,
-    "ast_hash": "5129dbe4bb53180521a3de0ec42f9a0e",
+    "mtime": 1794705047.283211,
+    "seen": 1794705429.4558566,
+    "ast_hash": "87f40c0c35bc989f1a5b7ea50235fe3a",
     "semantic_hash": ""
   },
   "tests/test_perfil.py": {
-    "mtime": 1794688977.4966059,
-    "seen": 1794701923.6222875,
-    "ast_hash": "496b322573f883bfbc69f3200f91fd7f",
+    "mtime": 1794705047.2852044,
+    "seen": 1794705429.4558628,
+    "ast_hash": "8e014a42a77f71eb333d6e86742fdb5d",
     "semantic_hash": ""
   },
   "tests/test_persistencia_cuentas.py": {
@@ -1830,9 +1830,9 @@
     "semantic_hash": ""
   },
   "tests/test_salones_tipo_equipamiento.py": {
-    "mtime": 1794698169.6975408,
-    "seen": 1794701923.6223307,
-    "ast_hash": "24707f321a8325e1cdb1a791a3501790",
+    "mtime": 1794705047.2867122,
+    "seen": 1794705429.4558785,
+    "ast_hash": "b3320df4bcf2901f2967619dd315a5c8",
     "semantic_hash": ""
   },
   "docs/adr/0014-autenticacion-correo-verificado-y-tokens-por-id.md": {
