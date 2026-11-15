@@ -1,0 +1,30 @@
+# Lo que graphify NO debe indexar: código generado, plataformas de Flutter, imágenes y
+# archivos enormes que solo agregan ruido al grafo (mismo formato que .gitignore).
+
+# Plataformas y recursos generados por Flutter
+frontend/android/
+frontend/ios/
+frontend/windows/
+frontend/linux/
+frontend/macos/
+frontend/web/
+frontend/assets/
+frontend/build/
+frontend/.dart_tool/
+frontend/firebase.json
+frontend/analysis_options.yaml
+frontend/README.md
+
+# Archivos grandes o generados (consultar por Grep, no por el grafo)
+requirements.txt
+docs/contracts/openapi.json
+docs/seguridad/sbom/
+*.db
+*.db.bak-antigua
+
+# Entorno y salidas locales
+venv/
+.venv/
+dist/
+logs/
+graphify-out/

@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./venv/**)",
+      "Read(./.venv/**)",
+      "Read(./**/__pycache__/**)",
+      "Read(./.pytest_cache/**)",
+      "Read(./.ruff_cache/**)",
+      "Read(./graphify-out/cache/**)",
+      "Read(./graphify-out/graph.json)",
+      "Read(./graphify-out/graph.html)",
+      "Read(./graphify-out/manifest.json)",
+      "Read(./frontend/build/**)",
+      "Read(./frontend/.dart_tool/**)",
+      "Read(./frontend/android/.gradle/**)",
+      "Read(./dist/**)",
+      "Read(./logs/**)",
+      "Read(./requirements.txt)",
+      "Read(./docs/seguridad/sbom/**)",
+      "Read(./.env)",
+      "Read(./.env.*.local)"
+    ]
+  }
+}
