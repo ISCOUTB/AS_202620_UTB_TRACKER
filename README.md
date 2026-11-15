@@ -1,10 +1,17 @@
 # UTB Tracker
-https://129-80-171-141.nip.io/docs#/
-Backend desplegado
 
 Sistema de inventario y préstamo de equipos y salones de la Universidad
 Tecnológica de Bolívar. El backend está construido con FastAPI y el cliente
 móvil con Flutter.
+
+## Despliegue y Acceso Público
+
+| Componente | URL / Acceso | Descripción |
+|---|---|---|
+| **API Backend (Producción)** | [https://129-80-171-141.nip.io](https://129-80-171-141.nip.io) <br> *(Dominio institucional asignado: `iscoutb.dev`)* | Servidor VPS en producción gestionado por systemd y Nginx |
+| **Documentación Interactiva (Swagger)** | [https://129-80-171-141.nip.io/docs](https://129-80-171-141.nip.io/docs) | Catálogo OpenAPI interactivo |
+| **Endpoint de Salud (Smoke Test)** | [https://129-80-171-141.nip.io/salud](https://129-80-171-141.nip.io/salud) | Monitor de estado del servicio y conexión a BD |
+| **Cliente Android (Release APK)** | [Releases GitHub · v1.0.4](https://github.com/ISCOUTB/AS_202620_UTB_TRACKER/releases) | Binario `app-release.apk` con R8 habilitado y firmado |
 
 ## Arquitectura del proyecto
 
