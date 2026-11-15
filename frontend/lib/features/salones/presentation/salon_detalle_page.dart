@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../../shared/equipamiento_chips.dart';
 import '../domain/entities/salon.dart';
 import 'salones_controller.dart';
 
@@ -248,6 +249,20 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Tipo, descripción y equipamiento: para elegir el salón adecuado (ADR-0017).
+                const SizedBox(height: 18),
+                Semantics(
+                  header: true,
+                  child: Text(s.tipo.etiqueta,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                ),
+                if (s.descripcion != null) ...[
+                  const SizedBox(height: 4),
+                  Text(s.descripcion!,
+                      style: const TextStyle(color: AppColors.textoSuave, fontSize: 14)),
+                ],
+                const SizedBox(height: 10),
+                EquipamientoChips(equipamiento: s.equipamiento),
                 // Sección: mis solicitudes pendientes (solo usuarios regulares)
                 if (_misSolicitudesPendientes.isNotEmpty) ...[
                   const SizedBox(height: 24),

@@ -73,6 +73,22 @@ columnas quedan en `—` porque todavía no existen ADRs, código ni pruebas.
 - **Qué problema resuelve:** Sin bitácora, una disputa sobre un salón o un cambio de rol no se puede resolver, y
   QS-04 (modificaciones no autorizadas) no se puede demostrar.
 
+## A-09 · Declarar
+
+- **Nombre:** Cuentas reales ligadas a un correo verificado
+- **Para quién:** Estudiantes, docentes y auxiliares que se registran, y el administrador que necesita
+  saber que cada cuenta es de una persona real.
+- **Qué problema resuelve:** Las cuentas "no se guardaban" (la app hablaba con un servidor y la persona
+  entraba en otro), el correo no se verificaba y se podían crear cuentas duplicadas por mayúsculas. Sin
+  sesión renovable, la app pedía la contraseña cada hora.
+
+## A-10 · Declarar
+
+- **Nombre:** Elegir el salón adecuado por su tipo y equipamiento
+- **Para quién:** Quien solicita un salón (necesita computadores, sonido…) y el auxiliar que lo asigna.
+- **Qué problema resuelve:** Antes solo se veían código y capacidad; había que adivinar qué tenía cada
+  salón aunque los equipos ya estuvieran registrados.
+
 ---
 
 ## Tabla de trazabilidad
@@ -86,6 +102,8 @@ columnas quedan en `—` porque todavía no existen ADRs, código ni pruebas.
 | **A-05** | Control de acceso por rol | Seguridad — [QS-04](arc42/arc42.md#qs-04--seguridad) | C1, C2 | [ADR-0004](adr/0004-seguridad-jwt.md) | `app/routers/auth.py`, `app/services/auth.py`, `app/core/hashing.py`, `app/core/security.py` | `tests/test_auth.py` (8 pruebas en verde) | Emisión y verificación de tokens JWT HS256, hashing irreversible con `bcrypt` (sin texto plano), control de roles |
 | **A-08** | Trazabilidad de acciones (auditoría) | Seguridad — [QS-04](arc42/arc42.md#qs-04--seguridad) | C1, C2 | [ADR-0010](adr/0010-auditoria.md) | `app/models/auditoria_models.py`, `app/services/auditoria.py`, `app/routers/auditoria.py`, `alembic/versions/a1b2c3d4e5f6_add_auditoria.py` | `tests/test_auditoria.py` (12 pruebas: qué se registra, permisos, filtros, CSV, inmutabilidad) | Cada acción auditada guarda actor, hora, antes y después en la misma transacción; la bitácora no se puede editar ni borrar |
 | **A-07** | Control de salones en vivo | Usabilidad — [QS-05](arc42/arc42.md#qs-05--usabilidad) | C1, C2 | [ADR-0009](adr/0009-administracion-de-salones.md) | `app/services/salones_admin.py`, `app/routers/salones_admin.py`, `frontend/lib/features/salones_admin/` | `tests/test_salones_admin.py`, `frontend/test/salones_admin_test.dart` | `GET /salones/ocupacion` calcula en el servidor quién tiene cada salón; el panel del auxiliar se pinta con una sola petición |
+| **A-09** | Cuentas con correo verificado | Seguridad — [QS-04](arc42/arc42.md#qs-04--seguridad) | C1, C2 | [ADR-0014](adr/0014-autenticacion-correo-verificado-y-tokens-por-id.md), [ADR-0015](adr/0015-servicio-de-correo.md), [ADR-0016](adr/0016-perfil-y-preferencias-en-el-servidor.md) | `app/services/auth.py`, `app/services/perfil.py`, `app/services/correo.py`, `app/core/security.py`, `app/core/deps.py`, `frontend/lib/core/network/api_client.dart`, `frontend/lib/features/auth/`, `frontend/lib/features/cuenta/` | `tests/test_identidad.py`, `tests/test_correo_verificado.py`, `tests/test_perfil.py`, `tests/test_persistencia_cuentas.py`, `frontend/test/sesion_test.dart`, `frontend/test/auth_controller_test.dart`, `frontend/test/perfil_test.dart` | Una cuenta registrada sigue existiendo tras reiniciar la API (prueba con procesos reales); los enlaces del correo sirven una sola vez; un token de verificación no sirve para recuperar contraseña ni para entrar |
+| **A-10** | Tipo y equipamiento del salón | Usabilidad — [QS-05](arc42/arc42.md#qs-05--usabilidad) | C2 | [ADR-0017](adr/0017-tipo-de-salon-y-equipamiento-calculado.md) | `app/services/equipamiento.py`, `app/services/salones.py`, `frontend/lib/shared/equipamiento_chips.dart` | `tests/test_salones_tipo_equipamiento.py`, `frontend/test/equipamiento_test.dart`, `frontend/test/escala_test.dart` | El equipamiento se calcula en una sola consulta para todos los salones (prueba que cuenta las consultas con 2 y con 12 salones) |
 | **A-06** | Confiabilidad del estado de recursos y préstamos | Confiabilidad de los datos — [QS-06](arc42/arc42.md#qs-06--confiabilidad-de-los-datos) | C1, C2, C3 | [ADR-0001](adr/0001-estilo-arquitectonico.md), [ADR-0003](adr/0003-integracion-sincrona.md) | `app/routers/loans.py`, `app/services/loans.py`, `app/models/recurso_models.py` | `tests/test_loans.py`, `tests/test_resilience.py` (idempotencia y locking) | Regla de negocio QS-06: bloqueo pesimista `.with_for_update()` e idempotencia vía `X-Idempotency-Key` |
 
 

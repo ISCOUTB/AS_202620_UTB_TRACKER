@@ -184,6 +184,35 @@ Todos los módulos se comunican vía HTTP/JSON. Internamente, `prestamos` depend
 *Ubicación:* `app/routers/loans.py`, modelo en `app/models.py::Prestamo`.
 *Requisitos que cumple:* QS-06 (confiabilidad de datos) probado en `tests/test_loans.py`.
 
+### cuenta y correo (ADR-0014, ADR-0015, ADR-0016)
+
+*Responsabilidad:* identidad de las personas (registro con correo verificado, inicio de sesión por
+usuario o correo, sesión con tokens por id y versión de sesión), perfil y preferencias guardadas
+en el servidor, y todos los correos de la cuenta (verificación, recuperación, cambio de correo y
+de contraseña, alertas).
+*Interfaz:* `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`,
+`GET /auth/verificar-correo`, `POST /auth/reenviar-verificacion`, `POST /auth/forgot-password`,
+`POST /auth/reset-password`, `GET /auth/restablecer`, `GET|PATCH /auth/me`,
+`POST /auth/me/cambiar-correo`, `POST /auth/me/cambiar-password`, `POST /auth/me/cerrar-sesiones`,
+`POST /auth/me/desactivar`.
+*Ubicación:* `app/routers/auth.py` → `app/services/auth.py`, `app/services/perfil.py`,
+`app/services/correo.py` (+ `plantillas_correo.py`), `app/services/limites.py` →
+`app/schemas/auth.py`, `app/schemas/perfil.py` → `app/models/auth_models.py`,
+`app/models/seguridad_models.py`. Los correos salen por el outbox y el worker
+(`app/messaging/worker.py::_procesar_correo`).
+*Requisitos que cumple:* QS-04 (seguridad) — `tests/test_identidad.py`,
+`tests/test_correo_verificado.py`, `tests/test_perfil.py`, `tests/test_persistencia_cuentas.py`.
+
+### salones: tipo y equipamiento (ADR-0017)
+
+*Responsabilidad:* tipo y descripción de cada salón y su equipamiento **calculado** desde los
+recursos activos (una consulta agrupada para todos los salones), con sugerencia de tipo.
+*Interfaz:* `GET /salones?tipo=&con_equipo=&busqueda=`, `GET /salones/{id}`,
+`GET /salones/ocupacion` (campos `tipo`, `descripcion`, `equipamiento`, `tipo_sugerido`).
+*Ubicación:* `app/services/equipamiento.py`, `app/services/salones.py`, `app/schemas/salones.py`.
+*Requisitos que cumple:* QS-05 (usabilidad) y QS-02 (sin consultas N+1) —
+`tests/test_salones_tipo_equipamiento.py`.
+
 ## Nivel 2
 
 ### White Box *recursos*
@@ -465,6 +494,10 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0011](../adr/0011-rediseno-interfaz-y-control.md) — Rediseño al estilo de UTB App y pestaña "Control" en lugar de préstamos de equipos
 - [ADR-0012](../adr/0012-contenedores-docker.md) — Empaquetar el sistema con Docker Compose (PostgreSQL, API, worker y web)
 - [ADR-0013](../adr/0013-identidad-propia-y-servidor-unico.md) — Identidad visual propia, interfaz más compacta y un solo servidor (la nube) para web y APK
+- [ADR-0014](../adr/0014-autenticacion-correo-verificado-y-tokens-por-id.md) — Autenticación con correo verificado, identidad normalizada y tokens por id
+- [ADR-0015](../adr/0015-servicio-de-correo.md) — Servicio de correo con plantillas y entrega por el outbox
+- [ADR-0016](../adr/0016-perfil-y-preferencias-en-el-servidor.md) — Perfil personalizable y preferencias guardadas en el servidor
+- [ADR-0017](../adr/0017-tipo-de-salon-y-equipamiento-calculado.md) — Tipo de salón y equipamiento calculado desde los recursos
 
 # Requisitos de calidad
 

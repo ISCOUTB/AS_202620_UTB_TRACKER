@@ -23,7 +23,7 @@ from app.models.salon_models import (
 )
 from app.schemas.enums import EstadoReporteSalon
 from app.schemas.salones_admin import PresenciaUpdate, ReporteSalonCreate
-from app.services import auditoria
+from app.services import auditoria, equipamiento
 from app.services.salones import obtener_salon
 
 # Colombia no tiene horario de verano: un desfase fijo evita depender de tzdata.
@@ -138,11 +138,13 @@ def _ocupacion_de(db: Session, salon: Salon, local: datetime) -> dict:
 def listar_ocupacion(db: Session, momento: Optional[datetime] = None) -> list[dict]:
     local = _ahora_campus(momento)
     salones = db.query(Salon).filter(Salon.activo.is_(True)).order_by(Salon.nombre).all()
+    # Tipo, descripción y equipamiento (ADR-0017): una sola consulta agrupada para todos.
+    equipamiento.adjuntar(db, salones)
     return [_ocupacion_de(db, s, local) for s in salones]
 
 
 def obtener_ocupacion(db: Session, salon_id: int, momento: Optional[datetime] = None) -> dict:
-    salon = obtener_salon(db, salon_id)
+    salon = equipamiento.adjuntar(db, [obtener_salon(db, salon_id)])[0]
     return _ocupacion_de(db, salon, _ahora_campus(momento))
 
 

@@ -7,9 +7,17 @@ consulta de disponibilidad y franjas horarias libres.
 from datetime import datetime, time
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.schemas.enums import EstadoSalon
+from app.schemas.enums import EstadoSalon, TipoSalon
+
+
+def _recortar_descripcion(v):
+    """Quita espacios sobrantes; vacío = sin descripción. El máximo (500) se valida después."""
+    if v is None:
+        return None
+    v = " ".join(str(v).split())
+    return v or None
 
 
 class SalonCreate(BaseModel):
@@ -20,6 +28,10 @@ class SalonCreate(BaseModel):
     capacidad: int = Field(..., gt=0, examples=[40])
     # Usa el Enum centralizado para rechazar valores inválidos con 422
     estado: EstadoSalon = Field(default=EstadoSalon.DISPONIBLE)
+    tipo: TipoSalon = Field(default=TipoSalon.AULA)
+    descripcion: Optional[str] = Field(default=None, max_length=500)
+
+    _desc = field_validator("descripcion", mode="before")(_recortar_descripcion)
 
 
 class SalonUpdate(BaseModel):
@@ -30,6 +42,17 @@ class SalonUpdate(BaseModel):
     capacidad: Optional[int] = Field(default=None, gt=0)
     # Usa el Enum centralizado para rechazar valores inválidos con 422
     estado: Optional[EstadoSalon] = None
+    tipo: Optional[TipoSalon] = None
+    descripcion: Optional[str] = Field(default=None, max_length=500)
+
+    _desc = field_validator("descripcion", mode="before")(_recortar_descripcion)
+
+
+class EquipoCategoria(BaseModel):
+    """Equipamiento calculado (ADR-0017): no se guarda, sale de los recursos activos."""
+    categoria: str
+    total: int
+    operativos: int
 
 
 class SalonResponse(BaseModel):
@@ -45,6 +68,11 @@ class SalonResponse(BaseModel):
     activo: bool = True
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    # Campos nuevos con valor por defecto: no rompen el contrato (ADR-0017).
+    tipo: str = "aula"
+    descripcion: Optional[str] = None
+    equipamiento: list[EquipoCategoria] = []
+    tipo_sugerido: Optional[str] = None
 
 
 class FranjaDisponible(BaseModel):

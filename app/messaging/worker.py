@@ -42,6 +42,7 @@ from sqlalchemy.orm import Session
 
 from app.messaging.events import VERSIONES_SOPORTADAS
 from app.messaging.models import MensajeOutbox, NotificacionProcesada
+from app.services import correo as correo_service
 from app.core.config import (
     FIREBASE_CREDENTIALS_PATH, SMTP_FROM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT,
     SMTP_USERNAME, USE_REAL_MAIL, USE_REAL_PUSH,
@@ -199,6 +200,7 @@ def procesar_pendientes(
     notificador: NotificadorConPush | NotificadorBase,
     ahora: Optional[datetime] = None,
     max_intentos: int = WORKER_MAX_INTENTOS,
+    proveedor_correo=None,
 ) -> int:
     """
     Procesa mensajes del outbox cuyo siguiente_intento <= ahora.
@@ -231,7 +233,10 @@ def procesar_pendientes(
 
     procesados = 0
     for msg in pendientes:
-        _procesar_un_mensaje(db, msg, notificador, ahora, max_intentos)
+        if msg.tipo == correo_service.TIPO_EVENTO:
+            _procesar_correo(db, msg, ahora, max_intentos, proveedor_correo)
+        else:
+            _procesar_un_mensaje(db, msg, notificador, ahora, max_intentos)
         procesados += 1
 
     return procesados
@@ -269,6 +274,18 @@ def _procesar_un_mensaje(
     usuario_id = payload_dict.get("usuario_id")
     email = payload_dict.get("email") or _resolver_email(db, usuario_id)
     fcm_token = payload_dict.get("fcm_token") or _resolver_fcm_token(db, usuario_id)
+    # Avisos de salones y préstamos: respetan las preferencias del usuario (ADR-0016). La
+    # recuperación de contraseña antigua es de seguridad y sale siempre.
+    if msg.tipo != "password.reset solicitado":
+        if not _preferencia_permite(db, usuario_id, "salones", "push"):
+            fcm_token = None
+        if not _preferencia_permite(db, usuario_id, "salones", "correo") and not fcm_token:
+            msg.ultimo_error = "omitido por preferencia del usuario"
+            _marcar_enviado(db, msg, (ahora.replace(tzinfo=None) if ahora.tzinfo else ahora),
+                            mid, cid, payload_dict.get("prestamo_id"))
+            return
+        if not _preferencia_permite(db, usuario_id, "salones", "correo"):
+            email = "__sin_correo__"
     if not email:
         _marcar_muerto(db, msg, f"Usuario {usuario_id} no encontrado en BD", mid, cid)
         return
@@ -290,6 +307,65 @@ def _procesar_un_mensaje(
 
     ahora_naive = ahora.replace(tzinfo=None) if ahora.tzinfo else ahora
     _marcar_enviado(db, msg, ahora_naive, mid, cid, payload_dict.get("prestamo_id"))
+
+
+def _procesar_correo(
+    db: Session,
+    msg: MensajeOutbox,
+    ahora: datetime,
+    max_intentos: int,
+    proveedor,
+) -> None:
+    """Evento "correo.enviar" (ADR-0015): plantilla + datos -> servicio de correo.
+
+    Respeta las preferencias del usuario salvo en los correos de seguridad. Nunca escribe el
+    payload en el log (lleva enlaces con tokens).
+    """
+    mid, cid = msg.message_id, msg.correlation_id or "n/a"
+    if not _validar_version(db, msg, mid, cid) or _descartar_duplicado(db, msg, mid, cid):
+        return
+    try:
+        p = _leer_payload(msg.payload)
+        destino, plantilla, datos = p["destino"], p["plantilla"], p.get("datos") or {}
+    except (json.JSONDecodeError, KeyError, AttributeError, ValueError) as exc:
+        _marcar_muerto(db, msg, f"Payload de correo inválido: {type(exc).__name__}", mid, cid)
+        return
+
+    ahora_naive = ahora.replace(tzinfo=None) if ahora.tzinfo else ahora
+    if not _preferencia_permite(db, p.get("usuario_id"), p.get("categoria"), "correo"):
+        logger.info("[worker] message_id=%s correlation_id=%s OMITIDO_POR_PREFERENCIA plantilla=%s",
+                    mid, cid, plantilla)
+        msg.ultimo_error = "omitido por preferencia del usuario"
+        _marcar_enviado(db, msg, ahora_naive, mid, cid, None)
+        return
+
+    msg.intentos += 1
+    logger.info("[worker] message_id=%s correlation_id=%s INTENTO_%d tipo=%s plantilla=%s",
+                mid, cid, msg.intentos, msg.tipo, plantilla)
+    try:
+        correo_service.enviar(destino, plantilla, datos, proveedor=proveedor)
+    except ValueError as exc:
+        # Datos que nunca van a funcionar (destino inválido, plantilla desconocida): sin reintento.
+        _marcar_muerto(db, msg, f"Correo inválido: {exc}", mid, cid)
+        return
+    except Exception as exc:  # noqa: BLE001
+        _reprogramar_o_matar(db, msg, exc, mid, cid, max_intentos)
+        return
+    _marcar_enviado(db, msg, ahora_naive, mid, cid, None)
+
+
+def _preferencia_permite(
+    db: Session, usuario_id: Optional[int], categoria: Optional[str], canal: str
+) -> bool:
+    """Los correos de seguridad salen siempre; los demás según las preferencias del usuario."""
+    if usuario_id is None or categoria in (None, "seguridad"):
+        return True
+    from app.models.auth_models import Usuario
+    usuario = db.get(Usuario, usuario_id)
+    prefs = getattr(usuario, "preferencias", None) if usuario else None
+    if not isinstance(prefs, dict):
+        return True
+    return bool(prefs.get("notificaciones", {}).get(canal, {}).get(categoria, True))
 
 
 def _validar_version(db: Session, msg: MensajeOutbox, mid: str, cid: str) -> bool:
@@ -386,7 +462,8 @@ def _marcar_enviado(
     db.add(NotificacionProcesada(message_id=mid, procesado_en=ahora))
     msg.estado = "enviado"
     msg.procesado_en = ahora
-    msg.ultimo_error = None
+    if msg.ultimo_error != "omitido por preferencia del usuario":
+        msg.ultimo_error = None
     db.commit()
     logger.info(
         "[worker] message_id=%s correlation_id=%s ENVIADO prestamo_id=%s",
@@ -418,6 +495,10 @@ def _enviar_notificacion(
     cuerpo: str,
     fcm_token: Optional[str],
 ) -> None:
+    if email == "__sin_correo__":  # el usuario apagó los correos de este tipo; solo push
+        if isinstance(notificador, NotificadorConPush):
+            notificador.enviar_push(fcm_token, asunto, cuerpo)
+        return
     if isinstance(notificador, NotificadorConPush):
         notificador.enviar(email=email, asunto=asunto, cuerpo=cuerpo)
         notificador.enviar_push(fcm_token, asunto, cuerpo)
@@ -464,13 +545,22 @@ def _run_loop() -> None:
         correo=crear_notificador(),
         push=crear_notificador_push(),
     )
-    logger.info("[worker] Iniciando. poll_interval=%ds", WORKER_POLL_INTERVAL)
+    proveedor = correo_service.crear_proveedor()
+    logger.info("[worker] Iniciando. poll_interval=%ds correo=%s", WORKER_POLL_INTERVAL,
+                type(proveedor).__name__)
 
+    ciclo = 0
     try:
         while True:
             db = SessionLocal()
+            ciclo += 1
             try:
-                n = procesar_pendientes(db, notificador)
+                # Cada ~1000 ciclos (≈ 1 h con 3 s) borra intentos de límite viejos (ADR-0014).
+                if ciclo % 1000 == 1:
+                    from app.services.limites import purgar_viejos
+                    if purgar_viejos(db):
+                        db.commit()
+                n = procesar_pendientes(db, notificador, proveedor_correo=proveedor)
                 if n:
                     logger.info("[worker] Ciclo completado — procesados=%d", n)
             except Exception:  # noqa: BLE001

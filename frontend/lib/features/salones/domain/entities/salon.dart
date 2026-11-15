@@ -1,6 +1,35 @@
 /// Entidades del módulo de Salones, Horarios y Préstamos de Salón (UTB Tracker).
 library;
 
+/// Para qué sirve el salón (ADR-0017). Espejo de `TipoSalon` del backend.
+enum TipoSalon {
+  aula('aula', 'Aula'),
+  laboratorioComputo('laboratorio_computo', 'Laboratorio de cómputo'),
+  salaAudiovisual('sala_audiovisual', 'Sala audiovisual'),
+  auditorio('auditorio', 'Auditorio'),
+  salaReuniones('sala_reuniones', 'Sala de reuniones'),
+  otro('otro', 'Otro');
+
+  const TipoSalon(this.api, this.etiqueta);
+  final String api;
+  final String etiqueta;
+
+  static TipoSalon desdeApi(Object? v) =>
+      values.firstWhere((t) => t.api == v, orElse: () => TipoSalon.aula);
+}
+
+/// Equipamiento CALCULADO por el servidor desde los recursos activos del salón.
+class EquipoCategoria {
+  const EquipoCategoria({required this.categoria, required this.total, required this.operativos});
+
+  final String categoria;
+  final int total;
+  final int operativos;
+
+  /// Dañados o en mantenimiento.
+  int get fueraDeServicio => total - operativos;
+}
+
 class Salon {
   const Salon({
     required this.id,
@@ -11,7 +40,22 @@ class Salon {
     required this.capacidad,
     required this.estado,
     this.activo = true,
+    this.tipo = TipoSalon.aula,
+    this.descripcion,
+    this.equipamiento = const [],
+    this.tipoSugerido,
   });
+
+  final TipoSalon tipo;
+  final String? descripcion;
+  final List<EquipoCategoria> equipamiento;
+
+  /// Sugerencia del servidor (p. ej. 8+ computadores -> laboratorio). Nunca cambia el tipo sola.
+  final TipoSalon? tipoSugerido;
+
+  /// Cantidad operativa de una categoría (para filtros y chips).
+  int operativos(String categoria) =>
+      equipamiento.where((e) => e.categoria == categoria).fold(0, (a, e) => a + e.operativos);
 
   final int id;
   final String nombre;

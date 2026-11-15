@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import AdminUser, CurrentUser
+from app.schemas.enums import CategoriaRecurso, TipoSalon
 from app.schemas.salones import SalonCreate, SalonResponse, SalonUpdate
 from app.services import salones as salones_service
 
@@ -36,10 +37,19 @@ def listar_salones(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     estado: Optional[str] = None,
     edificio: Optional[str] = None,
-    busqueda: Optional[str] = None,
+    busqueda: Annotated[Optional[str], Query(description="Busca en nombre y descripción")] = None,
+    tipo: Optional[TipoSalon] = None,
+    con_equipo: Annotated[
+        Optional[CategoriaRecurso],
+        Query(description="Solo salones con al menos un equipo operativo de esta categoría"),
+    ] = None,
 ):
-    """Lista salones con filtros opcionales y paginación."""
-    items, _ = salones_service.listar_salones(db, skip, limit, estado, edificio, busqueda)
+    """Lista salones con filtros opcionales, paginación y equipamiento calculado."""
+    items, _ = salones_service.listar_salones(
+        db, skip, limit, estado, edificio, busqueda,
+        tipo=tipo.value if tipo else None,
+        con_equipo=con_equipo.value if con_equipo else None,
+    )
     return items
 
 
@@ -49,8 +59,8 @@ def obtener_salon(
     db: Annotated[Session, Depends(get_db)],
     current_user: CurrentUser,
 ):
-    """Obtiene un salón por ID."""
-    return salones_service.obtener_salon(db, salon_id)
+    """Obtiene un salón por ID, con su equipamiento y tipo sugerido."""
+    return salones_service.obtener_salon_con_equipamiento(db, salon_id)
 
 
 @router.put("/{salon_id}", response_model=SalonResponse)

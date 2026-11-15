@@ -59,6 +59,9 @@ class _AuthFalso implements AuthRepository {
 
   @override
   Future<bool> servidorSaludable() async => true;
+
+  @override
+  Future<void> reenviarVerificacion() async {}
 }
 
 class _RecursosFalso implements RecursosRepository {

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.models.salon_models import Horario, PrestamoSalon, Salon
 from app.schemas.salones import SalonCreate, SalonUpdate
-from app.services import auditoria
+from app.services import auditoria, equipamiento
 
 
 def crear_salon(db: Session, datos: SalonCreate, actor_id: Optional[int] = None) -> Salon:
@@ -23,16 +23,16 @@ def crear_salon(db: Session, datos: SalonCreate, actor_id: Optional[int] = None)
             status_code=status.HTTP_409_CONFLICT,
             detail="Ya existe un salón con ese nombre",
         )
-    nuevo = Salon(**datos.model_dump())
+    nuevo = Salon(**datos.model_dump(mode="json"))
     db.add(nuevo)
     db.flush()
     auditoria.registrar(
         db, "salon.crear", "salon", nuevo.id, actor_id=actor_id,
-        detalle={"nombre": nuevo.nombre, "capacidad": nuevo.capacidad},
+        detalle={"nombre": nuevo.nombre, "capacidad": nuevo.capacidad, "tipo": nuevo.tipo},
     )
     db.commit()
     db.refresh(nuevo)
-    return nuevo
+    return equipamiento.adjuntar(db, [nuevo])[0]
 
 
 def listar_salones(
@@ -42,18 +42,35 @@ def listar_salones(
     estado: Optional[str] = None,
     edificio: Optional[str] = None,
     busqueda: Optional[str] = None,
+    tipo: Optional[str] = None,
+    con_equipo: Optional[str] = None,
 ) -> tuple[list[Salon], int]:
-    """Devuelve salones activos con filtros opcionales y paginación."""
+    """Devuelve salones activos con filtros opcionales y paginación.
+
+    - tipo: aula, laboratorio_computo… (ADR-0017)
+    - con_equipo: categoría de recurso; solo salones con al menos uno OPERATIVO.
+    - busqueda: en el nombre y en la descripción.
+    El equipamiento de todos los salones de la página se calcula en UNA consulta.
+    """
     query = db.query(Salon).filter(Salon.activo.is_(True))
     if estado:
         query = query.filter(Salon.estado == estado)
     if edificio:
         query = query.filter(Salon.edificio == edificio)
+    if tipo:
+        query = query.filter(Salon.tipo == tipo)
+    if con_equipo:
+        query = query.filter(equipamiento.filtro_con_equipo(con_equipo))
     if busqueda:
-        query = query.filter(Salon.nombre.ilike(f"%{busqueda}%"))
+        termino = f"%{busqueda.strip()}%"
+        query = query.filter(Salon.nombre.ilike(termino) | Salon.descripcion.ilike(termino))
     total = query.count()
-    items = query.offset(skip).limit(limit).all()
-    return items, total
+    items = query.order_by(Salon.nombre).offset(skip).limit(limit).all()
+    return equipamiento.adjuntar(db, items), total
+
+
+def obtener_salon_con_equipamiento(db: Session, salon_id: int) -> Salon:
+    return equipamiento.adjuntar(db, [obtener_salon(db, salon_id)])[0]
 
 
 def obtener_salon(db: Session, salon_id: int) -> Salon:
@@ -73,7 +90,10 @@ def actualizar_salon(
 ) -> Salon:
     """Actualiza un salón existente. Solo modifica campos proporcionados."""
     salon = obtener_salon(db, salon_id)
-    update_data = datos.model_dump(exclude_unset=True)
+    update_data = datos.model_dump(exclude_unset=True, mode="json")
+    # El tipo es obligatorio en la base: "null" no lo borra.
+    if update_data.get("tipo", "") is None:
+        update_data.pop("tipo")
     cambios = {
         campo: {"de": getattr(salon, campo), "a": valor}
         for campo, valor in update_data.items() if getattr(salon, campo) != valor
@@ -86,7 +106,7 @@ def actualizar_salon(
         )
     db.commit()
     db.refresh(salon)
-    return salon
+    return equipamiento.adjuntar(db, [salon])[0]
 
 
 def eliminar_salon(db: Session, salon_id: int, actor_id: Optional[int] = None) -> dict:

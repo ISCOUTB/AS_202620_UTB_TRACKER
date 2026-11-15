@@ -9,21 +9,41 @@ import '../error/api_exception.dart';
 
 /// Único punto que habla HTTP con el backend ("el puente").
 /// Las capas de dominio nunca ven `http`: solo ven repositorios.
+///
+/// Sesión (ADR-0014): si una petición responde 401 y hay refresh token, pide un par nuevo a
+/// `POST /auth/refresh` UNA sola vez (aunque fallen varias peticiones a la vez) y repite la
+/// petición. Si el refresco también es rechazado, avisa con [alVencerSesion].
 class ApiClient {
   ApiClient({http.Client? client, String? baseUrl})
       : _client = client ?? http.Client(),
-        _baseUrl = baseUrl ?? ApiConfig.baseUrl;
+        _baseUrlFijo = baseUrl;
 
   final http.Client _client;
-  final String _baseUrl;
+  final String? _baseUrlFijo;
   final Random _azar = Random();
 
   String? _token;
+  String? _refresh;
+  Future<bool>? _renovando;
 
-  String get baseUrl => _baseUrl;
+  /// Se llama con el par nuevo tras un refresco (para guardarlo en el dispositivo).
+  void Function(String access, String refresh)? alRenovarTokens;
 
-  /// JWT Bearer (ADR-0004). Hoy el backend aún no lo exige, pero se envía siempre que exista.
+  /// Se llama cuando la sesión ya no se puede renovar (refresh vencido o revocado).
+  void Function()? alVencerSesion;
+
+  /// Sigue a [ApiConfig.baseUrl], que puede cambiarse en compilaciones de desarrollo.
+  String get baseUrl => _baseUrlFijo ?? ApiConfig.baseUrl;
+
+  /// JWT Bearer (ADR-0004).
   void fijarToken(String? token) => _token = token;
+
+  void fijarTokens(String? access, String? refresh) {
+    _token = access;
+    _refresh = refresh;
+  }
+
+  String? get refreshToken => _refresh;
 
   Map<String, String> _cabeceras([Map<String, String>? extra]) => {
         'Accept': 'application/json',
@@ -33,7 +53,7 @@ class ApiClient {
       };
 
   Uri _uri(String ruta, [Map<String, dynamic>? parametros]) {
-    final base = Uri.parse('$_baseUrl$ruta');
+    final base = Uri.parse('$baseUrl$ruta');
     if (parametros == null || parametros.isEmpty) return base;
     return base.replace(
       queryParameters: {
@@ -65,7 +85,7 @@ class ApiClient {
   }) {
     final max = reintentos ?? ApiConfig.reintentosLectura;
     return _conReintentos(
-      () => _enviar(() => _client.get(_uri(ruta, parametros), headers: _cabeceras())),
+      () => _enviar(ruta, () => _client.get(_uri(ruta, parametros), headers: _cabeceras())),
       max,
     );
   }
@@ -78,6 +98,7 @@ class ApiClient {
     Map<String, String>? cabeceras,
   }) {
     return _enviar(
+      ruta,
       () => _client.post(
         _uri(ruta),
         headers: _cabeceras(cabeceras),
@@ -92,6 +113,7 @@ class ApiClient {
     Map<String, String>? cabeceras,
   }) {
     return _enviar(
+      ruta,
       () => _client.put(
         _uri(ruta),
         headers: _cabeceras(cabeceras),
@@ -106,6 +128,7 @@ class ApiClient {
     Map<String, String>? cabeceras,
   }) {
     return _enviar(
+      ruta,
       () => _client.patch(
         _uri(ruta),
         headers: _cabeceras(cabeceras),
@@ -115,12 +138,22 @@ class ApiClient {
   }
 
   Future<dynamic> delete(String ruta) {
-    return _enviar(() => _client.delete(_uri(ruta), headers: _cabeceras()));
+    return _enviar(ruta, () => _client.delete(_uri(ruta), headers: _cabeceras()));
   }
 
-  Future<dynamic> _enviar(Future<http.Response> Function() peticion) async {
+  static const _sinRefresco = {'/auth/login', '/auth/refresh', '/auth/register'};
+
+  Future<dynamic> _enviar(
+    String ruta,
+    Future<http.Response> Function() peticion,
+  ) async {
     try {
-      final r = await peticion().timeout(ApiConfig.timeout);
+      var r = await peticion().timeout(ApiConfig.timeout);
+      if (r.statusCode == 401 && _refresh != null && !_sinRefresco.contains(ruta)) {
+        if (await _renovar()) {
+          r = await peticion().timeout(ApiConfig.timeout);
+        }
+      }
       if (r.statusCode >= 200 && r.statusCode < 300) {
         if (r.bodyBytes.isEmpty) return null;
         return jsonDecode(utf8.decode(r.bodyBytes));
@@ -137,6 +170,44 @@ class ApiClient {
         TipoError.desconocido,
         'La respuesta del servidor no tiene el formato esperado.',
       );
+    }
+  }
+
+  /// Un solo refresco aunque varias peticiones reciban 401 a la vez.
+  Future<bool> _renovar() {
+    return _renovando ??= _pedirTokensNuevos().whenComplete(() => _renovando = null);
+  }
+
+  Future<bool> _pedirTokensNuevos() async {
+    try {
+      final r = await _client
+          .post(
+            _uri('/auth/refresh'),
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json; charset=utf-8',
+            },
+            body: jsonEncode({'refresh_token': _refresh}),
+          )
+          .timeout(ApiConfig.timeout);
+      if (r.statusCode == 200) {
+        final cuerpo = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        final access = (cuerpo['access_token'] ?? '').toString();
+        final refresh = (cuerpo['refresh_token'] ?? _refresh).toString();
+        if (access.isNotEmpty) {
+          fijarTokens(access, refresh);
+          alRenovarTokens?.call(access, refresh);
+          return true;
+        }
+      }
+      if (r.statusCode == 401 || r.statusCode == 403) {
+        fijarTokens(null, null);
+        alVencerSesion?.call();
+      }
+      return false;
+    } catch (_) {
+      // Sin red: no se cierra la sesión; la petición original devuelve su propio error.
+      return false;
     }
   }
 

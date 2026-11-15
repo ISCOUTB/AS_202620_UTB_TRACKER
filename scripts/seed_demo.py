@@ -71,7 +71,31 @@ SALONES = [
     ("LEAD", "Laboratorios", 2, 20, "disponible", "Laboratorio de Energía LEAD"),
     ("EL-PATIO", "Laboratorios", 1, 25, "disponible", "Laboratorio de Creatividad e Innovación El Patio"),
     ("BIB-SG1", "Biblioteca", 2, 8, "disponible", "Sala grupal, Biblioteca Luis Enrique Borja Barón"),
+    ("AUD-CT", "Aulas 4", 1, 220, "disponible", "Auditorio del Campus Tecnológico"),
 ]
+
+# Tipo de cada salón (ADR-0017). Lo que no está aquí es "aula".
+# LAB-SIS2 se deja a propósito como "aula": tiene 12 computadores, así que la app muestra
+# "Sugerido: Laboratorio de cómputo [Usar]".
+TIPOS = {
+    "A4-301": "sala_audiovisual",
+    "ALC-201": "sala_reuniones",
+    "BIB-SG1": "sala_reuniones",
+    "LAB-SIS1": "laboratorio_computo",
+    "LAB-FIS": "otro",
+    "LAB-ELE": "otro",
+    "LAB-MEC": "otro",
+    "LEAD": "otro",
+    "EL-PATIO": "otro",
+    "AUD-CT": "auditorio",
+}
+DESCRIPCIONES = {
+    "LAB-SIS1": "Sala de sistemas con 20 computadores, video beam y aire. Ideal para clases prácticas.",
+    "AUD-CT": "Auditorio con sonido, micrófonos y video beam para eventos y sustentaciones.",
+    "A4-301": "Sala audiovisual con TV, sonido y cortinas oscuras.",
+    "ALC-201": "Sala de estudio grupal con mesa para 12 personas y TV para presentar.",
+    "A1-201": "En mantenimiento: cambio de lámpara del video beam.",
+}
 
 # Clases "en curso" cuando se corre el script.
 # (salón, profesor, materia, ¿el auxiliar ya confirmó al profesor? None = sin confirmar)
@@ -100,8 +124,16 @@ EQUIPOS_POR_ESPACIO = {
                     ("aire_ac", "AC", "Aire acondicionado 36000 BTU"),
                     ("computador", "PC", "PC del docente")],
     "biblioteca": [("tv", "TV", "Pantalla para trabajo en grupo")],
+    "auditorio": [("video_beam", "VB", "Video beam láser de 7000 lúmenes"),
+                  ("audio", "AU", "Consola de sonido y parlantes"),
+                  ("aire_ac", "AC", "Aire acondicionado central")],
+    "audiovisual": [("tv", "TV", "Televisor 65\""),
+                    ("audio", "AU", "Barra de sonido"),
+                    ("video_beam", "VB", "Video beam Epson"),
+                    ("aire_ac", "AC", "Aire acondicionado 24000 BTU")],
 }
-PCS_POR_SALA_DE_SISTEMAS = 6
+# Computadores de estudiante por sala de sistemas (un laboratorio con ~20).
+PCS_POR_SALA = {"LAB-SIS1": 20, "LAB-SIS2": 12}
 # Equipos con novedades, para que haya algo que atender
 ESTADOS_ESPECIALES = {
     "VB-A1-201": ("dañado", "Lámpara quemada"),
@@ -113,6 +145,10 @@ ESTADOS_ESPECIALES = {
 
 
 def tipo_de_espacio(codigo: str) -> str:
+    if codigo == "AUD-CT":
+        return "auditorio"
+    if codigo == "A4-301":
+        return "audiovisual"
     if codigo.startswith("ALC-"):
         return "estudio"
     if codigo.startswith("BIB-"):
@@ -128,8 +164,8 @@ def inventario() -> list[tuple[str, str, str, str, str]]:
     for codigo, *_ in SALONES:
         for cat, prefijo, desc in EQUIPOS_POR_ESPACIO[tipo_de_espacio(codigo)]:
             filas.append((cat, f"{prefijo}-{codigo}", desc, codigo))
-        if codigo.startswith("LAB-SIS"):
-            for n in range(1, PCS_POR_SALA_DE_SISTEMAS + 1):
+        if codigo in PCS_POR_SALA:
+            for n in range(1, PCS_POR_SALA[codigo] + 1):
                 filas.append(("computador", f"PC-{codigo}-{n:02d}", "PC de estudiante", codigo))
     resultado = []
     for cat, serial, desc, codigo in filas:
@@ -190,6 +226,9 @@ def main() -> None:
             else:
                 fila.nombre, fila.rol, fila.activo = nombre, rol, True
                 fila.password = hash_password(clave)
+            # Cuentas de demostración: correo ya verificado (ADR-0014).
+            fila.email_verificado = True
+            fila.email_verificado_en = utc(ahora)
             u[email] = fila
         db.flush()
 
@@ -200,6 +239,7 @@ def main() -> None:
                 # La app arma "Aula de clase · Edif. Aulas 4 · Piso 2" con edificio y piso.
                 nombre=codigo, ubicacion=desc,
                 edificio=edificio, piso=piso, capacidad=cap, estado=estado,
+                tipo=TIPOS.get(codigo, "aula"), descripcion=DESCRIPCIONES.get(codigo),
             )
             db.add(fila)
             s[codigo] = fila

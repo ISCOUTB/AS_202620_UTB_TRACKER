@@ -76,6 +76,13 @@ jobs:
             set -a; . ./.env; set +a
             alembic upgrade head
             sudo systemctl restart utb-tracker
+            # Worker del outbox (correos de verificación/recuperación, ADR-0015). Sin él los
+            # correos se quedan en la base sin salir. Ver docs/despliegue/worker.md.
+            if systemctl list-unit-files | grep -q '^utb-tracker-worker'; then
+              sudo systemctl restart utb-tracker-worker
+            else
+              echo "AVISO: no existe utb-tracker-worker.service; los correos no se enviarán"
+            fi
             curl --fail --silent --show-error --max-time 15 \
             --retry 6 --retry-delay 3 --retry-connrefused \
             https://129-80-171-141.nip.io/salud

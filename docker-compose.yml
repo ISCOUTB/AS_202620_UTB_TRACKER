@@ -13,8 +13,22 @@ x-backend: &backend
     DATABASE_URL: postgresql+psycopg://utb:utb@db:5432/utb_tracker
     SECRET_KEY: ${SECRET_KEY:-solo-desarrollo-cambiar-en-produccion-123456}
     FORGET_PWD_SECRET_KEY: ${FORGET_PWD_SECRET_KEY:-solo-desarrollo-reset-cambiar-123456}
+    EMAIL_TOKEN_SECRET_KEY: ${EMAIL_TOKEN_SECRET_KEY:-solo-desarrollo-correo-cambiar-123456}
     CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
     ENVIRONMENT: development
+    # Correo (ADR-0015): por defecto NO se envía; se guarda en ./logs/correos del equipo.
+    URL_PUBLICA: ${URL_PUBLICA:-http://localhost:8000}
+    USE_REAL_MAIL: ${USE_REAL_MAIL:-false}
+    VERIFICACION_OBLIGATORIA: ${VERIFICACION_OBLIGATORIA:-true}
+    CORREOS_DIR: /app/logs/correos
+    SMTP_HOST: ${SMTP_HOST:-}
+    SMTP_PORT: ${SMTP_PORT:-587}
+    SMTP_USERNAME: ${SMTP_USERNAME:-}
+    SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    SMTP_FROM: ${SMTP_FROM:-}
+    WORKER_POLL_INTERVAL: ${WORKER_POLL_INTERVAL:-3}
+  volumes:
+    - ./logs:/app/logs
   depends_on:
     db:
       condition: service_healthy

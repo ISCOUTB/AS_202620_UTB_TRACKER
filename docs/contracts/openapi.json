@@ -32,6 +32,7 @@
           "auth"
         ],
         "summary": "Login Endpoint",
+        "description": "Entra con nombre de usuario o correo. Límite de intentos guardado en la base.",
         "operationId": "login_endpoint_auth_login_post",
         "requestBody": {
           "content": {
@@ -76,6 +77,7 @@
           "auth"
         ],
         "summary": "Register Endpoint",
+        "description": "Crea la cuenta SIN verificar y envía el correo de verificación.",
         "operationId": "register_endpoint_auth_register_post",
         "requestBody": {
           "content": {
@@ -111,13 +113,133 @@
         }
       }
     },
+    "/auth/verificar-correo": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Verificar Correo Endpoint",
+        "description": "Abre el enlace del correo: verifica la cuenta o confirma el cambio de correo.",
+        "operationId": "verificar_correo_endpoint_auth_verificar_correo_get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 2048,
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reenviar-verificacion": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Reenviar Verificacion Endpoint",
+        "operationId": "reenviar_verificacion_endpoint_auth_reenviar_verificacion_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "409": {
+            "description": "Ya verificado"
+          },
+          "429": {
+            "description": "Límite"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/restablecer": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Restablecer Pagina Endpoint",
+        "description": "Página del enlace de recuperación: formulario que llama a POST /auth/reset-password.",
+        "operationId": "restablecer_pagina_endpoint_auth_restablecer_get",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 2048,
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/me": {
       "get": {
         "tags": [
           "auth"
         ],
         "summary": "Me Endpoint",
-        "description": "Retorna los datos del usuario autenticado a partir del token JWT.",
+        "description": "Perfil completo del usuario autenticado (datos, verificación y preferencias).",
         "operationId": "me_endpoint_auth_me_get",
         "responses": {
           "200": {
@@ -125,7 +247,231 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserMeResponse"
+                  "$ref": "#/components/schemas/PerfilResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Actualizar Perfil Endpoint",
+        "description": "Edita nombre para mostrar, teléfono, dependencia/cargo, color de avatar y preferencias.",
+        "operationId": "actualizar_perfil_endpoint_auth_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerfilUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/me/cambiar-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Cambiar Password Endpoint",
+        "description": "Cambia la contraseña y cierra las demás sesiones; devuelve tokens para este dispositivo.",
+        "operationId": "cambiar_password_endpoint_auth_me_cambiar_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambiarPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SesionRenovada"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contraseña actual incorrecta"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/me/cerrar-sesiones": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Cerrar Sesiones Endpoint",
+        "description": "Cierra la sesión en todos los demás dispositivos.",
+        "operationId": "cerrar_sesiones_endpoint_auth_me_cerrar_sesiones_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SesionRenovada"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/me/desactivar": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Desactivar Cuenta Endpoint",
+        "description": "Desactiva la cuenta propia (confirmando con la contraseña). Un administrador puede reactivarla.",
+        "operationId": "desactivar_cuenta_endpoint_auth_me_desactivar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Contraseña actual incorrecta"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/me/cambiar-correo": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Cambiar Correo Endpoint",
+        "description": "Pide cambiar el correo: no cambia hasta abrir el enlace enviado al correo NUEVO.",
+        "operationId": "cambiar_correo_endpoint_auth_me_cambiar_correo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambiarCorreoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Contraseña actual incorrecta"
+          },
+          "409": {
+            "description": "Correo en uso"
+          },
+          "429": {
+            "description": "Límite"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1607,6 +1953,65 @@
         }
       }
     },
+    "/salones/reportes": {
+      "get": {
+        "tags": [
+          "salones-admin"
+        ],
+        "summary": "Listar Todos Los Reportes",
+        "description": "Reportes de todos los salones (solo auxiliar/administrador).",
+        "operationId": "listar_todos_los_reportes_salones_reportes_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EstadoReporteSalon"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReporteSalonResponse"
+                  },
+                  "title": "Response Listar Todos Los Reportes Salones Reportes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salones/{salon_id}/reportes/{reporte_id}": {
       "patch": {
         "tags": [
@@ -1725,7 +2130,7 @@
           "salones"
         ],
         "summary": "Listar Salones",
-        "description": "Lista salones con filtros opcionales y paginación.",
+        "description": "Lista salones con filtros opcionales, paginación y equipamiento calculado.",
         "operationId": "listar_salones_salones_get",
         "security": [
           {
@@ -1801,8 +2206,44 @@
                   "type": "null"
                 }
               ],
+              "description": "Busca en nombre y descripción",
               "title": "Busqueda"
+            },
+            "description": "Busca en nombre y descripción"
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TipoSalon"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tipo"
             }
+          },
+          {
+            "name": "con_equipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CategoriaRecurso"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo salones con al menos un equipo operativo de esta categoría",
+              "title": "Con Equipo"
+            },
+            "description": "Solo salones con al menos un equipo operativo de esta categoría"
           }
         ],
         "responses": {
@@ -1839,7 +2280,7 @@
           "salones"
         ],
         "summary": "Obtener Salon",
-        "description": "Obtiene un salón por ID.",
+        "description": "Obtiene un salón por ID, con su equipamiento y tipo sugerido.",
         "operationId": "obtener_salon_salones__salon_id__get",
         "security": [
           {
@@ -2400,7 +2841,7 @@
           "prestamos-salon"
         ],
         "summary": "Crear Prestamo Salon",
-        "description": "Solicita un préstamo de salón.\nValida conflictos con horarios académicos y otros préstamos existentes.\nEl usuario autenticado queda asociado como solicitante.",
+        "description": "Solicita un préstamo de salón. Exige correo verificado (ADR-0014): una cuenta sin\nverificar puede entrar y consultar, pero no pedir salones.\nValida conflictos con horarios académicos y otros préstamos existentes.\nEl usuario autenticado queda asociado como solicitante.",
         "operationId": "crear_prestamo_salon_prestamos_salon_post",
         "security": [
           {
@@ -3253,6 +3694,67 @@
         ],
         "title": "AuditoriaResponse"
       },
+      "CambiarCorreoRequest": {
+        "properties": {
+          "correo_nuevo": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 5,
+            "title": "Correo Nuevo"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password",
+            "description": "Contraseña actual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "correo_nuevo",
+          "password"
+        ],
+        "title": "CambiarCorreoRequest"
+      },
+      "CambiarPasswordRequest": {
+        "properties": {
+          "password_actual": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password Actual"
+          },
+          "password_nueva": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password Nueva"
+          }
+        },
+        "type": "object",
+        "required": [
+          "password_actual",
+          "password_nueva"
+        ],
+        "title": "CambiarPasswordRequest"
+      },
+      "Canal": {
+        "properties": {
+          "cuenta": {
+            "type": "boolean",
+            "title": "Cuenta",
+            "default": true
+          },
+          "salones": {
+            "type": "boolean",
+            "title": "Salones",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "Canal"
+      },
       "CategoriaRecurso": {
         "type": "string",
         "enum": [
@@ -3312,6 +3814,30 @@
         ],
         "title": "ClaseActual"
       },
+      "EquipoCategoria": {
+        "properties": {
+          "categoria": {
+            "type": "string",
+            "title": "Categoria"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "operativos": {
+            "type": "integer",
+            "title": "Operativos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categoria",
+          "total",
+          "operativos"
+        ],
+        "title": "EquipoCategoria",
+        "description": "Equipamiento calculado (ADR-0017): no se guarda, sale de los recursos activos."
+      },
       "EstadoRecurso": {
         "type": "string",
         "enum": [
@@ -3359,6 +3885,7 @@
         "properties": {
           "email": {
             "type": "string",
+            "maxLength": 254,
             "minLength": 5,
             "title": "Email"
           }
@@ -3861,6 +4388,18 @@
         "type": "object",
         "title": "MantenimientoRecursoUpdate"
       },
+      "Notificaciones": {
+        "properties": {
+          "correo": {
+            "$ref": "#/components/schemas/Canal"
+          },
+          "push": {
+            "$ref": "#/components/schemas/Canal"
+          }
+        },
+        "type": "object",
+        "title": "Notificaciones"
+      },
       "OcupacionSalon": {
         "properties": {
           "salon": {
@@ -3921,6 +4460,210 @@
         ],
         "title": "OcupacionSalon",
         "description": "Foto en vivo de un salón: quién lo tiene y en qué situación está."
+      },
+      "PasswordRequest": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "title": "PasswordRequest",
+        "description": "Confirma una acción sensible con la contraseña actual."
+      },
+      "PerfilResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "rol": {
+            "type": "string",
+            "title": "Rol"
+          },
+          "email_verificado": {
+            "type": "boolean",
+            "title": "Email Verificado",
+            "default": true
+          },
+          "fecha_registro": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Registro"
+          },
+          "nombre_mostrar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre Mostrar"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "dependencia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dependencia"
+          },
+          "color_avatar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color Avatar"
+          },
+          "preferencias": {
+            "$ref": "#/components/schemas/Preferencias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "email",
+          "rol"
+        ],
+        "title": "PerfilResponse",
+        "description": "GET /auth/me: perfil completo. Los campos nuevos tienen valor por defecto (contrato)."
+      },
+      "PerfilUpdate": {
+        "properties": {
+          "nombre_mostrar": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre Mostrar"
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefono"
+          },
+          "dependencia": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dependencia"
+          },
+          "color_avatar": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 7
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color Avatar"
+          },
+          "preferencias": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Preferencias"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PerfilUpdate",
+        "description": "PATCH /auth/me: solo se cambian los campos enviados. \"\" borra un campo opcional."
+      },
+      "Preferencias": {
+        "properties": {
+          "notificaciones": {
+            "$ref": "#/components/schemas/Notificaciones"
+          },
+          "tamano_texto": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "grande",
+              "extra_grande"
+            ],
+            "title": "Tamano Texto",
+            "default": "normal"
+          },
+          "pantalla_inicio": {
+            "type": "string",
+            "enum": [
+              "inicio",
+              "salones",
+              "control"
+            ],
+            "title": "Pantalla Inicio",
+            "default": "inicio"
+          }
+        },
+        "type": "object",
+        "title": "Preferencias"
       },
       "PresenciaResponse": {
         "properties": {
@@ -4212,6 +4955,28 @@
               }
             ],
             "title": "Created At"
+          },
+          "salon_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salon Nombre"
+          },
+          "usuario_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Nombre"
           }
         },
         "type": "object",
@@ -4319,6 +5084,39 @@
               }
             ],
             "title": "Salon Id"
+          },
+          "salon_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salon Nombre"
+          },
+          "salon_edificio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salon Edificio"
+          },
+          "salon_ubicacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salon Ubicacion"
           },
           "serial": {
             "type": "string",
@@ -4640,6 +5438,28 @@
               }
             ],
             "title": "Resuelto En"
+          },
+          "salon_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salon Nombre"
+          },
+          "usuario_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Nombre"
           }
         },
         "type": "object",
@@ -4674,7 +5494,8 @@
           },
           "new_password": {
             "type": "string",
-            "minLength": 6,
+            "maxLength": 128,
+            "minLength": 8,
             "title": "New Password"
           }
         },
@@ -4737,6 +5558,22 @@
           "estado": {
             "$ref": "#/components/schemas/EstadoSalon",
             "default": "disponible"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoSalon",
+            "default": "aula"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
           }
         },
         "type": "object",
@@ -4819,6 +5656,41 @@
               }
             ],
             "title": "Updated At"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo",
+            "default": "aula"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "equipamiento": {
+            "items": {
+              "$ref": "#/components/schemas/EquipoCategoria"
+            },
+            "type": "array",
+            "title": "Equipamiento",
+            "default": []
+          },
+          "tipo_sugerido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Sugerido"
           }
         },
         "type": "object",
@@ -4901,10 +5773,61 @@
                 "type": "null"
               }
             ]
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TipoSalon"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
           }
         },
         "type": "object",
         "title": "SalonUpdate"
+      },
+      "SesionRenovada": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "access_token",
+          "refresh_token"
+        ],
+        "title": "SesionRenovada",
+        "description": "Tokens nuevos para ESTE dispositivo (los demás quedan cerrados)."
       },
       "TipoReporteSalon": {
         "type": "string",
@@ -4916,6 +5839,19 @@
           "otro"
         ],
         "title": "TipoReporteSalon"
+      },
+      "TipoSalon": {
+        "type": "string",
+        "enum": [
+          "aula",
+          "laboratorio_computo",
+          "sala_audiovisual",
+          "auditorio",
+          "sala_reuniones",
+          "otro"
+        ],
+        "title": "TipoSalon",
+        "description": "Para qué sirve el salón (ADR-0017). El equipamiento NO va aquí: se calcula."
       },
       "TokenResponse": {
         "properties": {
@@ -4973,6 +5909,11 @@
           "rol": {
             "type": "string",
             "title": "Rol"
+          },
+          "email_verificado": {
+            "type": "boolean",
+            "title": "Email Verificado",
+            "default": true
           }
         },
         "type": "object",
@@ -5007,6 +5948,11 @@
           "rol": {
             "type": "string",
             "title": "Rol"
+          },
+          "email_verificado": {
+            "type": "boolean",
+            "title": "Email Verificado",
+            "default": true
           }
         },
         "type": "object",
@@ -5029,6 +5975,7 @@
           },
           "email": {
             "type": "string",
+            "maxLength": 254,
             "minLength": 5,
             "title": "Email"
           },
@@ -5039,7 +5986,8 @@
           },
           "password": {
             "type": "string",
-            "minLength": 6,
+            "maxLength": 128,
+            "minLength": 8,
             "title": "Password"
           }
         },
@@ -5055,7 +6003,8 @@
         "properties": {
           "nombre": {
             "type": "string",
-            "title": "Nombre"
+            "title": "Nombre",
+            "description": "Nombre de usuario o correo"
           },
           "password": {
             "type": "string",
@@ -5109,13 +6058,6 @@
           "type": {
             "type": "string",
             "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
           }
         },
         "type": "object",

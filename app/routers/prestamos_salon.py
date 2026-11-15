@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AdminUser, CurrentUser
+from app.core.deps import AdminUser, CurrentUser, VerifiedUser
 from app.schemas.prestamos_salon import (
     PrestamoSalonCreate,
     PrestamoSalonResponse,
@@ -26,10 +26,11 @@ router = APIRouter()
 def crear_prestamo_salon(
     prestamo: PrestamoSalonCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: VerifiedUser,
 ):
     """
-    Solicita un préstamo de salón.
+    Solicita un préstamo de salón. Exige correo verificado (ADR-0014): una cuenta sin
+    verificar puede entrar y consultar, pero no pedir salones.
     Valida conflictos con horarios académicos y otros préstamos existentes.
     El usuario autenticado queda asociado como solicitante.
     """

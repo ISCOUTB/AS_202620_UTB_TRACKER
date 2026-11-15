@@ -2,7 +2,10 @@
 
 ## Estado
 
-Aceptado (2026-11-14). Modifica el punto 4 de ADR-0011.
+Aceptado (2026-11-14). Modifica el punto 4 de ADR-0011. El punto 1 (`iniciar.ps1` contra la
+nube por defecto) y la escala 0,9 los reemplazan ADR-0014 (`iniciar.ps1` levanta API + worker +
+app locales y `-Nube` usa el servidor oficial; la app siempre muestra a qué servidor habla) y
+ADR-0016 (escala 1,10 y tamaño de texto como preferencia).
 
 ## Contexto
 

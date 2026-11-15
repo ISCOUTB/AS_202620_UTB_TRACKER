@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/error/api_exception.dart';
 import '../../../core/state/carga.dart';
+import '../../salones/domain/entities/salon.dart';
 import '../domain/entities/ocupacion.dart';
 import '../domain/repositories/salones_admin_repository.dart';
 
@@ -27,6 +28,22 @@ class SalonesAdminController extends ChangeNotifier {
   String? _error;
   FiltroPanel _filtro = FiltroPanel.todos;
   String _busqueda = '';
+  // Filtros de ADR-0017: tipo de salón y "con equipo operativo de…".
+  TipoSalon? _tipo;
+  String? _conEquipo;
+
+  TipoSalon? get tipo => _tipo;
+  String? get conEquipo => _conEquipo;
+
+  void fijarTipo(TipoSalon? t) {
+    _tipo = t;
+    notifyListeners();
+  }
+
+  void fijarConEquipo(String? categoria) {
+    _conEquipo = categoria;
+    notifyListeners();
+  }
 
   Carga get carga => _carga;
   String? get error => _error;
@@ -64,9 +81,12 @@ class SalonesAdminController extends ChangeNotifier {
     final q = _busqueda.toLowerCase();
     final lista = _items.where((o) {
       if (!_coincide(o)) return false;
+      if (_tipo != null && o.salon.tipo != _tipo) return false;
+      if (_conEquipo != null && o.salon.operativos(_conEquipo!) == 0) return false;
       if (q.isEmpty) return true;
-      final texto =
-          '${o.salon.nombre} ${o.salon.ubicacion} ${o.titular} ${o.subtitular}'.toLowerCase();
+      final texto = '${o.salon.nombre} ${o.salon.ubicacion} ${o.titular} ${o.subtitular} '
+              '${o.salon.descripcion ?? ''}'
+          .toLowerCase();
       return texto.contains(q);
     }).toList();
     lista.sort((a, b) {

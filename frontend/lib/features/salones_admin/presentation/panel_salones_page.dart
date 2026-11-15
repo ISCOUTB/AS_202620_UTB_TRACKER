@@ -7,8 +7,10 @@ import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/uber_widgets.dart';
 import '../../../shared/utb_ui.dart';
+import '../../../shared/equipamiento_chips.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../salones/domain/entities/salon.dart';
 import '../domain/entities/ocupacion.dart';
 import 'plano_salones.dart';
 import 'salon_control_page.dart';
@@ -271,7 +273,67 @@ class _Filtros extends StatelessWidget {
                 ),
               ),
             ),
+          // Filtros de ADR-0017: tipo de salón y equipo operativo.
+          _Menu<TipoSalon?>(
+            etiqueta: controller.tipo == null ? 'Tipo' : controller.tipo!.etiqueta,
+            activo: controller.tipo != null,
+            opciones: [
+              (null, 'Todos los tipos'),
+              for (final t in TipoSalon.values) (t, t.etiqueta),
+            ],
+            onElegir: controller.fijarTipo,
+          ),
+          _Menu<String?>(
+            etiqueta: controller.conEquipo == null
+                ? 'Con equipo'
+                : 'Con ${nombreCategoria(controller.conEquipo!).toLowerCase()}',
+            activo: controller.conEquipo != null,
+            opciones: [
+              (null, 'Cualquier equipo'),
+              for (final c in categoriasEquipo.keys) (c, nombreCategoria(c)),
+            ],
+            onElegir: controller.fijarConEquipo,
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Chip con menú desplegable (tipo de salón / equipo).
+class _Menu<T> extends StatelessWidget {
+  const _Menu({
+    required this.etiqueta,
+    required this.activo,
+    required this.opciones,
+    required this.onElegir,
+  });
+
+  final String etiqueta;
+  final bool activo;
+  final List<(T, String)> opciones;
+  final ValueChanged<T> onElegir;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: PopupMenuButton<int>(
+        tooltip: etiqueta,
+        onSelected: (i) => onElegir(opciones[i].$1),
+        itemBuilder: (_) => [
+          for (var i = 0; i < opciones.length; i++)
+            PopupMenuItem(value: i, child: Text(opciones[i].$2)),
+        ],
+        child: Chip(
+          label: Text(etiqueta),
+          avatar: Icon(Icons.arrow_drop_down_rounded,
+              color: activo ? AppColors.texto : AppColors.textoSuave),
+          backgroundColor: activo ? AppColors.primario : AppColors.superficieAlta,
+          side: BorderSide.none,
+          shape: const StadiumBorder(),
+          labelStyle: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.texto),
+        ),
       ),
     );
   }
@@ -376,6 +438,14 @@ class TarjetaSalonAdmin extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: AppColors.textoSuave, fontSize: 13),
                 ),
+                // Tipo y equipamiento compactos (ADR-0017).
+                const SizedBox(height: 4),
+                Text(ocupacion.salon.tipo.etiqueta,
+                    style: const TextStyle(color: AppColors.textoTenue, fontSize: 12)),
+                if (ocupacion.salon.equipamiento.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  EquipamientoChips(equipamiento: ocupacion.salon.equipamiento, compacto: true),
+                ],
                 if (ocupacion.solicitudesPendientes > 0 || ocupacion.reportesAbiertos > 0) ...[
                   const SizedBox(height: 8),
                   Wrap(

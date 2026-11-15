@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/assets/figuras.dart';
-import '../../../core/config/api_config.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/politica.dart';
+import '../../../shared/servidor.dart';
 import '../../../shared/uber_widgets.dart';
 import '../../../shared/utb_ui.dart';
 import 'auth_controller.dart';
@@ -89,9 +90,7 @@ class _LoginPageState extends State<LoginPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _Marca(
-                              servidorOk: _auth.servidorOk,
-                              onTap: _auth.comprobarServidor),
+                          const _Marca(),
                           const SizedBox(height: 34),
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 260),
@@ -153,14 +152,18 @@ class _LoginPageState extends State<LoginPage> {
                             const SizedBox(height: 22),
                             _CampoUber(
                               controller: _nombre,
-                              etiqueta: 'Nombre de usuario',
+                              etiqueta: _registrando
+                                  ? 'Nombre de usuario'
+                                  : 'Usuario o correo',
                               icono: Icons.person_outline_rounded,
                               autofill: const [AutofillHints.username],
                               accion: TextInputAction.next,
                               validator: (v) {
                                 final t = (v ?? '').trim();
                                 if (t.isEmpty) {
-                                  return 'Escribe tu nombre de usuario';
+                                  return _registrando
+                                      ? 'Escribe tu nombre de usuario'
+                                      : 'Escribe tu usuario o tu correo';
                                 }
                                 if (_registrando && t.length < 3) {
                                   return 'Mínimo 3 caracteres';
@@ -183,10 +186,9 @@ class _LoginPageState extends State<LoginPage> {
                                         autofill: const [AutofillHints.email],
                                         accion: TextInputAction.next,
                                         validator: (v) =>
-                                            RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                                                    .hasMatch((v ?? '').trim())
+                                            Politica.correoValido(v ?? '')
                                                 ? null
-                                                : 'Escribe un correo válido',
+                                                : Politica.msgCorreoInvalido,
                                       ),
                                     )
                                   : const SizedBox(width: double.infinity),
@@ -221,8 +223,10 @@ class _LoginPageState extends State<LoginPage> {
                                 if (v == null || v.isEmpty) {
                                   return 'Escribe tu contraseña';
                                 }
-                                if (_registrando && v.length < 8) {
-                                  return 'Mínimo 8 caracteres';
+                                if (_registrando) {
+                                  return Politica.errorPassword(v,
+                                      correo: _email.text,
+                                      nombre: _nombre.text);
                                 }
                                 return null;
                               },
@@ -308,10 +312,9 @@ class _LoginPageState extends State<LoginPage> {
             keyboardType: TextInputType.emailAddress,
             decoration:
                 const InputDecoration(labelText: 'Correo institucional'),
-            validator: (value) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                    .hasMatch((value ?? '').trim())
+            validator: (value) => Politica.correoValido(value ?? '')
                 ? null
-                : 'Escribe un correo válido',
+                : Politica.msgCorreoInvalido,
           ),
         ),
         actions: [
@@ -320,7 +323,7 @@ class _LoginPageState extends State<LoginPage> {
               Navigator.pop(dialogContext);
               await _mostrarRestablecimiento(context);
             },
-            child: const Text('Ya tengo un token'),
+            child: const Text('Ya tengo un código'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -345,10 +348,34 @@ class _LoginPageState extends State<LoginPage> {
     if (!context.mounted || enviado != true) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Si el correo existe, recibirás instrucciones.')),
+    // Mensaje neutral: no dice si la cuenta existe (ADR-0014).
+    final tengoCodigo = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.mark_email_read_rounded),
+        title: const Text('Revisa tu correo'),
+        content: const Text(
+          'Si hay una cuenta con ese correo, en unos segundos te llegará un mensaje de '
+          'UTB Tracker (mira también en spam).\n\n'
+          '• Toca «Elegir una contraseña nueva» en el correo, o\n'
+          '• copia el código del correo y pégalo aquí con «Ya tengo un código».\n\n'
+          'El enlace vence en 30 minutos y sirve una sola vez.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Entendido'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ya tengo un código'),
+          ),
+        ],
+      ),
     );
+    if (tengoCodigo == true && context.mounted) {
+      await _mostrarRestablecimiento(context);
+    }
   }
 
   Future<void> _mostrarRestablecimiento(BuildContext context) async {
@@ -366,9 +393,9 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               TextFormField(
                 controller: token,
-                decoration: const InputDecoration(labelText: 'Token recibido'),
+                decoration: const InputDecoration(labelText: 'Código del correo'),
                 validator: (value) => (value ?? '').trim().length < 10
-                    ? 'Escribe el token completo'
+                    ? 'Pega el código completo'
                     : null,
               ),
               TextFormField(
@@ -376,8 +403,7 @@ class _LoginPageState extends State<LoginPage> {
                 obscureText: true,
                 decoration:
                     const InputDecoration(labelText: 'Nueva contraseña'),
-                validator: (value) =>
-                    (value ?? '').length < 6 ? 'Mínimo 6 caracteres' : null,
+                validator: (value) => Politica.errorPassword(value ?? ''),
               ),
             ],
           ),
@@ -407,91 +433,62 @@ class _LoginPageState extends State<LoginPage> {
     password.dispose();
     if (!context.mounted || actualizado != true) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Contraseña actualizada correctamente.')),
+      const SnackBar(
+          content: Text('Contraseña actualizada. Ya puedes entrar con la nueva.')),
     );
   }
 }
 
 /// Logo, nombre y un punto discreto que indica si el servidor responde.
 class _Marca extends StatelessWidget {
-  const _Marca({required this.servidorOk, required this.onTap});
-  final bool? servidorOk;
-  final VoidCallback onTap;
+  const _Marca();
 
   @override
   Widget build(BuildContext context) {
-    final color = servidorOk == null
-        ? AppColors.neutro
-        : servidorOk!
-            ? AppColors.disponible
-            : AppColors.danado;
-    final texto = servidorOk == null
-        ? 'Comprobando…'
-        : servidorOk!
-            ? 'Conectado'
-            : 'Sin conexión';
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Logo con halo luminoso.
-        DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x66000000),
-                  blurRadius: 20,
-                  offset: Offset(0, 8))
-            ],
-          ),
-          child: SvgPicture.asset(Figuras.logo, height: 58),
-        ),
-        const SizedBox(width: 14),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Row(
           children: [
-            const Text('UTB Tracker',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-            Text('CAMPUS TECNOLÓGICO',
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.4,
-                    color: Colors.white.withValues(alpha: 0.75))),
-          ],
-        ),
-        const Spacer(),
-        Tooltip(
-          message:
-              'Servidor: ${ApiConfig.baseUrl}\nToca para volver a comprobar',
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: onTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            // Logo con halo luminoso.
+            DecoratedBox(
               decoration: BoxDecoration(
-                color: const Color(0x55000000),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Color(0x66000000),
+                      blurRadius: 20,
+                      offset: Offset(0, 8))
+                ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              child: SvgPicture.asset(Figuras.logo, height: 58),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration:
-                        BoxDecoration(color: color, shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    texto,
-                    style: const TextStyle(fontSize: 12.5, color: Colors.white),
-                  ),
+                  const Text('UTB Tracker',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                  Text('CAMPUS TECNOLÓGICO',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.4,
+                          color: Colors.white.withValues(alpha: 0.75))),
                 ],
               ),
             ),
-          ),
+          ],
         ),
+        const SizedBox(height: 12),
+        // Dice a qué servidor se conecta la app (y deja cambiarlo en desarrollo). Debajo de la
+        // marca para que quepa con texto grande (Fase 3).
+        const InsigniaServidor(),
       ],
     );
   }

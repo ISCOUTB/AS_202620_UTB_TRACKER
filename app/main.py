@@ -4,7 +4,10 @@ import time
 import uuid
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import CORS_ORIGINS
 from app.routers import auth
@@ -14,6 +17,7 @@ from app.routers import salones, salones_admin, horarios, prestamos_salon, maint
 
 # Importar todos los modelos para que Base.metadata los registre
 from app.models import auth_models, auditoria_models, recurso_models, salon_models  # noqa: F401
+from app.models import seguridad_models  # noqa: F401
 from app.messaging import models as messaging_models  # noqa: F401
 
 request_id_ctx: ContextVar[str] = ContextVar("request_id_ctx", default="system")
@@ -46,6 +50,44 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# Errores de validación (422) en español. Se conserva la forma de FastAPI
+# ({"detail": [{"loc", "msg", "type"}]}) para no romper a los clientes.
+# ---------------------------------------------------------------------------
+_MENSAJES_422 = {
+    "missing": "Este campo es obligatorio",
+    "string_too_short": "Debe tener al menos {min_length} caracteres",
+    "string_too_long": "Debe tener como máximo {max_length} caracteres",
+    "int_parsing": "Debe ser un número entero",
+    "enum": "Valor no permitido. Opciones: {expected}",
+    "literal_error": "Valor no permitido. Opciones: {expected}",
+    "json_invalid": "El cuerpo de la petición no es un JSON válido",
+}
+
+
+def _mensaje_422(error: dict) -> str:
+    tipo = error.get("type", "")
+    if tipo == "value_error":
+        # Mensajes propios (política de contraseña, correo): sin el prefijo "Value error, ".
+        return str(error.get("msg", "")).removeprefix("Value error, ")
+    plantilla = _MENSAJES_422.get(tipo)
+    if plantilla:
+        try:
+            return plantilla.format(**(error.get("ctx") or {}))
+        except (KeyError, IndexError):
+            return plantilla
+    return str(error.get("msg", "Dato inválido"))
+
+
+@app.exception_handler(RequestValidationError)
+async def validacion_en_espanol(request: Request, exc: RequestValidationError):
+    errores = [
+        {"loc": e.get("loc"), "msg": _mensaje_422(e), "type": e.get("type")}
+        for e in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content=jsonable_encoder({"detail": errores}))
 
 
 @app.middleware("http")

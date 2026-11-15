@@ -8,7 +8,9 @@ import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/salon.dart';
+import '../../../shared/equipamiento_chips.dart';
 import 'salon_detalle_page.dart';
+import 'tipo_salon_campos.dart';
 import 'salones_controller.dart';
 
 class SalonesPage extends StatefulWidget {
@@ -46,11 +48,14 @@ class _SalonesPageState extends State<SalonesPage> {
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         // #4 — al crear un salón se limpia la búsqueda para que el nuevo sea visible
-        child: _CrearSalonSheet(
-          onExito: () {
-            _busquedaCtrl.clear();
-            _salones.fijarBusqueda('');
-          },
+        // Con tipo y descripción el formulario es más alto: debe poder desplazarse.
+        child: SingleChildScrollView(
+          child: _CrearSalonSheet(
+            onExito: () {
+              _busquedaCtrl.clear();
+              _salones.fijarBusqueda('');
+            },
+          ),
         ),
       ),
     );
@@ -270,6 +275,7 @@ class _FilaSalon extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   [
+                    salon.tipo.etiqueta,
                     if (salon.edificio != null) 'Ed. ${salon.edificio}',
                     if (salon.piso != null) 'Piso ${salon.piso}',
                     '${salon.capacidad} personas',
@@ -277,6 +283,10 @@ class _FilaSalon extends StatelessWidget {
                   style: const TextStyle(
                       color: AppColors.textoSuave, fontSize: 13),
                 ),
+                if (salon.equipamiento.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  EquipamientoChips(equipamiento: salon.equipamiento, compacto: true),
+                ],
                 const SizedBox(height: 8),
                 Insignia(
                   texto: disponible ? 'Libre' : _estadoLegible(salon.estado),
@@ -455,6 +465,8 @@ class _CrearSalonSheetState extends State<_CrearSalonSheet> {
   final TextEditingController _pisoCtrl = TextEditingController();
   final TextEditingController _capacidadCtrl =
       TextEditingController(text: '30');
+  final TextEditingController _descripcionCtrl = TextEditingController();
+  TipoSalon _tipo = TipoSalon.aula;
 
   bool _enviando = false;
 
@@ -465,6 +477,7 @@ class _CrearSalonSheetState extends State<_CrearSalonSheet> {
     _edificioCtrl.dispose();
     _pisoCtrl.dispose();
     _capacidadCtrl.dispose();
+    _descripcionCtrl.dispose();
     super.dispose();
   }
 
@@ -485,6 +498,8 @@ class _CrearSalonSheetState extends State<_CrearSalonSheet> {
       edificio: _edificioCtrl.text.trim(),
       piso: int.tryParse(_pisoCtrl.text.trim()),
       capacidad: capacidad,
+      tipo: _tipo,
+      descripcion: _descripcionCtrl.text,
     );
     setState(() => _enviando = false);
 
@@ -570,7 +585,14 @@ class _CrearSalonSheetState extends State<_CrearSalonSheet> {
               hintText: 'Ej. 35',
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+          // Un salón nuevo aún no tiene equipos: la sugerencia de tipo aparece al editarlo.
+          CamposTipoSalon(
+            tipo: _tipo,
+            onTipo: (t) => setState(() => _tipo = t),
+            descripcion: _descripcionCtrl,
+          ),
+          const SizedBox(height: 12),
           FilledButton(
             onPressed: _enviando ? null : _guardar,
             child: _enviando

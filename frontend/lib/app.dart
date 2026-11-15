@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'core/di/injection.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/escala.dart';
+import 'features/auth/domain/preferencias.dart';
 import 'features/auth/presentation/auth_controller.dart';
 import 'features/auth/presentation/login_page.dart';
+import 'features/auth/presentation/verificacion_page.dart';
 import 'features/home/presentation/shell_page.dart';
 
 class UtbTrackerApp extends StatelessWidget {
@@ -17,46 +20,17 @@ class UtbTrackerApp extends StatelessWidget {
       theme: AppTheme.oscuro,
       darkTheme: AppTheme.oscuro,
       themeMode: ThemeMode.dark,
-      builder: (context, child) => EscalaGlobal(child: child!),
-      home: const _Raiz(),
-    );
-  }
-}
-
-/// Dibuja toda la app (pantallas, hojas y diálogos) un poco más pequeña para que quepa más
-/// información, como bajar el "tamaño de pantalla" del teléfono. La app se diseña en un
-/// lienzo mayor (tamaño / [factor]) y se pinta reducida; los toques se convierten solos.
-class EscalaGlobal extends StatelessWidget {
-  const EscalaGlobal({super.key, required this.child, this.factor = 0.9});
-
-  final Widget child;
-  final double factor;
-
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final lienzo = mq.size / factor;
-    return OverflowBox(
-      alignment: Alignment.topLeft,
-      minWidth: lienzo.width,
-      maxWidth: lienzo.width,
-      minHeight: lienzo.height,
-      maxHeight: lienzo.height,
-      child: Transform.scale(
-        scale: factor,
-        alignment: Alignment.topLeft,
-        child: MediaQuery(
-          data: mq.copyWith(
-            size: lienzo,
-            devicePixelRatio: mq.devicePixelRatio * factor,
-            padding: mq.padding / factor,
-            viewPadding: mq.viewPadding / factor,
-            viewInsets: mq.viewInsets / factor,
-            systemGestureInsets: mq.systemGestureInsets / factor,
-          ),
-          child: child,
+      // Escala de la interfaz y tamaño de texto en un solo punto (Fase 3). El tamaño de texto
+      // elegido en el perfil (guardado en el servidor) se aplica al iniciar sesión.
+      builder: (context, child) => ListenableBuilder(
+        listenable: sl<AuthController>(),
+        builder: (context, _) => EscalaGlobal(
+          tamanoTexto: sl<AuthController>().usuario?.preferencias.tamanoTexto ??
+              TamanoTexto.normal,
+          child: child!,
         ),
       ),
+      home: const _Raiz(),
     );
   }
 }
@@ -83,8 +57,11 @@ class _RaizState extends State<_Raiz> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: _auth,
-      builder: (context, _) =>
-          _auth.autenticado ? const ShellPage() : const LoginPage(),
+      builder: (context, _) => !_auth.autenticado
+          ? const LoginPage()
+          : _auth.mostrarVerificacionPendiente
+              ? const VerificacionPage()
+              : const ShellPage(),
     );
   }
 }

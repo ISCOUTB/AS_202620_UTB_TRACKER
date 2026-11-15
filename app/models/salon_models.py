@@ -38,6 +38,9 @@ class Salon(Base):
     edificio = Column(String, nullable=True)
     piso = Column(Integer, nullable=True)
     capacidad = Column(Integer, nullable=False)
+    # aula | laboratorio_computo | sala_audiovisual | auditorio | sala_reuniones | otro (ADR-0017)
+    tipo = Column(String(30), nullable=False, default="aula", server_default="aula")
+    descripcion = Column(String(500), nullable=True)
     estado = Column(String, nullable=False, default="disponible")
     # valores válidos: disponible | ocupado | mantenimiento | fuera_servicio
     activo = Column(Boolean, nullable=False, default=True)

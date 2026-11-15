@@ -10,6 +10,7 @@ enum TipoError {
   noEncontrado,
   conflicto,
   validacion,
+  limite,
   servidor,
   desconocido,
 }
@@ -27,7 +28,7 @@ class ApiException implements Exception {
 
   factory ApiException.sinConexion() => ApiException(
         TipoError.sinConexion,
-        'No hay conexión con el servidor. Revisa tu red e intenta de nuevo.',
+        'No hay conexión con el servidor. Revisa tu internet o que el servidor esté encendido.',
       );
 
   factory ApiException.tiempoAgotado() => ApiException(
@@ -63,6 +64,18 @@ class ApiException implements Exception {
           detalle ?? 'La acción choca con el estado actual.',
           statusCode: 409,
         );
+      case 400:
+        return ApiException(
+          TipoError.validacion,
+          detalle ?? 'La petición no es válida.',
+          statusCode: 400,
+        );
+      case 429:
+        return ApiException(
+          TipoError.limite,
+          detalle ?? 'Demasiados intentos. Espera un momento e intenta de nuevo.',
+          statusCode: 429,
+        );
       case 422:
         return ApiException(
           TipoError.validacion,
@@ -70,6 +83,14 @@ class ApiException implements Exception {
           statusCode: 422,
         );
       default:
+        if (r.statusCode == 502 || r.statusCode == 503 || r.statusCode == 504) {
+          return ApiException(
+            TipoError.servidor,
+            'El servidor no está disponible en este momento (${r.statusCode}). '
+            'Puede estar reiniciándose: intenta en unos minutos.',
+            statusCode: r.statusCode,
+          );
+        }
         if (r.statusCode >= 500) {
           return ApiException(
             TipoError.servidor,

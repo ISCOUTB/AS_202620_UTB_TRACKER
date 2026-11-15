@@ -5,20 +5,48 @@
 En la terminal de VS Code, desde la raíz del repo:
 
 ```powershell
-.\iniciar.ps1                         # app web contra el SERVIDOR EN LA NUBE y abre el navegador
-.\iniciar.ps1 -SinCompilar            # más rápido: no recompila la app si no cambiaste el frontend
-.\iniciar.ps1 -Local                  # desarrollo: backend en tu PC con su propia base de datos
-.\iniciar.ps1 -Local -ReiniciarDatos  # igual, y recarga los datos de ejemplo locales
-.\detener.ps1                         # apaga todo
+.\iniciar.ps1                  # LOCAL: API + worker de correos + app web, apuntándose entre sí
+.\iniciar.ps1 -ReiniciarDatos  # igual, y recarga los datos de ejemplo
+.\iniciar.ps1 -SinCompilar     # más rápido: no recompila la app si no cambiaste el frontend
+.\iniciar.ps1 -Nube            # solo la app web, contra el servidor OFICIAL (el del celular)
+.\detener.ps1                  # apaga todo (API, worker y app)
 ```
 
-Por defecto la web usa el mismo servidor en la nube que el APK del celular
-(`https://129-80-171-141.nip.io`): **las cuentas y los datos son los mismos en el PC y en el
-celular** (ADR-0013). Se abre la ventana "UTB Tracker - APP" (y con `-Local` también "UTB Tracker -
-BACKEND"): **no las cierres** mientras uses la app. La app queda en http://127.0.0.1:8080.
+**¿Cuál servidor uso?** (ADR-0014)
 
-Las cuentas de ejemplo de la sección 4 existen solo en el modo `-Local`; en la nube usa la cuenta
-que creaste.
+| Comando | Servidor | Cuentas |
+|---|---|---|
+| `.\iniciar.ps1` | Local, en tu PC (`http://127.0.0.1:8000`, base `utb_tracker.db`) | De prueba (sección 4) y las que crees en tu PC |
+| `.\iniciar.ps1 -Nube` y el APK | **Oficial**, `https://129-80-171-141.nip.io` | Las reales, iguales en el PC y el celular |
+
+La app siempre muestra arriba a qué servidor habla ("Local (este PC) · conectado" u "Oficial
+(nube) · conectado"). Tócalo para ver la dirección completa; en esta compilación también puedes
+cambiarlo desde ahí.
+
+Se abren las ventanas "UTB Tracker - API", "UTB Tracker - WORKER" y "UTB Tracker - APP": **no las
+cierres** mientras uses la app. La app queda en http://127.0.0.1:8080. Al arrancar, la base local
+se actualiza sola a la última versión (`scripts/preparar_bd.py`), sin borrar tus cuentas.
+
+### Correos en local
+
+En tu PC los correos **no se envían**: el worker los guarda completos en `logs\correos\`. Cada
+correo tiene un `.html` (ábrelo con doble clic para verlo como lo vería la persona) y un `.eml`.
+En la ventana del worker también aparece la línea `[correo-dev] NO enviado ... Enlace=...` con el
+enlace listo para copiar en el navegador. Para enviar correos de verdad, ver
+`docs/despliegue/worker.md`.
+
+### Prueba guiada del flujo completo (local)
+
+1. `.\iniciar.ps1` y en el navegador **Crear cuenta** (usa una contraseña de 8 o más caracteres).
+2. Aparece "Revisa tu correo". Abre la carpeta `logs\correos\`, abre el `.html` más nuevo
+   (`..._verificacion_...`) y toca **Confirmar mi correo**: sale "Correo verificado".
+3. En la app toca **Ya lo verifiqué**. Ya puedes solicitar salones.
+4. **Perfil → Seguridad → Cambiar correo**: escribe otro correo y tu contraseña. En
+   `logs\correos\` aparecen dos correos: el enlace al correo nuevo y el aviso al anterior. Abre el
+   enlace: "Correo actualizado". Tu sesión sigue abierta.
+5. **Perfil → Seguridad → Cambiar contraseña**. Llega el aviso "Tu contraseña cambió".
+6. Cierra la ventana "UTB Tracker - API" (o `.\detener.ps1`) y vuelve a correr `.\iniciar.ps1
+   -SinCompilar`. Entra con el correo NUEVO y la contraseña NUEVA: la cuenta sigue ahí.
 
 ## Forma manual
 
@@ -78,7 +106,9 @@ flutter run -d edge --dart-define=API_BASE_URL=http://127.0.0.1:8000
 Dentro de `flutter run`: `r` recarga en caliente, `R` reinicia, `q` sale. En `web-server`
 los cambios se ven recargando la página (F5).
 
-## 4. Cuentas de ejemplo (el login pide NOMBRE + clave)
+## 4. Cuentas de ejemplo (el login acepta el NOMBRE o el CORREO + clave)
+
+Todas vienen con el correo ya verificado, así que pueden solicitar salones de una vez.
 
 | Rol | Nombre | Clave | Qué ve |
 |---|---|---|---|
@@ -90,12 +120,18 @@ los cambios se ven recargando la página (F5).
 
 ## 5. Datos de ejemplo que crea `scripts/seed_demo.py`
 
-- **8 salones** `DEMO-*` (edificios A, B y Laboratorios).
-- **Clases en curso ahora** en A101, B201 y LAB1 (calculadas con la hora actual).
-- **Préstamos de salón**: uno aprobado (A103), uno en uso (B202), dos pendientes (A102), uno rechazado.
-- **13 recursos**: video beams, portátiles, aires, TV, audio y otros, en distintos estados
-  (disponible, prestado, dañado, mantenimiento); 3 con préstamo activo y 1 ya devuelto.
-- **Reportes** de salón (abiertos y resuelto) y un reporte de recurso dañado.
+- **Salones del campus** (Aulas 4, Alcatraz, Laboratorios, Biblioteca), cada uno con su
+  **tipo** y, varios, con **descripción** (ADR-0017):
+  - `LAB-SIS1`: laboratorio de cómputo con 20 computadores.
+  - `AUD-CT`: auditorio de 220 puestos con sonido y video beam.
+  - `A4-301`: sala audiovisual; `ALC-201` y `BIB-SG1`: salas de reuniones.
+  - `LAB-SIS2`: guardado a propósito como "aula" con 12 computadores, para ver en la app
+    "Sugerido: Laboratorio de cómputo [Usar]".
+- **Equipos fijos en cada salón** (no se prestan): video beams, computadores, aires, TV, audio,
+  algunos dañados o en mantenimiento. El equipamiento que muestra la app se calcula de ellos.
+- **Clases en curso ahora** (calculadas con la hora actual), solicitudes de salón en distintos
+  estados y reportes de salón.
+- Los salones `DEMO-*` de versiones anteriores se borran solos al correr el script.
 
 Las clases usan la hora de cuando corres el script: **vuelve a correrlo** (es repetible) cuando
 las clases ya hayan terminado y quieras verlas en curso otra vez:

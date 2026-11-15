@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../auth/presentation/verificacion_page.dart';
 import '../../control/presentation/control_page.dart';
 import '../../cuenta/presentation/cuenta_page.dart';
 import '../../salones/presentation/salones_page.dart';
@@ -21,7 +22,12 @@ class ShellPage extends StatefulWidget {
 }
 
 class _ShellPageState extends State<ShellPage> {
-  int _indice = 0;
+  // Pestaña inicial según la preferencia guardada en el servidor (ADR-0016).
+  late int _indice = switch (sl<AuthController>().usuario?.preferencias.pantallaInicio) {
+    'salones' => 1,
+    'control' => 2,
+    _ => 0,
+  };
 
   void _ir(int i) => setState(() => _indice = i);
 
@@ -57,7 +63,14 @@ class _ShellPageState extends State<ShellPage> {
           },
         ),
       ),
-      bottomNavigationBar: _BarraInferior(indice: _indice, onTap: _ir),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Aviso fijo mientras el correo no esté verificado (ADR-0014).
+          const AvisoVerificacion(),
+          _BarraInferior(indice: _indice, onTap: _ir),
+        ],
+      ),
     );
   }
 }
