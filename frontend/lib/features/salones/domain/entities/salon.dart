@@ -44,7 +44,29 @@ class Salon {
     this.descripcion,
     this.equipamiento = const [],
     this.tipoSugerido,
+    this.capacidadEstimada = false,
+    this.habilitado = true,
+    this.motivoDeshabilitado,
+    this.notaDeshabilitado,
+    this.reaperturaEstimada,
+    this.avisoDeshabilitado,
+    this.ocupadoAhora = false,
   });
+
+  /// HABILITACIÓN manual (ADR-0022): un salón deshabilitado no se solicita.
+  final bool habilitado;
+  final String? motivoDeshabilitado;
+  final String? notaDeshabilitado;
+  final DateTime? reaperturaEstimada;
+
+  /// Texto listo del servidor: "Deshabilitado: Mantenimiento (…). Reapertura estimada: …".
+  final String? avisoDeshabilitado;
+
+  /// OCUPACIÓN calculada por el servidor: hay clase o solicitud aprobada ahora.
+  final bool ocupadoAhora;
+
+  /// Capacidad por defecto sin dato oficial (ADR-0021): se muestra "estimada".
+  final bool capacidadEstimada;
 
   final TipoSalon tipo;
   final String? descripcion;
@@ -67,6 +89,9 @@ class Salon {
   final bool activo;
 
   bool get disponible => estado.toLowerCase() == 'disponible';
+
+  /// Se puede pedir para otro momento aunque ahora esté ocupado; deshabilitado, nunca.
+  bool get solicitable => habilitado && estado != 'mantenimiento' && estado != 'fuera_servicio';
 
   String get detalleUbicacion {
     final partes = <String>[ubicacion];
@@ -152,6 +177,7 @@ class PrestamoSalon {
     this.atendidoPorNombre,
     this.atendidoEn,
     this.conflicto,
+    this.avisoSalon,
   });
 
   final int id;
@@ -174,6 +200,9 @@ class PrestamoSalon {
 
   /// Solo en la bandeja del auditor: con qué choca la franja (null = libre).
   final String? conflicto;
+
+  /// ADR-0022: el salón quedó deshabilitado (texto del servidor con el motivo).
+  final String? avisoSalon;
 
   String get salonTexto => salonNombre ?? 'Salón';
   bool get pendiente => estado == 'pendiente';

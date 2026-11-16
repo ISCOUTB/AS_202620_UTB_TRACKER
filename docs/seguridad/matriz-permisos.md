@@ -32,6 +32,7 @@ si se agrega un endpoint sin fila aquí, o la fila no coincide con el código, l
 | `equipos.gestionar` | — | ✅ | ✅ |
 | `horarios.gestionar` | — | ✅ | ✅ |
 | `usuarios.ver` | — | ✅ | ✅ |
+| `salones.crear_catalogo` (crear, renombrar, desactivar; ADR-0021) | — | — | ✅ |
 | `usuarios.gestionar` | — | — | ✅ |
 | `auditoria.ver` | — | — | ✅ |
 | `estadisticas.ver` | — | — | ✅ |
@@ -77,6 +78,10 @@ los huecos corregidos.
 | PATCH | `/auth/fcm-token` | sesión | sesión | |
 | POST | `/recursos` | auxiliar o admin | equipos.gestionar | |
 | GET | `/recursos` | sesión | equipos.ver | |
+| GET | `/recursos/plantillas` | — | equipos.gestionar | Nuevo (ADR-0022) |
+| POST | `/recursos/plantillas/vista-previa` | — | equipos.gestionar | Nuevo (ADR-0022): solo informa |
+| POST | `/recursos/plantillas/aplicar` | — | equipos.gestionar | Nuevo (ADR-0022): solo lo que falta, auditado |
+| PATCH | `/recursos/{recurso_id}/estado` | — | equipos.gestionar | Nuevo (ADR-0022): operativo/dañado/mantenimiento; "prestado" rechazado |
 | GET | `/recursos/{recurso_id}` | sesión | equipos.ver | |
 | PUT | `/recursos/{recurso_id}` | auxiliar o admin | equipos.gestionar | |
 | DELETE | `/recursos/{recurso_id}` | auxiliar o admin | equipos.gestionar | |
@@ -87,6 +92,12 @@ los huecos corregidos.
 | PATCH | `/prestamos/{prestamo_id}/devolver` | sesión | equipos.gestionar | ⚠ legado: cualquiera devolvía préstamos ajenos |
 | POST | `/prestamos/marcar-vencidos` | auxiliar o admin | equipos.gestionar | Legado |
 | POST | `/prestamos/jobs/marcar-vencidos` | auxiliar o admin | equipos.gestionar | Legado |
+| POST | `/salones/habilitacion/lote/vista-previa` | — | salones.administrar | Nuevo (ADR-0022): solo informa |
+| POST | `/salones/habilitacion/lote` | — | salones.administrar | Nuevo (ADR-0022): edificio o piso, todo o nada, auditado |
+| GET | `/salones/ocupacion/resumen` | — | salones.administrar | Nuevo (ADR-0022): libres/ocupados/deshabilitados por piso |
+| GET | `/salones/exportar.csv` | — | salones.administrar | Nuevo (ADR-0022): catálogo y equipos, sin datos personales |
+| PATCH | `/salones/{salon_id}/habilitacion` | — | salones.administrar | Nuevo (ADR-0022): motivo obligatorio al deshabilitar; avisa a los afectados |
+| GET | `/salones/{salon_id}/historial` | — | salones.administrar | Nuevo (ADR-0022) |
 | GET | `/salones/ocupacion` | auxiliar o admin | salones.administrar | |
 | GET | `/salones/{salon_id}/ocupacion` | auxiliar o admin | salones.administrar | |
 | PUT | `/salones/{salon_id}/presencia` | auxiliar o admin | salones.administrar | |
@@ -94,11 +105,14 @@ los huecos corregidos.
 | GET | `/salones/reportes` | auxiliar o admin | reportes.gestionar | |
 | GET | `/salones/{salon_id}/reportes` | sesión | reportes.gestionar | ⚠ cualquiera leía los reportes (con nombres) |
 | PATCH | `/salones/{salon_id}/reportes/{reporte_id}` | auxiliar o admin | reportes.gestionar | |
-| POST | `/salones` | auxiliar o admin | salones.administrar | |
+| POST | `/salones/catalogo/rango/vista-previa` | — | salones.crear_catalogo | Nuevo (ADR-0021): solo informa |
+| POST | `/salones/catalogo/rango` | — | salones.crear_catalogo | Nuevo (ADR-0021): crear varios, auditado |
+| GET | `/salones/catalogo/fuera` | — | salones.crear_catalogo | Nuevo (ADR-0021): reporte de reconciliación |
+| POST | `/salones` | auxiliar o admin | salones.crear_catalogo | ADR-0021: el Auditor ya no crea (evita errores de catálogo) |
 | GET | `/salones` | sesión | salones.ver | |
 | GET | `/salones/{salon_id}` | sesión | salones.ver | |
-| PUT | `/salones/{salon_id}` | auxiliar o admin | salones.administrar | |
-| DELETE | `/salones/{salon_id}` | auxiliar o admin | salones.administrar | |
+| PUT | `/salones/{salon_id}` | auxiliar o admin | salones.administrar | Renombrar o cambiar edificio/piso: solo `salones.crear_catalogo` (se controla en el servicio) |
+| DELETE | `/salones/{salon_id}` | auxiliar o admin | salones.crear_catalogo | ADR-0021: desactivar (nunca borra) solo Administrador |
 | GET | `/salones/{salon_id}/disponibilidad` | sesión | salones.ver | |
 | POST | `/horarios` | auxiliar o admin | horarios.gestionar | |
 | POST | `/horarios/bulk` | auxiliar o admin | horarios.gestionar | |

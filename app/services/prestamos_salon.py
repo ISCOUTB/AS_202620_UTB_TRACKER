@@ -12,20 +12,31 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models.salon_models import Horario, PrestamoSalon, Salon
 from app.schemas.prestamos_salon import PrestamoSalonCreate
-from app.services import auditoria, correo
+from app.services import auditoria, correo, estado_salon
 
 # Las fechas de préstamo se guardan en UTC "naive"; el campus está en UTC-5.
 _DESFASE_COLOMBIA = timedelta(hours=-5)
 _DIAS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
 
-MSG_PRESTAMO_NO_ENCONTRADO = "Préstamo de salón no encontrado"
+MSG_PRESTAMO_NO_ENCONTRADO = "Solicitud de salón no encontrada"
 
 
 def _validar_salon(db: Session, salon_id: int) -> Salon:
     salon = db.query(Salon).filter(Salon.id == salon_id, Salon.activo.is_(True)).first()
     if not salon:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salón no encontrado")
+    _exigir_habilitado(salon)
     return salon
+
+
+def _exigir_habilitado(salon: Salon) -> None:
+    """Un salón deshabilitado no se solicita ni se aprueba (ADR-0022)."""
+    if not salon.habilitado:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"El salón {salon.nombre} no se puede solicitar. "
+                   f"{estado_salon.texto_deshabilitado(salon)}",
+        )
 
 
 def _detectar_conflicto_horario(db: Session, salon_id: int, fecha_inicio, fecha_fin):
@@ -77,7 +88,7 @@ def _detectar_conflicto_prestamo(db: Session, salon_id: int, fecha_inicio, fecha
     if conflicto:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Ya existe un préstamo de salón en esa franja (ID: {conflicto.id}, estado: {conflicto.estado})",
+            detail=f"Ya hay otra solicitud de este salón en esa franja (#{conflicto.id}, {conflicto.estado}).",
         )
 
 
@@ -176,6 +187,8 @@ def actualizar_estado_prestamo_salon(
         )
 
     if nuevo_estado == "aprobado":
+        if prestamo.salon is not None:
+            _exigir_habilitado(prestamo.salon)
         motivo = _conflictos(db, [prestamo]).get(prestamo.id)
         if motivo:
             raise HTTPException(
@@ -318,12 +331,12 @@ def cancelar_prestamo_propio(db: Session, prestamo_id: int, usuario_id: int) -> 
     if prestamo.usuario_id != usuario_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permiso para cancelar este préstamo",
+            detail="Solo puedes cancelar tus propias solicitudes.",
         )
     if prestamo.estado != "pendiente":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Solo puedes cancelar préstamos en estado 'pendiente'. Estado actual: {prestamo.estado}",
+            detail=f"Solo puedes cancelar solicitudes pendientes (esta está {prestamo.estado})."
         )
     prestamo.estado = "cancelado"
     auditoria.registrar(

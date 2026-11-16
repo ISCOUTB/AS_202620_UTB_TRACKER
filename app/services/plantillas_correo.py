@@ -238,6 +238,30 @@ def solicitud_salon_respuesta(d: dict) -> tuple[str, str, str]:
     return asunto, texto, html
 
 
+def salon_deshabilitado(d: dict) -> tuple[str, str, str]:
+    """El salón de una solicitud pendiente o aprobada fue deshabilitado (ADR-0022)."""
+    salon = d.get("salon", "")
+    asunto = f"El salón {salon} de tu solicitud no estará disponible"
+    reapertura = (d.get("reapertura") or "").strip()
+    texto = _texto([
+        f"Hola, {d.get('nombre', '')}:",
+        "",
+        f"El salón {salon} quedó deshabilitado ({d.get('motivo', '')}). Tu solicitud para "
+        f"{d.get('franja', '')} puede verse afectada.",
+        *([f"Reapertura estimada: {reapertura}."] if reapertura else []),
+        "",
+        "El auditor revisará tu solicitud. Si quieres, pide otro salón desde la app.",
+    ])
+    html = _layout("Salón deshabilitado", (
+        f"<p>Hola, <b>{_e(d.get('nombre'))}</b>:</p>"
+        f"<p>El salón <b>{_e(salon)}</b> quedó deshabilitado (<b>{_e(d.get('motivo'))}</b>). "
+        f"Tu solicitud para <b>{_e(d.get('franja'))}</b> puede verse afectada.</p>"
+        + (f"<p>Reapertura estimada: <b>{_e(reapertura)}</b>.</p>" if reapertura else "")
+        + "<p>El auditor revisará tu solicitud. Si quieres, pide otro salón desde la app.</p>"
+    ))
+    return asunto, texto, html
+
+
 PLANTILLAS: dict[str, tuple[Callable[[dict], tuple[str, str, str]], str]] = {
     "verificacion": (verificacion, SEGURIDAD),
     "bienvenida": (bienvenida, CUENTA),
@@ -247,6 +271,7 @@ PLANTILLAS: dict[str, tuple[Callable[[dict], tuple[str, str, str]], str]] = {
     "cambio_password": (cambio_password, SEGURIDAD),
     "inicio_sesion_sospechoso": (inicio_sesion_sospechoso, SEGURIDAD),
     "solicitud_salon_respuesta": (solicitud_salon_respuesta, SALONES),
+    "salon_deshabilitado": (salon_deshabilitado, SALONES),
 }
 
 

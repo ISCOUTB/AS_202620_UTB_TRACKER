@@ -213,7 +213,7 @@ class _CrearRecursoPageState extends State<CrearRecursoPage> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Nace como "Disponible". El estado se gestiona con los préstamos.',
+                  'Nace como "Operativo". Los equipos no se prestan: su estado se cambia en el detalle del salón.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textoTenue, fontSize: 12),
                 ),

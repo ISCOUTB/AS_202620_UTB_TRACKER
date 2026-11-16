@@ -4,6 +4,7 @@ Datos de ejemplo de UTB Tracker, modelados sobre el Campus Tecnológico de la UT
 
 Uso (desde la raíz del repo):
     venv\Scripts\python scripts\seed_demo.py
+    venv\Scripts\python scripts\seed_demo.py --reiniciar   # vacía la base LOCAL y vuelve a sembrar
 
 Qué es real y qué es inventado:
 - Los EDIFICIOS son los del campus: Aulas 1, Aulas 2 y Aulas 4 (la app oficial UTB App muestra
@@ -36,7 +37,8 @@ from app.core.hashing import hash_password  # noqa: E402
 from app.models import (  # noqa: E402
     AsignacionRol, Horario, Prestamo, PrestamoSalon, Recurso, Reporte, Salon, Usuario,
 )
-from app.models.salon_models import PresenciaSalon, ReporteSalon  # noqa: E402
+from app.models.salon_models import HistorialSalon, PresenciaSalon, ReporteSalon  # noqa: E402
+from app.messaging import models as _mensajeria  # noqa: E402,F401  (para --reiniciar)
 
 CAMPUS = timezone(timedelta(hours=-5))  # Colombia no tiene horario de verano
 SEDE = "Campus Tecnológico"
@@ -52,6 +54,8 @@ USUARIOS = [
     ("Camila Rojas", "camila@utb.edu.co", "usuario_utb", "Estudiante123!"),
     ("Andres Torres", "andres@utb.edu.co", "usuario_utb", "Estudiante123!"),
     ("Valentina Diaz", "valentina@utb.edu.co", "usuario_utb", "Estudiante123!"),
+    # Sin verificar: entra, pero no puede solicitar salones hasta verificar su correo.
+    ("Sin Verificar", "sinverificar@utb.edu.co", "usuario_utb", "Estudiante123!"),
 ]
 
 # Lista de asignación de roles por correo (ADR-0019): los auditores demo reciben su rol por la
@@ -66,17 +70,17 @@ _CORREOS_CON_ASIGNACION = {c for c, _, _ in ASIGNACIONES}
 
 # (código, edificio, piso, capacidad, estado, descripción del espacio)
 SALONES = [
-    ("A1-101", "Aulas 1", 1, 40, "disponible", "Aula de clase"),
-    ("A1-104", "Aulas 1", 1, 40, "disponible", "Aula de clase"),
-    ("A1-201", "Aulas 1", 2, 35, "mantenimiento", "Aula de clase"),
-    ("A1-304", "Aulas 1", 3, 30, "disponible", "Aula de clase"),
-    ("A2-102", "Aulas 2", 1, 45, "disponible", "Aula de clase"),
-    ("A2-203", "Aulas 2", 2, 40, "disponible", "Aula de clase"),
-    ("A2-305", "Aulas 2", 3, 40, "disponible", "Aula de clase"),
-    ("A4-102", "Aulas 4", 1, 45, "disponible", "Aula de clase"),
-    ("A4-204", "Aulas 4", 2, 40, "disponible", "Aula de clase"),
-    ("A4-206", "Aulas 4", 2, 40, "disponible", "Aula de clase"),
-    ("A4-301", "Aulas 4", 3, 35, "disponible", "Aula de clase"),
+    ("A1-101", "A1", 1, 40, "disponible", "Aula de clase"),
+    ("A1-104", "A1", 1, 40, "disponible", "Aula de clase"),
+    ("A1-201", "A1", 2, 35, "mantenimiento", "Aula de clase"),
+    ("A1-304", "A1", 3, 30, "disponible", "Aula de clase"),
+    ("A2-102", "A2", 1, 45, "disponible", "Aula de clase"),
+    ("A2-203", "A2", 2, 40, "disponible", "Aula de clase"),
+    ("A2-305", "A2", 3, 40, "disponible", "Aula de clase"),
+    ("A4-102", "A4", 1, 45, "disponible", "Aula de clase"),
+    ("A4-204", "A4", 2, 40, "disponible", "Aula de clase"),
+    ("A4-206", "A4", 2, 40, "disponible", "Aula de clase"),
+    ("A4-301", "A4", 3, 35, "disponible", "Aula de clase"),
     ("ALC-201", "Alcatraz", 2, 12, "disponible", "Sala de estudio grupal"),
     ("ALC-301", "Alcatraz", 3, 20, "disponible", "Sala de estudio"),
     ("LAB-FIS", "Laboratorios", 1, 24, "disponible", "Laboratorio de Física"),
@@ -215,6 +219,15 @@ def limpiar(db) -> None:
     db.flush()
 
 
+def reiniciar(db) -> None:
+    """--reiniciar: VACÍA la base LOCAL (todas las cuentas y datos) para empezar de cero.
+    Conserva el esquema y la versión de Alembic. Nunca corre en producción (ver main)."""
+    for tabla in reversed(Base.metadata.sorted_tables):
+        db.execute(tabla.delete())
+    db.commit()
+    print("Base local vaciada (cuentas y datos).")
+
+
 def main() -> None:
     if config.ENVIRONMENT == "production":
         sys.exit("seed_demo.py es solo para desarrollo: en producción crearía cuentas con "
@@ -222,6 +235,8 @@ def main() -> None:
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
+        if "--reiniciar" in sys.argv:
+            reiniciar(db)
         ahora = datetime.now(CAMPUS)
         inicio = max(
             (ahora - timedelta(minutes=30)).replace(second=0, microsecond=0),
@@ -245,9 +260,9 @@ def main() -> None:
             else:
                 fila.nombre, fila.rol, fila.activo = nombre, rol, True
                 fila.password = hash_password(clave)
-            # Cuentas de demostración: correo ya verificado (ADR-0014).
-            fila.email_verificado = True
-            fila.email_verificado_en = utc(ahora)
+            # Cuentas de demostración: correo ya verificado (ADR-0014), salvo la de prueba.
+            fila.email_verificado = email != "sinverificar@utb.edu.co"
+            fila.email_verificado_en = utc(ahora) if fila.email_verificado else None
             # Rol alto sin fila en la lista = puesto a mano (ADR-0019).
             fila.rol_manual = rol != "usuario_utb" and email not in _CORREOS_CON_ASIGNACION
             u[email] = fila
@@ -268,6 +283,12 @@ def main() -> None:
                 edificio=edificio, piso=piso, capacidad=cap, estado=estado,
                 tipo=TIPOS.get(codigo, "aula"), descripcion=DESCRIPCIONES.get(codigo),
             )
+            # ADR-0022: "mantenimiento" es una habilitación manual con motivo y reapertura.
+            if estado in ("mantenimiento", "fuera_servicio"):
+                fila.habilitado = False
+                fila.motivo_deshabilitado = "mantenimiento" if estado == "mantenimiento" else "danio"
+                fila.nota_deshabilitado = "Cambio de lámpara del video beam"
+                fila.reapertura_estimada = (ahora + timedelta(days=5)).date()
             db.add(fila)
             s[codigo] = fila
         db.flush()
@@ -311,8 +332,22 @@ def main() -> None:
                           fecha_fin=utc(ahora + timedelta(hours=7)), estado="pendiente"),
             PrestamoSalon(salon_id=s["ALC-301"].id, usuario_id=est.id, motivo="Práctica de tesis",
                           fecha_inicio=utc(ahora - timedelta(days=1)),
-                          fecha_fin=utc(ahora - timedelta(days=1) + timedelta(hours=2)), estado="rechazado"),
+                          fecha_fin=utc(ahora - timedelta(days=1) + timedelta(hours=2)), estado="rechazado",
+                          respuesta="El salón ya estaba reservado para un parcial."),
+            PrestamoSalon(salon_id=s["A2-203"].id, usuario_id=cam.id, motivo="Taller de Python",
+                          fecha_inicio=utc(ahora - timedelta(days=2)),
+                          fecha_fin=utc(ahora - timedelta(days=2) + timedelta(hours=2)),
+                          estado="finalizado"),
+            PrestamoSalon(salon_id=s["A4-206"].id, usuario_id=val.id, motivo="Repaso de cálculo",
+                          fecha_inicio=utc(ahora + timedelta(days=1)),
+                          fecha_fin=utc(ahora + timedelta(days=1, hours=1)), estado="cancelado"),
+            # Caso límite (ADR-0022): pendiente en un salón DESHABILITADO -> señalada al auditor.
+            PrestamoSalon(salon_id=s["A1-201"].id, usuario_id=andres.id, motivo="Sustentación",
+                          fecha_inicio=utc(ahora + timedelta(days=2)),
+                          fecha_fin=utc(ahora + timedelta(days=2, hours=1)), estado="pendiente"),
         ])
+        db.add(HistorialSalon(salon_id=s["A1-201"].id, accion="deshabilitado", actor_id=aux.id,
+                              descripcion="Deshabilitado: Mantenimiento (Cambio de lámpara del video beam)"))
 
         # ── Reportes de salón ────────────────────────────────────────────────
         db.add_all([

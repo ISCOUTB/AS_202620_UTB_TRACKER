@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AdministraSalones, VeSalones
+from app.core.deps import AdministraSalones, GestionaCatalogo, VeSalones
 from app.schemas.enums import CategoriaRecurso, TipoSalon
 from app.schemas.salones import SalonCreate, SalonResponse, SalonUpdate
 from app.services import salones as salones_service
@@ -23,9 +23,9 @@ router = APIRouter()
 def crear_salon(
     salon: SalonCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdministraSalones,
+    current_user: GestionaCatalogo,
 ):
-    """Crea un nuevo salón. Requiere rol administrador o auxiliar."""
+    """Crea un salón del catálogo (solo Administrador, ADR-0021). Valida el código A1-101."""
     return salones_service.crear_salon(db, salon, actor_id=current_user.id)
 
 
@@ -34,9 +34,10 @@ def listar_salones(
     db: Annotated[Session, Depends(get_db)],
     current_user: VeSalones,
     skip: Annotated[int, Query(ge=0)] = 0,
-    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    limit: Annotated[int, Query(ge=1, le=100)] = 100,  # 100: una APK vieja (sin paginar) ve todo el catálogo UTB
     estado: Optional[str] = None,
     edificio: Optional[str] = None,
+    piso: Annotated[Optional[int], Query(ge=0, le=99)] = None,
     busqueda: Annotated[Optional[str], Query(description="Busca en nombre y descripción")] = None,
     tipo: Optional[TipoSalon] = None,
     con_equipo: Annotated[
@@ -49,6 +50,7 @@ def listar_salones(
         db, skip, limit, estado, edificio, busqueda,
         tipo=tipo.value if tipo else None,
         con_equipo=con_equipo.value if con_equipo else None,
+        piso=piso,
     )
     return items
 
@@ -70,17 +72,20 @@ def actualizar_salon(
     db: Annotated[Session, Depends(get_db)],
     current_user: AdministraSalones,
 ):
-    """Actualiza un salón existente. Requiere rol admin/auxiliar."""
-    return salones_service.actualizar_salon(db, salon_id, salon, actor_id=current_user.id)
+    """Actualiza un salón. Auditor y Administrador; renombrar o mover de edificio/piso solo el
+    Administrador (ADR-0021)."""
+    return salones_service.actualizar_salon(
+        db, salon_id, salon, actor_id=current_user.id, actor_rol=current_user.rol
+    )
 
 
 @router.delete("/{salon_id}")
 def eliminar_salon(
     salon_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdministraSalones,
+    current_user: GestionaCatalogo,
 ):
-    """Soft-delete de un salón. Requiere rol admin/auxiliar."""
+    """Desactiva un salón del catálogo (nunca se borra: conserva su historial). Solo Administrador."""
     return salones_service.eliminar_salon(db, salon_id, actor_id=current_user.id)
 
 

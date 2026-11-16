@@ -18,6 +18,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../auth/presentation/cambiar_correo_sheet.dart';
 import '../../recursos/presentation/equipos_page.dart';
 import '../../recursos/presentation/mantenimiento_page.dart';
+import '../../salones_admin/presentation/catalogo_page.dart';
 import 'foto_perfil_sheet.dart';
 
 /// Versión mostrada en el perfil (la de pubspec.yaml).
@@ -119,6 +120,7 @@ class _CuentaPageState extends State<CuentaPage> {
                       ),
                     ],
                     if (permisos.puede(Permisos.usuariosGestionar) ||
+                        permisos.puede(Permisos.salonesCrearCatalogo) ||
                         permisos.puede(Permisos.auditoriaVer) ||
                         permisos.puede(Permisos.estadisticasVer)) ...[
                       const _Titulo('Administración'),
@@ -137,6 +139,14 @@ class _CuentaPageState extends State<CuentaPage> {
                           titulo: 'Roles por correo',
                           detalle: 'Quién es Auditor o Administrador según su correo',
                           onTap: () => _abrir(const AsignacionesPage()),
+                        ),
+                      if (permisos.puede(Permisos.salonesCrearCatalogo))
+                        _Fila(
+                          icono: Icons.apartment_rounded,
+                          color: AppColors.primarioClaro,
+                          titulo: 'Catálogo de salones',
+                          detalle: 'Crear, crear varios por piso y desactivar',
+                          onTap: () => _abrir(const CatalogoPage()),
                         ),
                       if (permisos.puede(Permisos.estadisticasVer))
                         _Fila(

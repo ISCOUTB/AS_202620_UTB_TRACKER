@@ -1229,6 +1229,139 @@
         }
       }
     },
+    "/recursos/plantillas": {
+      "get": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Listar Plantillas",
+        "description": "Plantillas de equipamiento (aula estándar, laboratorio) (ADR-0022).",
+        "operationId": "listar_plantillas_recursos_plantillas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Plantilla"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Plantillas Recursos Plantillas Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/recursos/plantillas/vista-previa": {
+      "post": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Vista Previa Plantilla",
+        "description": "Qué se agregaría a cada salón elegido (solo lo que falta). No escribe nada.",
+        "operationId": "vista_previa_plantilla_recursos_plantillas_vista_previa_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AplicarPlantilla"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlantillaPorSalon"
+                  },
+                  "type": "array",
+                  "title": "Response Vista Previa Plantilla Recursos Plantillas Vista Previa Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/recursos/plantillas/aplicar": {
+      "post": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Aplicar Plantilla",
+        "description": "Agrega a los salones elegidos solo los equipos que faltan. Auditado.",
+        "operationId": "aplicar_plantilla_recursos_plantillas_aplicar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AplicarPlantilla"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlantillaPorSalon"
+                  },
+                  "type": "array",
+                  "title": "Response Aplicar Plantilla Recursos Plantillas Aplicar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/recursos/{recurso_id}": {
       "get": {
         "tags": [
@@ -1345,7 +1478,7 @@
           "recursos"
         ],
         "summary": "Eliminar Recurso",
-        "description": "Soft-delete de un recurso. Requiere rol admin/auxiliar.",
+        "description": "Retira el equipo del salón (se desactiva, no se borra). Auditor y Administrador.",
         "operationId": "eliminar_recurso_recursos__recurso_id__delete",
         "security": [
           {
@@ -1369,6 +1502,64 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recursos/{recurso_id}/estado": {
+      "patch": {
+        "tags": [
+          "recursos"
+        ],
+        "summary": "Cambiar Estado Equipo",
+        "description": "Operativo / dañado / en mantenimiento (los equipos no se prestan). Si queda dañado,\nsugiere abrir o vincular un reporte de tipo equipo: no lo abre solo.",
+        "operationId": "cambiar_estado_equipo_recursos__recurso_id__estado_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "recurso_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recurso Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstadoEquipoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoEquipoResultado"
+                }
               }
             }
           },
@@ -1498,10 +1689,11 @@
     "/prestamos": {
       "post": {
         "tags": [
-          "prestamos"
+          "prestamos (legado)"
         ],
         "summary": "Crear Prestamo",
         "operationId": "crear_prestamo_prestamos_post",
+        "deprecated": true,
         "security": [
           {
             "OAuth2PasswordBearer": []
@@ -1566,11 +1758,12 @@
       },
       "get": {
         "tags": [
-          "prestamos"
+          "prestamos (legado)"
         ],
         "summary": "Listar Prestamos",
         "description": "Lista préstamos de recursos (histórico). Solo auditor y administrador (ADR-0018).\nDevuelve el total en el header X-Total-Count.",
         "operationId": "listar_prestamos_prestamos_get",
+        "deprecated": true,
         "security": [
           {
             "OAuth2PasswordBearer": []
@@ -1648,11 +1841,12 @@
     "/prestamos/{prestamo_id}/devolver": {
       "patch": {
         "tags": [
-          "prestamos"
+          "prestamos (legado)"
         ],
         "summary": "Devolver Prestamo",
         "description": "Registra la devolución de un préstamo.\nMarca fecha_devolucion_real y restaura el recurso a 'disponible'.",
         "operationId": "devolver_prestamo_prestamos__prestamo_id__devolver_patch",
+        "deprecated": true,
         "security": [
           {
             "OAuth2PasswordBearer": []
@@ -1702,7 +1896,7 @@
     "/prestamos/marcar-vencidos": {
       "post": {
         "tags": [
-          "prestamos"
+          "prestamos (legado)"
         ],
         "summary": "Marcar Vencidos",
         "description": "Job idempotente para actualizar préstamos activos vencidos.",
@@ -1723,11 +1917,426 @@
             }
           }
         },
+        "deprecated": true,
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
         ]
+      }
+    },
+    "/salones/catalogo/rango/vista-previa": {
+      "post": {
+        "tags": [
+          "salones-catalogo"
+        ],
+        "summary": "Vista Previa Rango",
+        "description": "Qué salones crearía el rango y cuáles ya existen. No escribe nada.",
+        "operationId": "vista_previa_rango_salones_catalogo_rango_vista_previa_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RangoCatalogo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaPreviaRango"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/salones/catalogo/rango": {
+      "post": {
+        "tags": [
+          "salones-catalogo"
+        ],
+        "summary": "Crear Rango",
+        "description": "Crea los salones del rango que falten (los existentes no se tocan). Auditado.",
+        "operationId": "crear_rango_salones_catalogo_rango_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RangoCatalogo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoRango"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/salones/catalogo/fuera": {
+      "get": {
+        "tags": [
+          "salones-catalogo"
+        ],
+        "summary": "Salones Fuera Del Catalogo",
+        "description": "Salones activos que no siguen la regla o no están en el catálogo, con una propuesta.\nSolo informa: nada se borra ni se cambia.",
+        "operationId": "salones_fuera_del_catalogo_salones_catalogo_fuera_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SalonFueraCatalogo"
+                  },
+                  "type": "array",
+                  "title": "Response Salones Fuera Del Catalogo Salones Catalogo Fuera Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/salones/habilitacion/lote/vista-previa": {
+      "post": {
+        "tags": [
+          "salones-habilitacion"
+        ],
+        "summary": "Vista Previa Lote",
+        "description": "Qué salones cambiarían y cuántas solicitudes quedarían afectadas. No escribe nada.",
+        "operationId": "vista_previa_lote_salones_habilitacion_lote_vista_previa_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HabilitacionLote"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaPreviaLote"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/salones/habilitacion/lote": {
+      "post": {
+        "tags": [
+          "salones-habilitacion"
+        ],
+        "summary": "Aplicar Lote",
+        "description": "Habilita o deshabilita un edificio o un piso completo (todo o nada). Auditado.",
+        "operationId": "aplicar_lote_salones_habilitacion_lote_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HabilitacionLote"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaPreviaLote"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/salones/ocupacion/resumen": {
+      "get": {
+        "tags": [
+          "salones-habilitacion"
+        ],
+        "summary": "Resumen Ocupacion",
+        "description": "Cuántos salones hay libres, ocupados y deshabilitados AHORA por edificio y piso.",
+        "operationId": "resumen_ocupacion_salones_ocupacion_resumen_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "momento",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Hora local del campus",
+              "title": "Momento"
+            },
+            "description": "Hora local del campus"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResumenPiso"
+                  },
+                  "title": "Response Resumen Ocupacion Salones Ocupacion Resumen Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salones/exportar.csv": {
+      "get": {
+        "tags": [
+          "salones-habilitacion"
+        ],
+        "summary": "Exportar Catalogo",
+        "description": "Catálogo de salones y sus equipos en CSV (para revisar con Planta Física).",
+        "operationId": "exportar_catalogo_salones_exportar_csv_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/csv": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/salones/{salon_id}/habilitacion": {
+      "patch": {
+        "tags": [
+          "salones-habilitacion"
+        ],
+        "summary": "Cambiar Habilitacion",
+        "description": "Habilita o deshabilita UN salón (motivo obligatorio al deshabilitar). Auditado.",
+        "operationId": "cambiar_habilitacion_salones__salon_id__habilitacion_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HabilitacionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabilitacionResultado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salones/{salon_id}/historial": {
+      "get": {
+        "tags": [
+          "salones-habilitacion"
+        ],
+        "summary": "Historial",
+        "description": "Últimos cambios de habilitación y de equipos del salón (lo más reciente primero).",
+        "operationId": "historial_salones__salon_id__historial_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "salon_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Salon Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HistorialSalonResponse"
+                  },
+                  "title": "Response Historial Salones  Salon Id  Historial Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/salones/ocupacion": {
@@ -2192,7 +2801,7 @@
           "salones"
         ],
         "summary": "Crear Salon",
-        "description": "Crea un nuevo salón. Requiere rol administrador o auxiliar.",
+        "description": "Crea un salón del catálogo (solo Administrador, ADR-0021). Valida el código A1-101.",
         "operationId": "crear_salon_salones_post",
         "security": [
           {
@@ -2264,7 +2873,7 @@
               "type": "integer",
               "maximum": 100,
               "minimum": 1,
-              "default": 50,
+              "default": 100,
               "title": "Limit"
             }
           },
@@ -2298,6 +2907,24 @@
                 }
               ],
               "title": "Edificio"
+            }
+          },
+          {
+            "name": "piso",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 99,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Piso"
             }
           },
           {
@@ -2433,7 +3060,7 @@
           "salones"
         ],
         "summary": "Actualizar Salon",
-        "description": "Actualiza un salón existente. Requiere rol admin/auxiliar.",
+        "description": "Actualiza un salón. Auditor y Administrador; renombrar o mover de edificio/piso solo el\nAdministrador (ADR-0021).",
         "operationId": "actualizar_salon_salones__salon_id__put",
         "security": [
           {
@@ -2489,7 +3116,7 @@
           "salones"
         ],
         "summary": "Eliminar Salon",
-        "description": "Soft-delete de un salón. Requiere rol admin/auxiliar.",
+        "description": "Desactiva un salón del catálogo (nunca se borra: conserva su historial). Solo Administrador.",
         "operationId": "eliminar_salon_salones__salon_id__delete",
         "security": [
           {
@@ -4692,6 +5319,45 @@
   },
   "components": {
     "schemas": {
+      "AplicarPlantilla": {
+        "properties": {
+          "plantilla": {
+            "type": "string",
+            "title": "Plantilla",
+            "examples": [
+              "aula_estandar"
+            ]
+          },
+          "salon_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Salon Ids"
+          },
+          "computadores": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 60.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computadores"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plantilla",
+          "salon_ids"
+        ],
+        "title": "AplicarPlantilla"
+      },
       "AsignacionCrear": {
         "properties": {
           "correo": {
@@ -5171,6 +5837,71 @@
         ],
         "title": "EstadisticasAdmin"
       },
+      "EstadoEquipoResultado": {
+        "properties": {
+          "recurso": {
+            "$ref": "#/components/schemas/RecursoOut"
+          },
+          "sugerir_reporte": {
+            "type": "boolean",
+            "title": "Sugerir Reporte",
+            "default": false
+          },
+          "reportes_equipo_abiertos": {
+            "items": {
+              "$ref": "#/components/schemas/ReporteSalonResponse"
+            },
+            "type": "array",
+            "title": "Reportes Equipo Abiertos",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "recurso"
+        ],
+        "title": "EstadoEquipoResultado"
+      },
+      "EstadoEquipoUpdate": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "title": "Estado",
+            "examples": [
+              "dañado"
+            ]
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
+          "reporte_salon_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reporte Salon Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado"
+        ],
+        "title": "EstadoEquipoUpdate",
+        "description": "operativo (se guarda \"disponible\") | dañado | mantenimiento. \"prestado\" no es válido."
+      },
       "EstadoRecurso": {
         "type": "string",
         "enum": [
@@ -5304,6 +6035,185 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HabilitacionLote": {
+        "properties": {
+          "habilitado": {
+            "type": "boolean",
+            "title": "Habilitado"
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MotivoDeshabilitacion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
+          "reapertura_estimada": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reapertura Estimada"
+          },
+          "edificio": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Edificio",
+            "examples": [
+              "A1"
+            ]
+          },
+          "piso": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 99.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "habilitado",
+          "edificio"
+        ],
+        "title": "HabilitacionLote",
+        "description": "Todos los salones activos de un edificio (y de un piso, si se indica)."
+      },
+      "HabilitacionResultado": {
+        "properties": {
+          "salon": {
+            "$ref": "#/components/schemas/SalonResponse"
+          },
+          "solicitudes_afectadas": {
+            "items": {
+              "$ref": "#/components/schemas/PrestamoSalonResponse"
+            },
+            "type": "array",
+            "title": "Solicitudes Afectadas",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "salon"
+        ],
+        "title": "HabilitacionResultado"
+      },
+      "HabilitacionUpdate": {
+        "properties": {
+          "habilitado": {
+            "type": "boolean",
+            "title": "Habilitado"
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MotivoDeshabilitacion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
+          "reapertura_estimada": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reapertura Estimada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "habilitado"
+        ],
+        "title": "HabilitacionUpdate",
+        "description": "Deshabilitar exige `motivo` (y nota si es 'otro'); habilitar borra motivo, nota y fecha."
+      },
+      "HistorialSalonResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "accion": {
+            "type": "string",
+            "title": "Accion"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "actor_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Nombre"
+          },
+          "creado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Creado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "accion",
+          "descripcion",
+          "creado_en"
+        ],
+        "title": "HistorialSalonResponse"
       },
       "HorarioBulkCreate": {
         "properties": {
@@ -5805,6 +6715,16 @@
         "type": "object",
         "title": "MantenimientoRecursoUpdate"
       },
+      "MotivoDeshabilitacion": {
+        "type": "string",
+        "enum": [
+          "mantenimiento",
+          "danio",
+          "evento",
+          "otro"
+        ],
+        "title": "MotivoDeshabilitacion"
+      },
       "Notificaciones": {
         "properties": {
           "correo": {
@@ -6105,6 +7025,63 @@
         "type": "object",
         "title": "PerfilUpdate",
         "description": "PATCH /auth/me: solo se cambian los campos enviados. \"\" borra un campo opcional."
+      },
+      "Plantilla": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "equipos": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Equipos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "descripcion",
+          "equipos"
+        ],
+        "title": "Plantilla"
+      },
+      "PlantillaPorSalon": {
+        "properties": {
+          "salon_id": {
+            "type": "integer",
+            "title": "Salon Id"
+          },
+          "salon_nombre": {
+            "type": "string",
+            "title": "Salon Nombre"
+          },
+          "agregar": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Agregar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "salon_id",
+          "salon_nombre",
+          "agregar"
+        ],
+        "title": "PlantillaPorSalon"
       },
       "Preferencias": {
         "properties": {
@@ -6493,6 +7470,18 @@
             ],
             "title": "Conflicto",
             "description": "Solo en la bandeja: con qué choca la franja, si choca"
+          },
+          "aviso_salon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Salon",
+            "description": "Motivo si el salón de esta solicitud está deshabilitado"
           }
         },
         "type": "object",
@@ -6539,6 +7528,72 @@
           "estado"
         ],
         "title": "PrestamoSalonUpdate"
+      },
+      "RangoCatalogo": {
+        "properties": {
+          "edificio": {
+            "type": "integer",
+            "maximum": 9.0,
+            "minimum": 1.0,
+            "title": "Edificio",
+            "examples": [
+              2
+            ]
+          },
+          "piso": {
+            "type": "integer",
+            "maximum": 9.0,
+            "minimum": 1.0,
+            "title": "Piso",
+            "examples": [
+              5
+            ]
+          },
+          "desde": {
+            "type": "integer",
+            "maximum": 99.0,
+            "minimum": 1.0,
+            "title": "Desde",
+            "examples": [
+              1
+            ]
+          },
+          "hasta": {
+            "type": "integer",
+            "maximum": 99.0,
+            "minimum": 1.0,
+            "title": "Hasta",
+            "examples": [
+              5
+            ]
+          },
+          "capacidad": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacidad"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoSalon",
+            "default": "aula"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edificio",
+          "piso",
+          "desde",
+          "hasta"
+        ],
+        "title": "RangoCatalogo",
+        "description": "A{edificio}-{piso}{desde..hasta}. Ej.: edificio 2, piso 5, 1..5 -> A2-501 … A2-505."
       },
       "RechazoSolicitud": {
         "properties": {
@@ -7112,6 +8167,97 @@
         ],
         "title": "ResultadoImportacion"
       },
+      "ResultadoRango": {
+        "properties": {
+          "edificio": {
+            "type": "string",
+            "title": "Edificio"
+          },
+          "piso": {
+            "type": "integer",
+            "title": "Piso"
+          },
+          "ubicacion": {
+            "type": "string",
+            "title": "Ubicacion"
+          },
+          "nuevos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Nuevos"
+          },
+          "existentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Existentes"
+          },
+          "creados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Creados"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edificio",
+          "piso",
+          "ubicacion",
+          "nuevos",
+          "existentes",
+          "creados"
+        ],
+        "title": "ResultadoRango"
+      },
+      "ResumenPiso": {
+        "properties": {
+          "edificio": {
+            "type": "string",
+            "title": "Edificio"
+          },
+          "piso": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piso"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "libres": {
+            "type": "integer",
+            "title": "Libres"
+          },
+          "ocupados": {
+            "type": "integer",
+            "title": "Ocupados"
+          },
+          "deshabilitados": {
+            "type": "integer",
+            "title": "Deshabilitados"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edificio",
+          "total",
+          "libres",
+          "ocupados",
+          "deshabilitados"
+        ],
+        "title": "ResumenPiso"
+      },
       "SalonCreate": {
         "properties": {
           "nombre": {
@@ -7120,7 +8266,7 @@
             "minLength": 1,
             "title": "Nombre",
             "examples": [
-              "A-301"
+              "A1-101"
             ]
           },
           "ubicacion": {
@@ -7128,7 +8274,7 @@
             "minLength": 1,
             "title": "Ubicacion",
             "examples": [
-              "Edificio A, Piso 3"
+              "Edificio A1, piso 1"
             ]
           },
           "edificio": {
@@ -7190,6 +8336,61 @@
         ],
         "title": "SalonCreate"
       },
+      "SalonFueraCatalogo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "edificio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edificio"
+          },
+          "piso": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piso"
+          },
+          "tiene_historial": {
+            "type": "boolean",
+            "title": "Tiene Historial"
+          },
+          "problema": {
+            "type": "string",
+            "title": "Problema"
+          },
+          "propuesta": {
+            "type": "string",
+            "title": "Propuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "tiene_historial",
+          "problema",
+          "propuesta"
+        ],
+        "title": "SalonFueraCatalogo"
+      },
       "SalonResponse": {
         "properties": {
           "id": {
@@ -7238,6 +8439,11 @@
             "type": "boolean",
             "title": "Activo",
             "default": true
+          },
+          "capacidad_estimada": {
+            "type": "boolean",
+            "title": "Capacidad Estimada",
+            "default": false
           },
           "created_at": {
             "anyOf": [
@@ -7297,6 +8503,61 @@
               }
             ],
             "title": "Tipo Sugerido"
+          },
+          "habilitado": {
+            "type": "boolean",
+            "title": "Habilitado",
+            "default": true
+          },
+          "motivo_deshabilitado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Deshabilitado"
+          },
+          "nota_deshabilitado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Deshabilitado"
+          },
+          "reapertura_estimada": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reapertura Estimada"
+          },
+          "aviso_deshabilitado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Deshabilitado"
+          },
+          "ocupado_ahora": {
+            "type": "boolean",
+            "title": "Ocupado Ahora",
+            "default": false
           }
         },
         "type": "object",
@@ -7826,6 +9087,74 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VistaPreviaLote": {
+        "properties": {
+          "salones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Salones"
+          },
+          "sin_cambio": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sin Cambio"
+          },
+          "solicitudes_afectadas": {
+            "type": "integer",
+            "title": "Solicitudes Afectadas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "salones",
+          "sin_cambio",
+          "solicitudes_afectadas"
+        ],
+        "title": "VistaPreviaLote"
+      },
+      "VistaPreviaRango": {
+        "properties": {
+          "edificio": {
+            "type": "string",
+            "title": "Edificio"
+          },
+          "piso": {
+            "type": "integer",
+            "title": "Piso"
+          },
+          "ubicacion": {
+            "type": "string",
+            "title": "Ubicacion"
+          },
+          "nuevos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Nuevos"
+          },
+          "existentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Existentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edificio",
+          "piso",
+          "ubicacion",
+          "nuevos",
+          "existentes"
+        ],
+        "title": "VistaPreviaRango"
       }
     },
     "securitySchemes": {

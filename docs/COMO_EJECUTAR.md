@@ -203,3 +203,16 @@ cd frontend; flutter test                          # frontend
 | Un usuario nuevo registrado no ve el panel | El registro siempre crea un Estudiante. Un administrador le cambia el rol en Perfil → Usuarios y roles, o usa las cuentas de arriba. |
 | Empezar de cero | Detén el backend, borra `utb_tracker.db` y corre `scripts\seed_demo.py`. |
 | Detener todo | `Get-Process dart,python -ErrorAction SilentlyContinue \| Stop-Process` |
+
+## Base local desde cero (SQLite)
+
+`alembic upgrade head` falla sobre una base SQLite vacía por una migración antigua (R-11 en
+`docs/revision-app.md`). No se reescribe porque ya está desplegada. En local:
+
+```powershell
+.\venv\Scripts\python scripts\seed_demo.py     # crea las tablas (create_all) y siembra
+.\venv\Scripts\alembic stamp head               # marca la base como al día
+```
+
+En PostgreSQL (producción y CI) `alembic upgrade head` funciona normal.
+

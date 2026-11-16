@@ -85,6 +85,12 @@ class TarjetaSolicitud extends StatelessWidget {
                 texto: 'Choca con ${s.conflicto}',
                 color: AppColors.danado,
               ),
+            if (s.avisoSalon != null)
+              _Linea(
+                icono: Icons.block_rounded,
+                texto: s.avisoSalon!,
+                color: AppColors.prestado,
+              ),
             if (s.respuesta != null)
               _Linea(
                 icono: iconoSolicitud(s.estado),

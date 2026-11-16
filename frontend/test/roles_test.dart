@@ -174,7 +174,7 @@ void main() {
       final adm = Permisos.deRol(RolUsuario.administrador);
       expect(est.valores.length, 6);
       expect(aud.valores.length, 12);
-      expect(adm.valores.length, 16);
+      expect(adm.valores.length, 17); // + salones.crear_catalogo (ADR-0021)
       expect(est.puede(Permisos.salonesSolicitar), isTrue);
       expect(est.puede(Permisos.solicitudesGestionar), isFalse);
       expect(aud.puede(Permisos.solicitudesGestionar), isTrue);

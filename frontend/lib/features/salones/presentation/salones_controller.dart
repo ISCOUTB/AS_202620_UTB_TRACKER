@@ -62,7 +62,7 @@ class SalonesController extends ChangeNotifier {
     } on ApiException catch (e) {
       return (const <PrestamoSalon>[], e.mensaje);
     } catch (_) {
-      return (const <PrestamoSalon>[], 'No se pudieron cargar los préstamos');
+      return (const <PrestamoSalon>[], 'No se pudieron cargar las solicitudes');
     }
   }
 
@@ -205,7 +205,7 @@ class SalonesController extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.mensaje;
     } catch (_) {
-      return 'Error al solicitar préstamo de salón';
+      return 'No se pudo enviar la solicitud del salón';
     }
   }
 
@@ -218,7 +218,7 @@ class SalonesController extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.mensaje;
     } catch (_) {
-      return 'No se pudo cancelar el préstamo';
+      return 'No se pudo cancelar la solicitud';
     }
   }
 }

@@ -16,6 +16,8 @@ import 'plano_salones.dart';
 import 'salon_control_page.dart';
 import 'salones_admin_controller.dart';
 import 'salones_admin_estilos.dart';
+import '../domain/disponibilidad.dart';
+import 'disponibilidad_secciones.dart';
 
 /// Pantalla principal del auxiliar: el plano del campus arriba y, abajo, una hoja que se
 /// arrastra con la lista de salones (la misma idea que el mapa y la hoja de viajes de Uber).
@@ -31,6 +33,8 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
   final AuthController _auth = sl<AuthController>();
   Timer? _refresco;
   DateTime? _actualizado;
+  final DisponibilidadRepository _disp = sl<DisponibilidadRepository>();
+  List<ResumenPiso> _resumen = const [];
 
   @override
   void initState() {
@@ -49,6 +53,34 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
   Future<void> _cargar({bool silencioso = false}) async {
     await _c.cargar(silencioso: silencioso);
     if (mounted && _c.carga == Carga.ok) setState(() => _actualizado = DateTime.now());
+    try {
+      final r = await _disp.resumen();
+      if (mounted) setState(() => _resumen = r);
+    } catch (_) {
+      // El resumen es un extra: si falla, el panel sigue funcionando.
+    }
+  }
+
+  Future<void> _menu(String opcion) async {
+    final String? mensaje;
+    if (opcion == 'lote') {
+      final pisos = <String, Set<int>>{};
+      for (final o in _c.todos) {
+        final e = o.salon.edificio;
+        if (e == null) continue;
+        pisos.putIfAbsent(e, () => <int>{});
+        if (o.salon.piso != null) pisos[e]!.add(o.salon.piso!);
+      }
+      if (pisos.isEmpty) return mostrarMensaje(context, 'No hay salones con edificio');
+      final orden = pisos.keys.toList()..sort();
+      mensaje = await cambiarLote(context, _disp,
+          pisosPorEdificio: {for (final e in orden) e: pisos[e]!.toList()..sort()});
+    } else {
+      mensaje = await copiarCatalogoCsv(_disp);
+    }
+    if (mensaje == null || !mounted) return;
+    mostrarMensaje(context, mensaje);
+    _cargar(silencioso: true);
   }
 
   Future<void> _abrir(OcupacionSalon o) async {
@@ -75,6 +107,7 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
                 actualizado: _actualizado,
                 onBuscar: _c.fijarBusqueda,
                 onRefrescar: () => _cargar(),
+                onMenu: _menu,
               ),
               const SizedBox(height: 12),
               _Filtros(controller: _c),
@@ -134,6 +167,9 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
                       children: [
                         const AsaHoja(),
                         _Resumen(controller: _c),
+                        const SizedBox(height: 10),
+                        // Ocupación por edificio y piso: cuántos libres AHORA (ADR-0022).
+                        ResumenPorPiso(resumen: _resumen),
                         const SizedBox(height: 14),
                         if (visibles.isEmpty)
                           const Padding(
@@ -172,12 +208,14 @@ class _Cabecera extends StatelessWidget {
     required this.actualizado,
     required this.onBuscar,
     required this.onRefrescar,
+    required this.onMenu,
   });
 
   final String nombre;
   final DateTime? actualizado;
   final ValueChanged<String> onBuscar;
   final VoidCallback onRefrescar;
+  final ValueChanged<String> onMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -211,6 +249,15 @@ class _Cabecera extends StatelessWidget {
                 onPressed: onRefrescar,
                 style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.18)),
                 icon: const Icon(Icons.refresh_rounded),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Más opciones',
+                icon: const Icon(Icons.more_vert_rounded),
+                onSelected: onMenu,
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'lote', child: Text('Habilitar o deshabilitar varios')),
+                  PopupMenuItem(value: 'csv', child: Text('Copiar catálogo y equipos (CSV)')),
+                ],
               ),
             ],
           ),
@@ -294,6 +341,27 @@ class _Filtros extends StatelessWidget {
             ],
             onElegir: controller.fijarConEquipo,
           ),
+          // Filtros del catálogo UTB (ADR-0021).
+          if (controller.edificios.length > 1)
+            _Menu<String?>(
+              etiqueta: controller.edificio ?? 'Edificio',
+              activo: controller.edificio != null,
+              opciones: [
+                (null, 'Todos los edificios'),
+                for (final e in controller.edificios) (e, 'Edificio $e'),
+              ],
+              onElegir: controller.fijarEdificio,
+            ),
+          if (controller.edificio != null && controller.pisos.length > 1)
+            _Menu<int?>(
+              etiqueta: controller.piso == null ? 'Piso' : 'Piso ${controller.piso}',
+              activo: controller.piso != null,
+              opciones: [
+                (null, 'Todos los pisos'),
+                for (final p in controller.pisos) (p, 'Piso $p'),
+              ],
+              onElegir: controller.fijarPiso,
+            ),
         ],
       ),
     );

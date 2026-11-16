@@ -23,6 +23,19 @@ def crear_mantenimiento(db: Session, datos: MantenimientoRecursoCreate,
     return mantenimiento
 
 
+def registrar_mantenimiento(db: Session, datos: MantenimientoRecursoCreate,
+                            actor_id: int | None = None) -> MantenimientoRecurso:
+    """POST /mantenimientos: crea la orden, la audita y confirma en UNA transacción."""
+    item = crear_mantenimiento(db, datos)
+    auditoria.registrar(
+        db, "mantenimiento.crear", "mantenimiento", item.id, actor_id=actor_id,
+        detalle={"recurso_id": item.recurso_id, "tipo": item.tipo},
+    )
+    db.commit()
+    db.refresh(item)
+    return item
+
+
 def listar_mantenimientos(db: Session, recurso_id: int | None = None):
     query = db.query(MantenimientoRecurso)
     if recurso_id is not None:

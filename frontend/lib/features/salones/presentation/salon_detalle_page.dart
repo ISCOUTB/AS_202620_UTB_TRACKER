@@ -172,7 +172,7 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
   Widget build(BuildContext context) {
     final s = _salonActual;
     // El salón solo acepta préstamos si está disponible
-    final puedePrestar = s.disponible;
+    final puedePrestar = s.solicitable;
 
     return Scaffold(
       body: ListView(
@@ -432,7 +432,8 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Este salón no se puede solicitar ahora (estado: ${s.estado})',
+                            s.avisoDeshabilitado ??
+                                'Este salón no se puede solicitar por ahora.',
                             style: const TextStyle(
                                 color: AppColors.danado, fontSize: 13),
                           ),

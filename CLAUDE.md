@@ -31,7 +31,8 @@ El dueño (Mateo) no programa: explicar en lenguaje simple y con pasos copiables
   `paginas_auth.py` (correos y páginas HTML de los enlaces), `limites.py` (límites en BD),
   `equipamiento.py` (equipamiento calculado con UNA consulta agrupada), `salones*.py`,
   `auditoria.py` (llamar `auditoria.registrar(..., actor_id=...)` en acciones sensibles),
-  `asignaciones.py`, `fotos.py`, `imagenes.py`.
+  `asignaciones.py`, `fotos.py`, `imagenes.py`, `catalogo.py` (regla del código A1-101, ADR-0021;
+  datos en `scripts/datos/catalogo_utb.json`, carga `scripts/cargar_catalogo_utb.py --simular`).
 - `models/`: `auth_models` (Usuario), `salon_models` (Salon, Horario, PrestamoSalon…),
   `recurso_models`, `seguridad_models` (TokenUsado, IntentoLimitado), `auditoria_models`.
 - `messaging/`: outbox transaccional + `worker.py` (`python -m app.messaging`): envía correos

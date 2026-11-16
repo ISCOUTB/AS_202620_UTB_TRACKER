@@ -1,8 +1,14 @@
 # UTB Tracker
 
-Sistema de inventario y préstamo de equipos y salones de la Universidad
-Tecnológica de Bolívar. El backend está construido con FastAPI y el cliente
-móvil con Flutter.
+Administración de los **salones** de la Universidad Tecnológica de Bolívar.
+
+- Ocupación en vivo y solicitudes de salón.
+- Habilitación con motivo y equipos fijos por salón (**los equipos no se prestan**).
+- Catálogo A1-101, auditoría, roles Estudiante, Auditor y Administrador, y cuentas con correo
+  institucional verificado.
+
+Backend con FastAPI y app móvil con Flutter. **Índice de toda la documentación:
+[docs/README.md](docs/README.md).**
 
 ## Despliegue y Acceso Público
 
@@ -262,7 +268,7 @@ requirements.in         Dependencias fuente
 requirements.txt        Lock reproducible con hashes
 ```
 
-Consulta [`docs/arc42.md`](docs/arc42.md) para la arquitectura y
+Consulta [`docs/arc42.md`](docs/arc42/arc42.md) para la arquitectura y
 [`docs/seguridad/analisis-dependencias.md`](docs/seguridad/analisis-dependencias.md)
 para la política de auditoría.
 

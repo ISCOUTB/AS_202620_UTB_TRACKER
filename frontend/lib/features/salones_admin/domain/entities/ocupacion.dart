@@ -129,7 +129,7 @@ class OcupacionSalon {
         return '${clase?.titulo ?? 'Clase'} · ${clase?.rango ?? ''}';
       case SituacionSalon.prestado:
         final p = prestamo;
-        return p?.motivo?.isNotEmpty == true ? p!.motivo! : 'Préstamo de salón';
+        return p?.motivo?.isNotEmpty == true ? p!.motivo! : 'Solicitud de salón';
       case SituacionSalon.mantenimiento:
       case SituacionSalon.fueraDeServicio:
         return salon.detalleUbicacion;

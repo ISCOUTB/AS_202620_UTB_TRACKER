@@ -75,12 +75,16 @@ def sugerir_tipo(salon: Salon, equipamiento: list[dict]) -> Optional[str]:
     return None if sugerido == (salon.tipo or "aula") else sugerido
 
 
-def adjuntar(db: Session, salones: list[Salon]) -> list[Salon]:
-    """Pone `equipamiento` y `tipo_sugerido` en cada salón (atributos de respuesta, no columnas)."""
+def adjuntar(db: Session, salones: list[Salon], momento=None) -> list[Salon]:
+    """Pone los datos CALCULADOS de cada salón (atributos de respuesta, no columnas):
+    `equipamiento`, `tipo_sugerido` y, de ADR-0022, la ocupación y el `estado` visible.
+    Número fijo de consultas para toda la lista."""
+    from app.services import estado_salon  # import tardío: estado_salon usa correo/auditoría
     por_salon = calcular(db, (s.id for s in salones))
     for s in salones:
         s.equipamiento = por_salon.get(s.id, [])
         s.tipo_sugerido = sugerir_tipo(s, s.equipamiento)
+    estado_salon.adjuntar(db, salones, momento)
     return salones
 
 

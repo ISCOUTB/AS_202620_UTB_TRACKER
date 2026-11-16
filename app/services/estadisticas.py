@@ -49,3 +49,31 @@ def resumen_admin(db: Session, dias: int = 30) -> dict:
             db, ReporteSalon.tipo, ReporteSalon.created_at >= desde
         ),
     }
+
+
+def resumen_operativo(db: Session) -> dict[str, int]:
+    """Contadores del panel principal (GET /stats/resumen).
+
+    Libres y ocupados salen de la OCUPACIÓN calculada (ADR-0022): "ocupado" ya no se guarda en
+    la columna `estado`, así que contarlo ahí daría siempre 0.
+    """
+    from sqlalchemy import func
+
+    from app.models.recurso_models import Prestamo, Recurso, Reporte
+    from app.models.salon_models import PrestamoSalon
+    from app.services import estado_salon
+
+    pisos = estado_salon.resumen_por_piso(db)
+
+    def contar(modelo, *condiciones) -> int:
+        return db.query(func.count(modelo.id)).filter(*condiciones).scalar() or 0
+
+    return {
+        "salones_libres": sum(p["libres"] for p in pisos),
+        "salones_ocupados": sum(p["ocupados"] for p in pisos),
+        "equipos_disponibles": contar(Recurso, Recurso.activo.is_(True),
+                                      Recurso.estado == "disponible"),
+        "prestamos_activos": contar(Prestamo, Prestamo.estado == "activo"),
+        "reportes_abiertos": contar(Reporte, Reporte.estado_reportado.in_(["dañado", "abierto"])),
+        "solicitudes_salon_pendientes": contar(PrestamoSalon, PrestamoSalon.estado == "pendiente"),
+    }
