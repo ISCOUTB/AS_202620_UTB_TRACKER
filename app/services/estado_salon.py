@@ -24,6 +24,7 @@ from typing import Iterable, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
+from app.models import salon_models
 from app.models.salon_models import Horario, HistorialSalon, PrestamoSalon, Salon
 from app.services import auditoria, correo
 
@@ -41,12 +42,7 @@ class MotivoDeshabilitacion(str, Enum):
     OTRO = "otro"
 
 
-ETIQUETAS_MOTIVO = {
-    "mantenimiento": "Mantenimiento",
-    "danio": "Daño",
-    "evento": "Evento",
-    "otro": "Otro",
-}
+ETIQUETAS_MOTIVO = salon_models.ETIQUETAS_MOTIVO
 
 
 def ahora_campus(momento: Optional[datetime] = None) -> datetime:
@@ -68,15 +64,8 @@ def estado_visible(salon: Salon, ocupado: bool) -> str:
 
 
 def texto_deshabilitado(salon: Salon) -> Optional[str]:
-    """'Deshabilitado: Mantenimiento (cambio de lámpara). Reapertura estimada: 20/11/2026.'"""
-    if salon.habilitado:
-        return None
-    texto = f"Deshabilitado: {ETIQUETAS_MOTIVO.get(salon.motivo_deshabilitado or '', 'Otro')}"
-    if salon.nota_deshabilitado:
-        texto += f" ({salon.nota_deshabilitado})"
-    if salon.reapertura_estimada:
-        texto += f". Reapertura estimada: {salon.reapertura_estimada:%d/%m/%Y}"
-    return texto + "."
+    """'Deshabilitado: Mantenimiento (…). Reapertura estimada: 20/11/2026.' (vive en el modelo)."""
+    return salon.texto_deshabilitado()
 
 
 # ── Ocupación calculada en lote ───────────────────────────────────────────────

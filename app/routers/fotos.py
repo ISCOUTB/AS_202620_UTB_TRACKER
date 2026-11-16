@@ -5,7 +5,6 @@ y `usuarios` (la de otra persona). Sin endpoints propios.
 from fastapi import HTTPException, Request, Response, status
 
 from app.core import config
-from app.models.auth_models import FotoPerfil
 from app.services import fotos
 
 
@@ -27,7 +26,7 @@ async def leer_cuerpo_limitado(request: Request) -> bytes:
     return b"".join(partes)
 
 
-def respuesta_foto(foto: FotoPerfil) -> Response:
+def respuesta_foto(foto) -> Response:  # FotoPerfil (de services.fotos)
     """Los bytes con su tipo real. La app pide ?v=<versión>: una versión nueva es otra URL,
     así que la copia en caché (privada, nunca en proxies) puede durar."""
     return Response(

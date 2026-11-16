@@ -1689,10 +1689,11 @@
     "/prestamos": {
       "post": {
         "tags": [
-          "prestamos"
+          "prestamos (legado)"
         ],
         "summary": "Crear Prestamo",
         "operationId": "crear_prestamo_prestamos_post",
+        "deprecated": true,
         "security": [
           {
             "OAuth2PasswordBearer": []
@@ -1757,11 +1758,12 @@
       },
       "get": {
         "tags": [
-          "prestamos"
+          "prestamos (legado)"
         ],
         "summary": "Listar Prestamos",
         "description": "Lista préstamos de recursos (histórico). Solo auditor y administrador (ADR-0018).\nDevuelve el total en el header X-Total-Count.",
         "operationId": "listar_prestamos_prestamos_get",
+        "deprecated": true,
         "security": [
           {
             "OAuth2PasswordBearer": []
@@ -1839,11 +1841,12 @@
     "/prestamos/{prestamo_id}/devolver": {
       "patch": {
         "tags": [
-          "prestamos"
+          "prestamos (legado)"
         ],
         "summary": "Devolver Prestamo",
         "description": "Registra la devolución de un préstamo.\nMarca fecha_devolucion_real y restaura el recurso a 'disponible'.",
         "operationId": "devolver_prestamo_prestamos__prestamo_id__devolver_patch",
+        "deprecated": true,
         "security": [
           {
             "OAuth2PasswordBearer": []
@@ -1893,7 +1896,7 @@
     "/prestamos/marcar-vencidos": {
       "post": {
         "tags": [
-          "prestamos"
+          "prestamos (legado)"
         ],
         "summary": "Marcar Vencidos",
         "description": "Job idempotente para actualizar préstamos activos vencidos.",
@@ -1914,6 +1917,7 @@
             }
           }
         },
+        "deprecated": true,
         "security": [
           {
             "OAuth2PasswordBearer": []

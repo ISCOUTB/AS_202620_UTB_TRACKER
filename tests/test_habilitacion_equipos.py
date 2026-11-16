@@ -404,3 +404,20 @@ def test_listados_sin_n_mas_1(client, db_session, admin_headers, ruta):
     _poblar(db_session, 8, desde=2)
     muchas = _consultas(db_session, lambda: client.get(ruta, headers=admin_headers))
     assert muchas == pocas, f"{ruta}: {pocas} consultas con 2 salones y {muchas} con 10"
+
+
+# ---------------------------------------------------------------- ADR-0023: sin "prestado"
+
+def test_put_de_recurso_rechaza_prestado(client, db_session, admin_headers):
+    vb = _equipo(db_session, _salon(db_session))
+    r = client.put(f"/recursos/{vb.id}", json={"estado": "prestado"}, headers=admin_headers)
+    assert r.status_code == 422 and "no se prestan" in r.json()["detail"]
+    assert client.put(f"/recursos/{vb.id}", json={"estado": "dañado"},
+                      headers=admin_headers).status_code == 200
+
+
+def test_prestamos_de_equipos_figuran_como_obsoletos():
+    from app.main import app
+    rutas = app.openapi()["paths"]
+    assert all(op.get("deprecated") for p, ops in rutas.items() if p.startswith("/prestamos/")
+               or p == "/prestamos" for op in ops.values())

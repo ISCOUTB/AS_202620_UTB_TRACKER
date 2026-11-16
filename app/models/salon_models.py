@@ -28,6 +28,10 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 FK_SALONES_ID = "salones.id"
+
+# Motivos de deshabilitación (ADR-0022) y su texto para mostrar.
+ETIQUETAS_MOTIVO = {"mantenimiento": "Mantenimiento", "danio": "Daño", "evento": "Evento",
+                    "otro": "Otro"}
 FK_USUARIOS_ID = "usuarios.id"
 
 
@@ -61,6 +65,17 @@ class Salon(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+    def texto_deshabilitado(self):
+        """'Deshabilitado: Mantenimiento (nota). Reapertura estimada: dd/mm/aaaa.' o None."""
+        if self.habilitado is not False:
+            return None
+        texto = f"Deshabilitado: {ETIQUETAS_MOTIVO.get(self.motivo_deshabilitado or '', 'Otro')}"
+        if self.nota_deshabilitado:
+            texto += f" ({self.nota_deshabilitado})"
+        if self.reapertura_estimada:
+            texto += f". Reapertura estimada: {self.reapertura_estimada:%d/%m/%Y}"
+        return texto + "."
 
     # Relaciones
     horarios = relationship("Horario", back_populates="salon", cascade="all, delete-orphan")
@@ -123,8 +138,7 @@ class PrestamoSalon(Base):
         """ADR-0022: señala al Auditor (y al estudiante) que el salón quedó deshabilitado."""
         if self.estado not in ("pendiente", "aprobado") or self.salon is None:
             return None
-        from app.services.estado_salon import texto_deshabilitado  # evita import circular
-        return texto_deshabilitado(self.salon)
+        return self.salon.texto_deshabilitado()
 
 
 class PresenciaSalon(Base):

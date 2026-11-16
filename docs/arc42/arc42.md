@@ -102,7 +102,7 @@ El auxiliar de planta accede normalmente desde la app móvil, muchas veces con c
 
 **Diagrama de contexto (C4 Nivel 1)**
 
-![Diagrama de contexto C4 Nivel 1 - Tractar](c4/c4_nivel1.md)
+![Diagrama de contexto C4 Nivel 1 - Tractar](../c4/c4_nivel1.md)
 
 *(Diagrama modelado utilizando la extension de *Mermaid* para VSCode. Muestra Auxiliar de planta y usuario UTB
 como actores, UTB Tracker como sistema central, y un sistema externo: el sistema de correo electronico.)*
@@ -558,6 +558,8 @@ Costos aproximados para el entorno de producción del proyecto académico:
 # Conceptos transversales (Cross-cutting Concepts)
 
 ## 8.1 Patrón de Capas y Control de Erosión Arquitectónica
+
+> **Regla automática (ADR-0023, S09):** `tests/test_erosion_capas.py` falla si un router importa modelos o consulta la base, si un servicio importa routers, si un modelo depende de capas superiores, o si `domain/` de Flutter importa Flutter, `http`, `data/` o `presentation/`. Corre en el CI en cada unión a `main`.
 Para evitar la erosión del estilo Monolito Modular (S9 — req. 9.6), el backend implementa una separación estricta de tres capas en cada módulo de dominio:
 1. **Capa de Enrutamiento HTTP (`app/routers/`):** Expone endpoints REST, valida datos de entrada mediante esquemas Pydantic y gestiona respuestas HTTP/códigos de estado (200, 201, 404, 409). No ejecuta lógica de negocio ni consultas directas al ORM.
 2. **Capa de Servicio (`app/services/`):** Orquesta la lógica de negocio, reglas de dominio (ej. exclusividad de recursos en préstamo — QS-06) y transacciones de base de datos. Módulos: `services/resources.py`, `services/loans.py`, `services/auth.py`.
@@ -630,6 +632,7 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0018](../adr/0018-modelo-de-roles-y-permisos.md) — Modelo de roles y permisos con una matriz única (etiquetas Estudiante/Auditor/Administrador, permisos en /auth/me, modo prueba solo de interfaz)
 - [ADR-0019](../adr/0019-correo-institucional-y-rol-por-asignacion.md) — Solo correos institucionales (dominio exacto, sin bloquear cuentas antiguas) y rol por una lista de asignación que solo aplica con el correo comprobado; el rol manual gana
 - [ADR-0020](../adr/0020-foto-de-perfil.md) — Foto de perfil como miniatura limpia (firma real, sin EXIF/GPS, sin librerías nuevas en el backend) en la tabla aparte `fotos_perfil`
+- [ADR-0023](../adr/0023-retiro-del-prestamo-de-equipos-y-control-de-erosion.md) — "prestado" deja de usarse (422 y migración de datos auditada), `/prestamos/*` queda como legado obsoleto y las capas se verifican solas con `tests/test_erosion_capas.py` (S09)
 - [ADR-0022](../adr/0022-habilitacion-ocupacion-y-equipos-del-salon.md) — Habilitación manual del salón (motivo obligatorio) separada de la ocupación calculada; `estado` calculado con los valores de siempre; salón deshabilitado no se solicita y sus solicitudes se señalan y avisan sin cancelarse solas; historial del salón; equipos fijos con estado (nunca "prestado"), plantillas con vista previa; panel sin N+1
 - [ADR-0021](../adr/0021-catalogo-de-salones-utb.md) — Catálogo de salones UTB: regla del código en un solo lugar, lista provisional en un archivo de datos (59 salones, corregida con una tesis de la biblioteca UTB), carga idempotente que nunca borra y solo el Administrador crea, renombra y desactiva
 

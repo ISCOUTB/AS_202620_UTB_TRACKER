@@ -15,10 +15,7 @@ router = APIRouter()
 def crear_mantenimiento(datos: schemas.MantenimientoRecursoCreate,
                         db: Annotated[Session, Depends(get_db)],
                         current_user: GestionaEquipos):
-    item = maintenance_service.crear_mantenimiento(db, datos)
-    db.commit()
-    db.refresh(item)
-    return item
+    return maintenance_service.registrar_mantenimiento(db, datos, actor_id=current_user.id)
 
 
 @router.get("", response_model=list[schemas.MantenimientoRecursoOut])

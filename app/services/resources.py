@@ -88,6 +88,13 @@ def actualizar_recurso(
     """Actualiza un recurso existente. Solo modifica campos proporcionados."""
     recurso = obtener_recurso(db, recurso_id)
     update_data = datos.model_dump(exclude_unset=True)
+    # ADR-0023: los equipos no se prestan; "prestado" ya no se pone a mano.
+    if getattr(update_data.get("estado"), "value", update_data.get("estado")) == "prestado":
+        raise HTTPException(
+            status_code=422,
+            detail="Estado no válido: los equipos no se prestan (usa operativo, dañado o "
+                   "en mantenimiento).",
+        )
 
     # Si cambia el serial, verificar que no exista otro con el mismo
     if "serial" in update_data:

@@ -126,7 +126,9 @@ async def logging_middleware(request: Request, call_next):
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(resources.router, prefix="/recursos", tags=["recursos"])
-app.include_router(loans.router, prefix="/prestamos", tags=["prestamos"])
+# Legado (ADR-0010/0023): el préstamo de equipos ya no está en la app. Se conserva solo como
+# evidencia de los experimentos de idempotencia y bloqueo (S11) y figura como obsoleto.
+app.include_router(loans.router, prefix="/prestamos", tags=["prestamos (legado)"], deprecated=True)
 # Va antes que `salones`: /salones/ocupacion no debe caer en /salones/{salon_id}.
 app.include_router(catalogo.router, prefix="/salones/catalogo", tags=["salones-catalogo"])
 app.include_router(estado_salon.router, prefix="/salones", tags=["salones-habilitacion"])
