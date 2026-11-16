@@ -8,11 +8,11 @@ from sqlalchemy.orm import Session
 
 from app.core import config
 from app.core.hashing import verify_password
-from app.core.politica import correo_valido, normalizar_correo
+from app.core.politica import error_correo_nuevo, normalizar_correo
 from app.core.security import PROPOSITO_CAMBIAR_CORREO, crear_token_proposito
 from app.models.auth_models import Usuario
-from app.schemas.perfil import PerfilUpdate, Preferencias
-from app.services import auditoria, correo, limites
+from app.schemas.perfil import PerfilResponse, PerfilUpdate, Preferencias
+from app.services import asignaciones, auditoria, correo, fotos, limites
 from app.services.usuarios import proteger_ultimo_admin
 from app.services.auth import (
     MSG_LIMITE_CORREO,
@@ -43,6 +43,16 @@ def exigir_password(db: Session, user: Usuario, password: str) -> None:
 # --------------------------------------------------------------------------
 # Datos del perfil y preferencias
 # --------------------------------------------------------------------------
+def respuesta(db: Session, user: Usuario) -> PerfilResponse:
+    """GET/PATCH /auth/me: el perfil con lo que se calcula (origen del rol y cargo)."""
+    perfil = PerfilResponse.model_validate(user)
+    perfil.rol_origen, perfil.cargo = asignaciones.origen(db, user)
+    perfil.rol_origen_texto = asignaciones.TEXTO_ORIGEN[perfil.rol_origen]
+    perfil.foto_version = fotos.version_de(db, user.id) or 0
+    perfil.tiene_foto = perfil.foto_version > 0
+    return perfil
+
+
 _CAMPOS_PERFIL = ("nombre_mostrar", "telefono", "dependencia", "color_avatar")
 
 
@@ -101,6 +111,7 @@ def desactivar_cuenta(db: Session, user: Usuario, password: str) -> None:
     proteger_ultimo_admin(db, user)  # nunca sin administrador activo (ADR-0018)
     user.activo = False
     user.sesion_version = (user.sesion_version or 0) + 1
+    fotos.borrar_contenido(db, user.id)  # la foto es dato personal: no se conserva (ADR-0020)
     auditoria.registrar(db, "usuario.desactivar_propia", "usuario", user.id, actor_id=user.id)
     db.commit()
 
@@ -109,8 +120,9 @@ def solicitar_cambio_correo(db: Session, user: Usuario, nuevo: str, password: st
     """El correo NO cambia todavía: se envía un enlace al nuevo y un aviso al anterior."""
     exigir_password(db, user, password)
     nuevo = normalizar_correo(nuevo)
-    if not correo_valido(nuevo):
-        raise HTTPException(status_code=422, detail="Escribe un correo válido")
+    error = error_correo_nuevo(nuevo)  # solo institucionales (ADR-0019)
+    if error:
+        raise HTTPException(status_code=422, detail=error)
     if nuevo == normalizar_correo(user.email):
         raise HTTPException(status_code=409, detail="Ese ya es tu correo.")
     if buscar_por_correo(db, nuevo):
@@ -154,6 +166,9 @@ def confirmar_cambio_correo(db: Session, token: str) -> Usuario:
     auditoria.registrar(db, "usuario.cambio_correo", "usuario", user.id, actor_id=user.id,
                         detalle={"de": correo.ocultar_correo(anterior),
                                  "a": correo.ocultar_correo(nuevo)})
+    db.flush()
+    # Rol según el correo NUEVO ya comprobado (ADR-0019).
+    asignaciones.recalcular(db, user, "cambio_correo", actor_id=user.id)
     try:
         db.commit()
     except IntegrityError as exc:

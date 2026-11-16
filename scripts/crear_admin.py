@@ -23,7 +23,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.core.database import SessionLocal  # noqa: E402
 from app.core.hashing import hash_password  # noqa: E402
 from app.core.permisos import Rol, etiqueta  # noqa: E402
-from app.core.politica import correo_valido, error_password, normalizar_correo  # noqa: E402
+from app.core.politica import (  # noqa: E402
+    correo_valido, error_correo_nuevo, error_password, normalizar_correo,
+)
 from app.models.auth_models import Usuario  # noqa: E402
 from app.services import auditoria  # noqa: E402
 from app.services.auth import buscar_por_correo  # noqa: E402
@@ -59,6 +61,11 @@ def main() -> int:
             if not opciones.crear:
                 print("No hay una cuenta con ese correo. Regístrate en la app o usa --crear.")
                 return 1
+            # Una cuenta NUEVA sigue la misma regla que el registro: solo correo institucional.
+            error = error_correo_nuevo(correo)
+            if error:
+                print(f"{error}.")
+                return 1
             nombre = " ".join(input("Nombre de usuario: ").split())
             if not nombre:
                 print("El nombre no puede estar vacío.")
@@ -73,6 +80,7 @@ def main() -> int:
         else:
             anterior = user.rol
             user.rol = Rol.ADMINISTRADOR.value
+            user.rol_manual = True  # la lista de asignaciones no lo pisa (ADR-0019)
             user.activo = True
             user.sesion_version = (user.sesion_version or 0) + 1
             auditoria.registrar(db, "usuario.rol", "usuario", user.id, detalle={

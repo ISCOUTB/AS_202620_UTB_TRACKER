@@ -26,6 +26,9 @@ import app.main  # noqa: E402,F401  (registra todos los modelos en Base.metadata
 
 # Del más nuevo al más viejo: (revisión, prueba de que el esquema ya la tiene).
 MARCAS = [
+    ("b8c9d0e1f2a3", lambda i: "fotos_perfil" in i.get_table_names()),
+    ("a7b8c9d0e1f2", lambda i: _columna(i, "usuarios", "rol_manual")),
+    ("f6a7b8c9d0e1", lambda i: _columna(i, "prestamos_salon", "respuesta")),
     ("e5f6a7b8c9d0", lambda i: _columna(i, "salones", "tipo")),
     ("d4e5f6a7b8c9", lambda i: _columna(i, "usuarios", "preferencias")),
     ("c3d4e5f6a7b8", lambda i: _columna(i, "usuarios", "email_verificado")),

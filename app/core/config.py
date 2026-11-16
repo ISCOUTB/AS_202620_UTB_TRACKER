@@ -73,6 +73,30 @@ _verif_env = os.getenv("VERIFICACION_OBLIGATORIA", "").strip().lower()
 VERIFICACION_OBLIGATORIA = (
     _verif_env in ("1", "true", "yes", "on") if _verif_env else USE_REAL_MAIL
 )
+
+# Dominios de correo admitidos en REGISTROS y CAMBIOS DE CORREO nuevos (ADR-0019). Coincidencia
+# EXACTA con lo que va tras la última "@": "estudiantes.utb.edu.co" NO entra si no está en la
+# lista. Sin la variable vale "utb.edu.co" (producción no necesita configurarla). Las cuentas
+# que ya existían con otro dominio siguen entrando.
+DOMINIO_INSTITUCIONAL = "utb.edu.co"
+
+
+def leer_dominios(valor: str | None) -> tuple[str, ...]:
+    """'utb.edu.co, @Example.com' -> ('utb.edu.co', 'example.com'). Vacío = el institucional."""
+    dominios = [d.strip().lower().lstrip("@") for d in (valor or "").split(",")]
+    return tuple(dict.fromkeys(d for d in dominios if d)) or (DOMINIO_INSTITUCIONAL,)
+
+
+DOMINIOS_PERMITIDOS = leer_dominios(os.getenv("DOMINIOS_PERMITIDOS"))
+
+# Foto de perfil (ADR-0020): la app la reduce a 256 px antes de subirla; el servidor solo admite
+# miniaturas (tamaño y lado máximos) y limita las subidas por usuario.
+FOTO_MAX_BYTES = int(os.getenv("FOTO_MAX_BYTES", str(200 * 1024)))
+FOTO_LADO_MAXIMO = int(os.getenv("FOTO_LADO_MAXIMO", "512"))
+FOTO_LADO_MINIMO = 32
+FOTO_RATE_LIMIT = int(os.getenv("FOTO_RATE_LIMIT", "10"))
+FOTO_RATE_WINDOW_SECONDS = int(os.getenv("FOTO_RATE_WINDOW_SECONDS", "3600"))
+
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
@@ -114,6 +138,9 @@ if ENVIRONMENT == "production":
             "USE_REAL_MAIL=false en producción: los correos NO se envían (quedan en %s). "
             "Ver docs/despliegue/worker.md", CORREOS_DIR,
         )
+    if DOMINIOS_PERMITIDOS != (DOMINIO_INSTITUCIONAL,):
+        logger.warning("DOMINIOS_PERMITIDOS amplía los correos admitidos a: %s",
+                       ", ".join(DOMINIOS_PERMITIDOS))
     if not VERIFICACION_OBLIGATORIA:
         logger.warning(
             "VERIFICACION_OBLIGATORIA=false: las cuentas nuevas no confirman su correo. "

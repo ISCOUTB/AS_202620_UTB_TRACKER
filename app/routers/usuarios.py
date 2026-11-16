@@ -10,8 +10,11 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import GestionaUsuarios
+from app.core.deps import CurrentUser, GestionaUsuarios
 from app.schemas.usuarios import CambioEstado, CambioRol, UsuarioAdmin
+from app.routers.fotos import respuesta_foto
+from app.services import asignaciones as asignaciones_service
+from app.services import fotos as fotos_service
 from app.services import usuarios as usuarios_service
 
 router = APIRouter()
@@ -31,7 +34,7 @@ def listar_usuarios(
     """Usuarios con búsqueda, filtro por rol y su última actividad. Total en X-Total-Count."""
     filas, total = usuarios_service.listar(db, busqueda, rol, activo, skip, limit)
     response.headers["X-Total-Count"] = str(total)
-    return [UsuarioAdmin.de(u, en) for u, en in filas]
+    return [UsuarioAdmin.de(u, en, version) for u, en, version in filas]
 
 
 @router.patch("/{usuario_id}/rol", response_model=UsuarioAdmin)
@@ -56,3 +59,26 @@ def cambiar_estado(
     return UsuarioAdmin.de(
         usuarios_service.cambiar_estado(db, usuario_id, body.activo, current_user)
     )
+
+
+@router.post("/{usuario_id}/rol/automatico", response_model=UsuarioAdmin)
+def rol_automatico(
+    usuario_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: GestionaUsuarios,
+):
+    """Quita el rol manual: desde ahora manda la lista de asignaciones (ADR-0019)."""
+    return UsuarioAdmin.de(asignaciones_service.volver_a_automatico(db, usuario_id, current_user))
+
+
+@router.get("/{usuario_id}/foto", response_class=Response,
+            responses={200: {"content": {"image/jpeg": {}, "image/png": {}}},
+                       403: {"description": "Foto de otra persona sin permiso"},
+                       404: {"description": "Sin foto"}})
+def foto_de_usuario(
+    usuario_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """La propia, o la de otra persona con `usuarios.ver` (listas de auditor/administrador)."""
+    return respuesta_foto(fotos_service.obtener(db, usuario_id, current_user))

@@ -40,9 +40,11 @@ Future<void> mostrarCambiarCorreo(BuildContext context) async {
                 controller: correo,
                 keyboardType: TextInputType.emailAddress,
                 autofillHints: const [AutofillHints.email],
-                decoration: const InputDecoration(labelText: 'Correo nuevo'),
-                validator: (v) =>
-                    Politica.correoValido(v ?? '') ? null : Politica.msgCorreoInvalido,
+                decoration: const InputDecoration(
+                  labelText: 'Correo institucional nuevo',
+                  helperText: 'Ejemplo: ${Politica.ejemploCorreo}',
+                ),
+                validator: (v) => Politica.errorCorreoNuevo(v ?? ''),
               ),
               const SizedBox(height: 10),
               TextFormField(

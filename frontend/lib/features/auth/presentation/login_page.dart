@@ -181,14 +181,13 @@ class _LoginPageState extends State<LoginPage> {
                                       child: _CampoUber(
                                         controller: _email,
                                         etiqueta: 'Correo institucional',
+                                        ayuda: 'Ejemplo: ${Politica.ejemploCorreo}',
                                         icono: Icons.mail_outline_rounded,
                                         teclado: TextInputType.emailAddress,
                                         autofill: const [AutofillHints.email],
                                         accion: TextInputAction.next,
                                         validator: (v) =>
-                                            Politica.correoValido(v ?? '')
-                                                ? null
-                                                : Politica.msgCorreoInvalido,
+                                            Politica.errorCorreoNuevo(v ?? ''),
                                       ),
                                     )
                                   : const SizedBox(width: double.infinity),
@@ -570,10 +569,12 @@ class _CampoUber extends StatelessWidget {
     this.autofill,
     this.accion,
     this.onEnviar,
+    this.ayuda,
   });
 
   final TextEditingController controller;
   final String etiqueta;
+  final String? ayuda;
   final IconData icono;
   final String? Function(String?) validator;
   final bool oculto;
@@ -601,6 +602,8 @@ class _CampoUber extends StatelessWidget {
       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: etiqueta,
+        helperText: ayuda,
+        helperStyle: const TextStyle(color: AppColors.textoSuave),
         prefixIcon: Icon(icono, color: AppColors.textoSuave),
         suffixIcon: sufijo,
         filled: true,

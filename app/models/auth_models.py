@@ -6,10 +6,17 @@ roles de acceso, trazabilidad y estado de activación.
 """
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Index, Integer, String, false, func
+from sqlalchemy import (
+    JSON, BigInteger, Boolean, Column, DateTime, ForeignKey, Index, Integer, LargeBinary,
+    String, false, func,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+
+
+def _rol_alto(contexto) -> bool:
+    return (contexto.get_current_parameters().get("rol") or "usuario_utb") != "usuario_utb"
 
 
 class Usuario(Base):
@@ -26,6 +33,10 @@ class Usuario(Base):
     fecha_registro = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     rol = Column(String, nullable=False, default="usuario_utb")
     # valores válidos: usuario_utb | administrador | auxiliar
+    # ADR-0019: True = el rol lo puso un administrador (o la consola) y la asignación automática
+    # por correo NO lo pisa. Un rol alto creado directamente (scripts, seed, pruebas) nace
+    # manual; la migración marcó así a todas las cuentas que ya tenían un rol alto.
+    rol_manual = Column(Boolean, nullable=False, default=_rol_alto, server_default=false())
     password = Column(String, nullable=False)
     fcm_token = Column(String, nullable=True)
     activo = Column(Boolean, nullable=False, default=True)
@@ -49,3 +60,37 @@ class Usuario(Base):
     )
 
     prestamos = relationship("Prestamo", backref="usuario")
+
+
+class AsignacionRol(Base):
+    """Lista que mantiene el administrador: correo institucional EXACTO -> rol (ADR-0019).
+
+    Sin comodines ni patrones: un rol alto solo se le da a un correo escrito completo, y solo
+    se aplica cuando la persona demostró que el correo es suyo (lo verificó).
+    """
+    __tablename__ = "asignaciones_rol"
+
+    id = Column(Integer, primary_key=True)
+    correo = Column(String(254), nullable=False, unique=True)  # normalizado (minúsculas)
+    rol = Column(String(20), nullable=False)
+    cargo = Column(String(120), nullable=True)                 # p. ej. "Auxiliar de planta"
+    creado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    creado_en = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    actualizado_en = Column(DateTime, nullable=True, onupdate=lambda: datetime.now(timezone.utc))
+
+
+class FotoPerfil(Base):
+    """Foto de perfil ya reducida (ADR-0020). Tabla aparte para no cargar bytes en cada consulta
+    de `usuarios`; funciona igual en SQLite, PostgreSQL y Docker sin volúmenes nuevos.
+    Se borra al quitar la foto o al desactivar la cuenta."""
+    __tablename__ = "fotos_perfil"
+
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    contenido = Column(LargeBinary, nullable=False)  # sin metadatos (EXIF/GPS quitados)
+    tipo = Column(String(20), nullable=False)        # image/jpeg | image/png (por su firma)
+    tamano = Column(Integer, nullable=False)         # bytes
+    ancho = Column(Integer, nullable=False)
+    alto = Column(Integer, nullable=False)
+    # Milisegundos desde 1970 de la última subida: la app la usa como clave de caché.
+    version = Column(BigInteger, nullable=False)
+    actualizado_en = Column(DateTime, nullable=False)

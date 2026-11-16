@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/foto_perfil.dart';
 import '../../../shared/sin_acceso.dart';
 import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
@@ -171,11 +172,16 @@ class _FilaUsuario extends StatelessWidget {
         onTap: onTap,
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 19,
-              backgroundColor: AppColors.superficieAlta,
-              child: Text(u.nombreVisible.isEmpty ? '?' : u.nombreVisible[0].toUpperCase(),
-                  style: TextStyle(color: colorDeRol(u.rol), fontWeight: FontWeight.w800)),
+            FotoOIniciales(
+              usuarioId: u.id,
+              fotoVersion: u.fotoVersion,
+              tamano: 38,
+              respaldo: CircleAvatar(
+                radius: 19,
+                backgroundColor: AppColors.superficieAlta,
+                child: Text(u.nombreVisible.isEmpty ? '?' : u.nombreVisible[0].toUpperCase(),
+                    style: TextStyle(color: colorDeRol(u.rol), fontWeight: FontWeight.w800)),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -225,8 +231,8 @@ class _HojaUsuario extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('¿Hacer ${RolUsuario.etiqueta(rol)} a ${usuario.nombreVisible}?'),
-        content: Text('${RolUsuario.descripcion(rol)}. Se cerrarán sus sesiones abiertas para '
-            'que el cambio aplique de inmediato.'),
+        content: Text('${RolUsuario.descripcion(rol)}. Queda como rol manual (la lista de roles '
+            'por correo no lo cambia) y se cerrarán sus sesiones abiertas para que aplique ya.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Volver')),
           FilledButton(
@@ -266,6 +272,13 @@ class _HojaUsuario extends StatelessWidget {
     mostrarMensaje(context, error ?? (activar ? 'Cuenta activada' : 'Cuenta desactivada'));
   }
 
+  Future<void> _automatico(BuildContext context) async {
+    final error = await controller.rolAutomatico(usuario);
+    if (!context.mounted) return;
+    Navigator.pop(context);
+    mostrarMensaje(context, error ?? 'Ahora su rol sale de la lista de roles por correo');
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -303,6 +316,22 @@ class _HojaUsuario extends StatelessWidget {
                     title: Text(RolUsuario.etiqueta(rol)),
                     subtitle: Text(RolUsuario.descripcion(rol)),
                     onTap: rol == usuario.rol ? null : () => _cambiarRol(context, rol),
+                  ),
+                ),
+              Text(
+                usuario.rolManual
+                    ? 'Rol manual: lo puso un administrador y la lista de roles por correo no '
+                        'lo cambia.'
+                    : 'Rol automático: sale de la lista de roles por correo.',
+                style: const TextStyle(color: AppColors.textoSuave, fontSize: 12.5),
+              ),
+              if (usuario.rolManual)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => _automatico(context),
+                    icon: const Icon(Icons.autorenew_rounded),
+                    label: const Text('Volver al rol automático'),
                   ),
                 ),
               const SizedBox(height: 10),

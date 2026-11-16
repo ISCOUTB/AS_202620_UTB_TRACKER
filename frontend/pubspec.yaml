@@ -11,6 +11,9 @@ environment:
 #  - get_it:      inyección de dependencias (lo nombra el Blueprint, patrón Repositorio).
 #  - flutter_svg: dibuja las figuras SVG de assets/figuras/. Es la única que NO está en el Blueprint;
 #                 si el profesor no la aprueba, se reemplaza convirtiendo las figuras a PNG.
+#  - image_picker: oficial del equipo de Flutter (flutter.dev). Foto de perfil desde la cámara o la
+#                 galería, ya reducida a 256 px y recomprimida en el teléfono (ADR-0020). Sin
+#                 permisos nuevos en Android (cámara del sistema y selector de fotos).
 dependencies:
   flutter:
     sdk: flutter
@@ -20,6 +23,7 @@ dependencies:
   firebase_core: ^4.2.1
   firebase_messaging: ^16.0.4
   flutter_secure_storage: ^9.2.4
+  image_picker: ^1.2.4
 
 dev_dependencies:
   flutter_test:

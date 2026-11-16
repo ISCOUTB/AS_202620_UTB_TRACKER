@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 
+import '../../shared/foto_perfil.dart';
 import '../../features/admin/data/admin_data.dart';
 import '../../features/admin/presentation/admin_controllers.dart';
 import '../../features/auditoria/auditoria.dart';
@@ -59,6 +60,16 @@ Future<void> configurarDependencias({ApiClient? api}) async {
 
   // Controladores de estado (uno por sesión de app)
   sl.registerLazySingleton(() => AuthController(sl(), sl()));
+  sl.registerLazySingleton(() {
+    // Al cerrar sesión se olvidan las fotos descargadas (eran visibles por los permisos de
+    // quien estaba conectado).
+    final cache = CacheFotos(sl());
+    final auth = sl<AuthController>();
+    auth.addListener(() {
+      if (auth.usuario == null) cache.vaciar();
+    });
+    return cache;
+  });
   // Roles y permisos (ADR-0018): solicitudes por rol y pantallas del administrador.
   sl.registerLazySingleton<SolicitudesRepository>(() => SolicitudesRepositoryImpl(sl()));
   sl.registerLazySingleton(() => SolicitudesController(sl(), bandeja: false),
@@ -67,6 +78,7 @@ Future<void> configurarDependencias({ApiClient? api}) async {
       instanceName: 'bandeja');
   sl.registerLazySingleton<AdminRepository>(() => AdminRepositoryImpl(sl()));
   sl.registerLazySingleton(() => UsuariosController(sl()));
+  sl.registerFactory(() => AsignacionesController(sl()));
   sl.registerLazySingleton(() => EstadisticasController(sl()));
   sl.registerLazySingleton(() => RecursosController(sl()));
   sl.registerLazySingleton(() => MantenimientoController(sl()));

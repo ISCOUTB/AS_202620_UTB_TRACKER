@@ -35,7 +35,6 @@ class _AuthFalso implements AuthRepository {
   Future<Usuario> registrar({
     required String nombre,
     required String email,
-    required String rol,
     required String password,
   }) async {
     if (falloRegistro != null) throw falloRegistro!;

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -147,6 +148,28 @@ class ApiClient {
     return (r ?? '') as String;
   }
 
+  /// PUT con bytes crudos (la foto de perfil, ADR-0020): sin multipart ni JSON.
+  Future<dynamic> putBytes(String ruta, Uint8List bytes, {required String tipo}) {
+    return _enviar(
+      ruta,
+      () => _client.put(
+        _uri(ruta),
+        headers: _cabeceras({'Content-Type': tipo}),
+        body: bytes,
+      ),
+    );
+  }
+
+  /// GET que devuelve los bytes (la foto de perfil), con la sesión y el refresco de token.
+  Future<Uint8List> getBytes(String ruta, {Map<String, dynamic>? parametros}) async {
+    final r = await _enviar(
+      ruta,
+      () => _client.get(_uri(ruta, parametros), headers: _cabeceras({'Accept': 'image/*'})),
+      comoBytes: true,
+    );
+    return (r as Uint8List?) ?? Uint8List(0);
+  }
+
   Future<dynamic> delete(String ruta) {
     return _enviar(ruta, () => _client.delete(_uri(ruta), headers: _cabeceras()));
   }
@@ -157,6 +180,7 @@ class ApiClient {
     String ruta,
     Future<http.Response> Function() peticion, {
     bool comoTexto = false,
+    bool comoBytes = false,
   }) async {
     try {
       var r = await peticion().timeout(ApiConfig.timeout);
@@ -166,6 +190,7 @@ class ApiClient {
         }
       }
       if (r.statusCode >= 200 && r.statusCode < 300) {
+        if (comoBytes) return r.bodyBytes;
         if (r.bodyBytes.isEmpty) return null;
         final texto = utf8.decode(r.bodyBytes);
         return comoTexto ? texto : jsonDecode(texto);

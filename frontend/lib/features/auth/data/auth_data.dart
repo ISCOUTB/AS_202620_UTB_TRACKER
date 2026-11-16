@@ -22,6 +22,14 @@ class UsuarioModel {
         // ADR-0018 (servidores anteriores no los mandan: se calculan del rol).
         rolEtiqueta: j['rol_etiqueta'] as String?,
         permisos: Permisos.desdeJson(j['permisos'], (j['rol'] ?? '').toString()),
+        // ADR-0019 (servidores anteriores no los mandan).
+        correoInstitucional: j['correo_institucional'] as bool? ?? true,
+        rolOrigen: (j['rol_origen'] ?? 'base').toString(),
+        rolOrigenTexto: j['rol_origen_texto'] as String?,
+        cargo: j['cargo'] as String?,
+        // ADR-0020 (foto de perfil).
+        tieneFoto: j['tiene_foto'] as bool? ?? false,
+        fotoVersion: (j['foto_version'] as num?)?.toInt() ?? 0,
       );
 }
 
@@ -40,7 +48,6 @@ class AuthRemoteDataSource {
   Future<Usuario> registrar({
     required String nombre,
     required String email,
-    required String rol,
     required String password,
   }) async {
     final r = await _api.post(
@@ -48,7 +55,6 @@ class AuthRemoteDataSource {
       cuerpo: {
         'nombre': nombre,
         'email': email,
-        'rol': rol,
         'password': password,
       },
     );
@@ -213,13 +219,11 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Usuario> registrar({
     required String nombre,
     required String email,
-    required String rol,
     required String password,
   }) =>
       _remoto.registrar(
         nombre: nombre,
         email: email,
-        rol: rol,
         password: password,
       );
 
