@@ -35,8 +35,21 @@ def _leer_matriz() -> dict[tuple[str, str], str]:
 
 
 def _rutas() -> list[tuple[str, str, APIRoute]]:
-    return [(metodo, r.path, r) for r in app.routes if isinstance(r, APIRoute)
-            for metodo in sorted(r.methods)]
+    lista: list[tuple[str, str, APIRoute]] = []
+    for r in app.routes:
+        if isinstance(r, APIRoute):
+            for metodo in sorted(r.methods):
+                lista.append((metodo, r.path, r))
+        elif type(r).__name__ == "_IncludedRouter":
+            prefix = r.include_context.prefix or ""
+            for sub_r in r.original_router.routes:
+                if isinstance(sub_r, APIRoute):
+                    path = prefix + sub_r.path
+                    if not path.startswith("/"):
+                        path = "/" + path
+                    for metodo in sorted(sub_r.methods):
+                        lista.append((metodo, path, sub_r))
+    return lista
 
 
 def _exigido_por_el_codigo(ruta: APIRoute) -> str:
