@@ -1,0 +1,54 @@
+{
+  "_comentario": [
+    "Catálogo de salones del Campus Tecnológico de la UTB (Ternera). ADR-0021.",
+    "ESTADO: PROVISIONAL, pendiente de confirmar con Planta Física o Registro Académico.",
+    "No hay un listado oficial completo publicado. Los rangos salen de la lista que dio el equipo,",
+    "corregida con la única fuente oficial encontrada (ver 'fuentes').",
+    "Se corrige editando ESTE archivo (sin tocar código) y volviendo a correr",
+    "scripts/cargar_catalogo_utb.py: crea los que falten y nunca borra.",
+    "Código = A + edificio (1 dígito) + '-' + piso (1 dígito) + salón (2 dígitos). A2-505 = edificio 2, piso 5, salón 05."
+  ],
+  "fuentes": [
+    {
+      "id": "lista-equipo",
+      "descripcion": "Lista dada por el equipo del proyecto (2026-11). Sin respaldo oficial.",
+      "url": null
+    },
+    {
+      "id": "tesis-2007",
+      "descripcion": "Ramírez León, H. J. (2007). Determinación de las cargas térmicas... piso 1 del edificio de Aulas 2. UTB, Biblioteca. Tabla 48: locales A1 402 a A1 407 del piso 4 del edificio de Aulas 1 son salas de informática; el salón A2-201 está sobre los laboratorios del piso 1 de Aulas 2.",
+      "url": "https://biblioteca.utb.edu.co/notas/tesis/0043111.pdf"
+    }
+  ],
+  "capacidad_por_defecto": 40,
+  "_capacidad": "Sin dato oficial: todos nacen con capacidad 40 marcada como ESTIMADA (capacidad_estimada=true) y editable.",
+  "rangos": [
+    {"edificio": 1, "piso": 1, "desde": 1, "hasta": 4, "fuente": "lista-equipo"},
+    {"edificio": 1, "piso": 2, "desde": 1, "hasta": 5, "fuente": "lista-equipo"},
+    {"edificio": 1, "piso": 3, "desde": 1, "hasta": 5, "fuente": "lista-equipo", "supuesto": "'igual' al piso 2"},
+    {"edificio": 1, "piso": 4, "desde": 1, "hasta": 7, "fuente": "lista-equipo + tesis-2007",
+     "supuesto": "La lista decía 401-405 ('igual'); la tesis de 2007 nombra 402 a 407. Se dejan 401-407: 401 solo por la lista, 406 y 407 solo por la tesis."},
+    {"edificio": 2, "piso": 2, "desde": 1, "hasta": 5, "fuente": "lista-equipo"},
+    {"edificio": 2, "piso": 3, "desde": 1, "hasta": 5, "fuente": "lista-equipo"},
+    {"edificio": 2, "piso": 4, "desde": 1, "hasta": 5, "fuente": "lista-equipo"},
+    {"edificio": 2, "piso": 5, "desde": 1, "hasta": 5, "fuente": "lista-equipo"},
+    {"edificio": 3, "piso": 1, "desde": 1, "hasta": 3, "fuente": "lista-equipo"},
+    {"edificio": 3, "piso": 2, "desde": 1, "hasta": 3, "fuente": "lista-equipo"},
+    {"edificio": 4, "piso": 1, "desde": 1, "hasta": 4, "fuente": "lista-equipo"},
+    {"edificio": 4, "piso": 2, "desde": 1, "hasta": 4, "fuente": "lista-equipo"},
+    {"edificio": 5, "piso": 2, "desde": 1, "hasta": 4, "fuente": "lista-equipo", "supuesto": "solo el piso 2"}
+  ],
+  "tipos": {
+    "_comentario": "Solo los que marca una fuente. Los demás quedan como 'aula'. La tesis es de 2007: confirmar que siguen siendo salas de informática.",
+    "A1-402": "laboratorio_computo",
+    "A1-403": "laboratorio_computo",
+    "A1-404": "laboratorio_computo",
+    "A1-405": "laboratorio_computo",
+    "A1-406": "laboratorio_computo",
+    "A1-407": "laboratorio_computo"
+  },
+  "no_incluidos": {
+    "_comentario": "Espacios que la fuente menciona pero NO se cargan: decidirlo con Planta Física.",
+    "A2 piso 1": "La tesis de 2007 describe laboratorios y oficinas en el piso 1 de Aulas 2 (Física Mecánica, Física Eléctrica, Sala de Cómputo, Electrónica Análoga, Telecomunicaciones, Control). Los códigos A2-101 a A2-107 solo aparecen en las placas de los aires acondicionados, no como nombre de salón."
+  }
+}

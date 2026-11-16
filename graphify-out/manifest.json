@@ -1,8 +1,8 @@
 {
   ".github/workflows/ci.yml": {
-    "mtime": 1794687559.9256153,
-    "seen": 1794701923.6210399,
-    "ast_hash": "fc8a78d5a496336bfd757909ab8e1f68",
+    "mtime": 1794853867.0097554,
+    "seen": 1794853987.5551221,
+    "ast_hash": "7fff35a7e1ffd45a8630655e8ed61623",
     "semantic_hash": ""
   },
   "app/__init__.py": {
@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "app/core/deps.py": {
-    "mtime": 1794777771.6479194,
-    "seen": 1794850383.5137482,
-    "ast_hash": "5f217b12d4ec133ef0d5256cf2fcbda4",
+    "mtime": 1794853867.0245435,
+    "seen": 1794853987.5553062,
+    "ast_hash": "465caf18bf9d04bbd111b62db6058291",
     "semantic_hash": ""
   },
   "app/core/hashing.py": {
@@ -264,9 +264,9 @@
     "semantic_hash": ""
   },
   "app/messaging/worker.py": {
-    "mtime": 1794705047.2706654,
-    "seen": 1794705429.4553041,
-    "ast_hash": "a6d112184379ecd09fd35c3334bcc981",
+    "mtime": 1794853867.0511384,
+    "seen": 1794853987.5554013,
+    "ast_hash": "9da8d31aa80d7854ddfde3a0ca9a5f45",
     "semantic_hash": ""
   },
   "app/models/__init__.py": {
@@ -1584,9 +1584,9 @@
     "semantic_hash": ""
   },
   "tests/test_matriz_permisos.py": {
-    "mtime": 1794779239.725893,
-    "seen": 1794850383.5150573,
-    "ast_hash": "1a2a1aff8c8365ee20818016bacd3ed5",
+    "mtime": 1794853867.1261818,
+    "seen": 1794853987.5572264,
+    "ast_hash": "6c93e5d96c2eb191eb51f5c7a7e0070f",
     "semantic_hash": ""
   },
   "tests/test_rol_por_correo.py": {

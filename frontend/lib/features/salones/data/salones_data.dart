@@ -27,6 +27,7 @@ class SalonModel {
             ),
         ],
         tipoSugerido: j['tipo_sugerido'] == null ? null : TipoSalon.desdeApi(j['tipo_sugerido']),
+        capacidadEstimada: j['capacidad_estimada'] as bool? ?? false,
       );
 }
 
@@ -85,8 +86,9 @@ class SalonesRemoteDataSource {
   SalonesRemoteDataSource(this._api);
   final ApiClient _api;
 
+  /// TODAS las páginas: el catálogo UTB ya pasa de 50 salones (ADR-0021).
   Future<List<Salon>> listarSalones() async {
-    final cuerpo = await _api.get('/salones') as List<dynamic>;
+    final cuerpo = await _api.getTodo('/salones');
     return cuerpo
         .map((e) => SalonModel.desdeJson(e as Map<String, dynamic>))
         .toList();

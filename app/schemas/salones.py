@@ -21,8 +21,11 @@ def _recortar_descripcion(v):
 
 
 class SalonCreate(BaseModel):
-    nombre: str = Field(..., min_length=1, max_length=50, examples=["A-301"])
-    ubicacion: str = Field(..., min_length=1, examples=["Edificio A, Piso 3"])
+    # Código del catálogo UTB (ADR-0021): A1-101 = edificio A1, piso 1, salón 01. Si el nombre
+    # tiene esa forma, edificio/piso deben coincidir y la ubicación se escribe sola
+    # ("Edificio A1, piso 1"), sea cual sea el texto enviado.
+    nombre: str = Field(..., min_length=1, max_length=50, examples=["A1-101"])
+    ubicacion: str = Field(..., min_length=1, examples=["Edificio A1, piso 1"])
     edificio: Optional[str] = None
     piso: Optional[int] = None
     capacidad: int = Field(..., gt=0, examples=[40])
@@ -66,6 +69,8 @@ class SalonResponse(BaseModel):
     capacidad: int
     estado: str
     activo: bool = True
+    # True = capacidad por defecto sin dato oficial (ADR-0021): la app la marca "estimada".
+    capacidad_estimada: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     # Campos nuevos con valor por defecto: no rompen el contrato (ADR-0017).

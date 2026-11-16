@@ -44,7 +44,11 @@ class Salon {
     this.descripcion,
     this.equipamiento = const [],
     this.tipoSugerido,
+    this.capacidadEstimada = false,
   });
+
+  /// Capacidad por defecto sin dato oficial (ADR-0021): se muestra "estimada".
+  final bool capacidadEstimada;
 
   final TipoSalon tipo;
   final String? descripcion;

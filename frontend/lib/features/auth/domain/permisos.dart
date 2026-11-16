@@ -19,6 +19,7 @@ class Permisos {
   static const equiposGestionar = 'equipos.gestionar';
   static const horariosGestionar = 'horarios.gestionar';
   static const usuariosVer = 'usuarios.ver';
+  static const salonesCrearCatalogo = 'salones.crear_catalogo';
   static const usuariosGestionar = 'usuarios.gestionar';
   static const auditoriaVer = 'auditoria.ver';
   static const estadisticasVer = 'estadisticas.ver';
@@ -31,7 +32,9 @@ class Permisos {
     solicitudesGestionar, salonesAdministrar, reportesGestionar, equiposGestionar,
     horariosGestionar, usuariosVer,
   };
-  static const _administracion = {usuariosGestionar, auditoriaVer, estadisticasVer, modoPrueba};
+  static const _administracion = {
+    usuariosGestionar, auditoriaVer, estadisticasVer, modoPrueba, salonesCrearCatalogo,
+  };
 
   static const ninguno = Permisos({});
 

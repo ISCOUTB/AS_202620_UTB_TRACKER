@@ -1730,6 +1730,131 @@
         ]
       }
     },
+    "/salones/catalogo/rango/vista-previa": {
+      "post": {
+        "tags": [
+          "salones-catalogo"
+        ],
+        "summary": "Vista Previa Rango",
+        "description": "Qué salones crearía el rango y cuáles ya existen. No escribe nada.",
+        "operationId": "vista_previa_rango_salones_catalogo_rango_vista_previa_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RangoCatalogo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaPreviaRango"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/salones/catalogo/rango": {
+      "post": {
+        "tags": [
+          "salones-catalogo"
+        ],
+        "summary": "Crear Rango",
+        "description": "Crea los salones del rango que falten (los existentes no se tocan). Auditado.",
+        "operationId": "crear_rango_salones_catalogo_rango_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RangoCatalogo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoRango"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/salones/catalogo/fuera": {
+      "get": {
+        "tags": [
+          "salones-catalogo"
+        ],
+        "summary": "Salones Fuera Del Catalogo",
+        "description": "Salones activos que no siguen la regla o no están en el catálogo, con una propuesta.\nSolo informa: nada se borra ni se cambia.",
+        "operationId": "salones_fuera_del_catalogo_salones_catalogo_fuera_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SalonFueraCatalogo"
+                  },
+                  "type": "array",
+                  "title": "Response Salones Fuera Del Catalogo Salones Catalogo Fuera Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/salones/ocupacion": {
       "get": {
         "tags": [
@@ -2192,7 +2317,7 @@
           "salones"
         ],
         "summary": "Crear Salon",
-        "description": "Crea un nuevo salón. Requiere rol administrador o auxiliar.",
+        "description": "Crea un salón del catálogo (solo Administrador, ADR-0021). Valida el código A1-101.",
         "operationId": "crear_salon_salones_post",
         "security": [
           {
@@ -2264,7 +2389,7 @@
               "type": "integer",
               "maximum": 100,
               "minimum": 1,
-              "default": 50,
+              "default": 100,
               "title": "Limit"
             }
           },
@@ -2298,6 +2423,24 @@
                 }
               ],
               "title": "Edificio"
+            }
+          },
+          {
+            "name": "piso",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 99,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Piso"
             }
           },
           {
@@ -2433,7 +2576,7 @@
           "salones"
         ],
         "summary": "Actualizar Salon",
-        "description": "Actualiza un salón existente. Requiere rol admin/auxiliar.",
+        "description": "Actualiza un salón. Auditor y Administrador; renombrar o mover de edificio/piso solo el\nAdministrador (ADR-0021).",
         "operationId": "actualizar_salon_salones__salon_id__put",
         "security": [
           {
@@ -2489,7 +2632,7 @@
           "salones"
         ],
         "summary": "Eliminar Salon",
-        "description": "Soft-delete de un salón. Requiere rol admin/auxiliar.",
+        "description": "Desactiva un salón del catálogo (nunca se borra: conserva su historial). Solo Administrador.",
         "operationId": "eliminar_salon_salones__salon_id__delete",
         "security": [
           {
@@ -6540,6 +6683,72 @@
         ],
         "title": "PrestamoSalonUpdate"
       },
+      "RangoCatalogo": {
+        "properties": {
+          "edificio": {
+            "type": "integer",
+            "maximum": 9.0,
+            "minimum": 1.0,
+            "title": "Edificio",
+            "examples": [
+              2
+            ]
+          },
+          "piso": {
+            "type": "integer",
+            "maximum": 9.0,
+            "minimum": 1.0,
+            "title": "Piso",
+            "examples": [
+              5
+            ]
+          },
+          "desde": {
+            "type": "integer",
+            "maximum": 99.0,
+            "minimum": 1.0,
+            "title": "Desde",
+            "examples": [
+              1
+            ]
+          },
+          "hasta": {
+            "type": "integer",
+            "maximum": 99.0,
+            "minimum": 1.0,
+            "title": "Hasta",
+            "examples": [
+              5
+            ]
+          },
+          "capacidad": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacidad"
+          },
+          "tipo": {
+            "$ref": "#/components/schemas/TipoSalon",
+            "default": "aula"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edificio",
+          "piso",
+          "desde",
+          "hasta"
+        ],
+        "title": "RangoCatalogo",
+        "description": "A{edificio}-{piso}{desde..hasta}. Ej.: edificio 2, piso 5, 1..5 -> A2-501 … A2-505."
+      },
       "RechazoSolicitud": {
         "properties": {
           "respuesta": {
@@ -7112,6 +7321,53 @@
         ],
         "title": "ResultadoImportacion"
       },
+      "ResultadoRango": {
+        "properties": {
+          "edificio": {
+            "type": "string",
+            "title": "Edificio"
+          },
+          "piso": {
+            "type": "integer",
+            "title": "Piso"
+          },
+          "ubicacion": {
+            "type": "string",
+            "title": "Ubicacion"
+          },
+          "nuevos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Nuevos"
+          },
+          "existentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Existentes"
+          },
+          "creados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Creados"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edificio",
+          "piso",
+          "ubicacion",
+          "nuevos",
+          "existentes",
+          "creados"
+        ],
+        "title": "ResultadoRango"
+      },
       "SalonCreate": {
         "properties": {
           "nombre": {
@@ -7120,7 +7376,7 @@
             "minLength": 1,
             "title": "Nombre",
             "examples": [
-              "A-301"
+              "A1-101"
             ]
           },
           "ubicacion": {
@@ -7128,7 +7384,7 @@
             "minLength": 1,
             "title": "Ubicacion",
             "examples": [
-              "Edificio A, Piso 3"
+              "Edificio A1, piso 1"
             ]
           },
           "edificio": {
@@ -7190,6 +7446,61 @@
         ],
         "title": "SalonCreate"
       },
+      "SalonFueraCatalogo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "edificio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edificio"
+          },
+          "piso": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piso"
+          },
+          "tiene_historial": {
+            "type": "boolean",
+            "title": "Tiene Historial"
+          },
+          "problema": {
+            "type": "string",
+            "title": "Problema"
+          },
+          "propuesta": {
+            "type": "string",
+            "title": "Propuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "tiene_historial",
+          "problema",
+          "propuesta"
+        ],
+        "title": "SalonFueraCatalogo"
+      },
       "SalonResponse": {
         "properties": {
           "id": {
@@ -7238,6 +7549,11 @@
             "type": "boolean",
             "title": "Activo",
             "default": true
+          },
+          "capacidad_estimada": {
+            "type": "boolean",
+            "title": "Capacidad Estimada",
+            "default": false
           },
           "created_at": {
             "anyOf": [
@@ -7826,6 +8142,45 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VistaPreviaRango": {
+        "properties": {
+          "edificio": {
+            "type": "string",
+            "title": "Edificio"
+          },
+          "piso": {
+            "type": "integer",
+            "title": "Piso"
+          },
+          "ubicacion": {
+            "type": "string",
+            "title": "Ubicacion"
+          },
+          "nuevos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Nuevos"
+          },
+          "existentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Existentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edificio",
+          "piso",
+          "ubicacion",
+          "nuevos",
+          "existentes"
+        ],
+        "title": "VistaPreviaRango"
       }
     },
     "securitySchemes": {

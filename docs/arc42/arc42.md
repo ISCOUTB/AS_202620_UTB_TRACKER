@@ -252,6 +252,22 @@ en la app `frontend/lib/core/utils/politica.dart`, `features/admin/presentation/
 `tests/test_rol_por_correo.py`, `tests/test_foto_perfil.py`,
 `frontend/test/correo_institucional_test.dart`, `asignaciones_test.dart`, `perfil_foto_test.dart`.
 
+### catálogo de salones UTB (ADR-0021)
+
+*Responsabilidad:* aplicar en UN solo lugar la regla del código (`A` + edificio + `-` + piso +
+salón: A1-101) con edificio y piso coincidentes; cargar el catálogo provisional desde un
+archivo de datos sin borrar nunca; reportar los salones que no siguen la regla con una
+propuesta; dejar crear, renombrar y desactivar solo al Administrador.
+*Interfaz:* `POST /salones/catalogo/rango/vista-previa`, `POST /salones/catalogo/rango`,
+`GET /salones/catalogo/fuera`, `POST|DELETE /salones` (ahora `salones.crear_catalogo`),
+`GET /salones?edificio=&piso=`, campo `capacidad_estimada`.
+*Ubicación:* `app/services/catalogo.py`, `app/routers/catalogo.py`, `app/schemas/catalogo.py`,
+`scripts/datos/catalogo_utb.json`, `scripts/cargar_catalogo_utb.py`; en la app
+`features/salones_admin/domain/catalogo.dart` (espejo de la regla) y
+`features/salones_admin/presentation/catalogo_page.dart`.
+*Requisitos que cumple:* QS-06 (confiabilidad de los datos) y QS-05 —
+`tests/test_catalogo_salones.py`, `frontend/test/catalogo_test.dart`.
+
 ## Nivel 2
 
 ### White Box *recursos*
@@ -594,6 +610,7 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0018](../adr/0018-modelo-de-roles-y-permisos.md) — Modelo de roles y permisos con una matriz única (etiquetas Estudiante/Auditor/Administrador, permisos en /auth/me, modo prueba solo de interfaz)
 - [ADR-0019](../adr/0019-correo-institucional-y-rol-por-asignacion.md) — Solo correos institucionales (dominio exacto, sin bloquear cuentas antiguas) y rol por una lista de asignación que solo aplica con el correo comprobado; el rol manual gana
 - [ADR-0020](../adr/0020-foto-de-perfil.md) — Foto de perfil como miniatura limpia (firma real, sin EXIF/GPS, sin librerías nuevas en el backend) en la tabla aparte `fotos_perfil`
+- [ADR-0021](../adr/0021-catalogo-de-salones-utb.md) — Catálogo de salones UTB: regla del código en un solo lugar, lista provisional en un archivo de datos (59 salones, corregida con una tesis de la biblioteca UTB), carga idempotente que nunca borra y solo el Administrador crea, renombra y desactiva
 
 # Requisitos de calidad
 

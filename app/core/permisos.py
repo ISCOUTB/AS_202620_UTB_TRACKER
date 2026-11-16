@@ -39,12 +39,13 @@ class Permiso(str, Enum):
     HORARIOS_VER = "horarios.ver"
     # Auditor y administrador
     SOLICITUDES_GESTIONAR = "solicitudes.gestionar"  # bandeja: aprobar / rechazar cualquiera
-    SALONES_ADMINISTRAR = "salones.administrar"      # ocupación, presencia, crear/editar salones
+    SALONES_ADMINISTRAR = "salones.administrar"      # ocupación, presencia, habilitación (ADR-0022)
     REPORTES_GESTIONAR = "reportes.gestionar"        # ver todos los reportes y atenderlos
     EQUIPOS_GESTIONAR = "equipos.gestionar"          # inventario y mantenimiento
     HORARIOS_GESTIONAR = "horarios.gestionar"
     USUARIOS_VER = "usuarios.ver"                    # nombre de quien pide o reporta
     # Solo administrador
+    SALONES_CREAR_CATALOGO = "salones.crear_catalogo"  # crear, renombrar, desactivar (ADR-0021)
     USUARIOS_GESTIONAR = "usuarios.gestionar"        # lista, roles, activar/desactivar
     AUDITORIA_VER = "auditoria.ver"                  # bitácora de cambios (ADR-0010)
     ESTADISTICAS_VER = "estadisticas.ver"
@@ -61,7 +62,7 @@ _OPERACION = {
 }
 _ADMINISTRACION = {
     Permiso.USUARIOS_GESTIONAR, Permiso.AUDITORIA_VER, Permiso.ESTADISTICAS_VER,
-    Permiso.MODO_PRUEBA,
+    Permiso.MODO_PRUEBA, Permiso.SALONES_CREAR_CATALOGO,
 }
 
 PERMISOS_POR_ROL: dict[str, frozenset[Permiso]] = {

@@ -10,8 +10,9 @@ import '../../auth/domain/permisos.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/salon.dart';
 import '../../../shared/equipamiento_chips.dart';
+import '../../salones_admin/domain/catalogo.dart';
+import '../../salones_admin/presentation/catalogo_page.dart';
 import 'salon_detalle_page.dart';
-import 'tipo_salon_campos.dart';
 import 'salones_controller.dart';
 
 class SalonesPage extends StatefulWidget {
@@ -38,42 +39,26 @@ class _SalonesPageState extends State<SalonesPage> {
     super.dispose();
   }
 
-  void _abrirCrearSalon() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.superficie,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        // #4 — al crear un salón se limpia la búsqueda para que el nuevo sea visible
-        // Con tipo y descripción el formulario es más alto: debe poder desplazarse.
-        child: SingleChildScrollView(
-          child: _CrearSalonSheet(
-            onExito: () {
-              _busquedaCtrl.clear();
-              _salones.fijarBusqueda('');
-            },
-          ),
-        ),
-      ),
-    );
+  /// El catálogo (crear, crear varios, desactivar) es solo del Administrador (ADR-0021).
+  Future<void> _abrirCatalogo() async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const CatalogoPage()));
+    _salones.cargar(silencioso: true);
   }
 
-  /// Edificio elegido en los chips (null = todos).
+  /// Edificio y piso elegidos en los chips (null = todos).
   String? _edificio;
+  int? _piso;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: _auth.permisos.puede(Permisos.salonesAdministrar)
+      floatingActionButton: _auth.permisos.puede(Permisos.salonesCrearCatalogo)
           ? Padding(
               padding: const EdgeInsets.only(bottom: 90),
               child: FloatingActionButton(
-                tooltip: 'Registrar salón',
-                onPressed: _abrirCrearSalon,
+                tooltip: 'Catálogo de salones',
+                onPressed: _abrirCatalogo,
                 child: const Icon(Icons.add_rounded),
               ),
             )
@@ -130,30 +115,24 @@ class _SalonesPageState extends State<SalonesPage> {
                     ],
                   ),
                 ),
-                if (edificios.length > 1)
-                  SizedBox(
-                    height: 58,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                      children: [
-                        for (final e in [null, ...edificios])
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: ChoiceChip(
-                              showCheckmark: false,
-                              label: Text(e ?? 'Todos'),
-                              selected: _edificio == e,
-                              onSelected: (_) => setState(() => _edificio = e),
-                              selectedColor: AppColors.primario,
-                              backgroundColor: AppColors.superficieAlta,
-                              side: BorderSide.none,
-                              shape: const StadiumBorder(),
-                            ),
-                          ),
-                      ],
-                    ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                  child: FiltroEdificioPiso(
+                    edificios: edificios,
+                    pisos: {
+                      for (final s in _salones.todos)
+                        if (s.piso != null && s.edificio == _edificio) s.piso!
+                    }.toList()
+                      ..sort(),
+                    edificio: _edificio,
+                    piso: _piso,
+                    onEdificio: (e) => setState(() {
+                      _edificio = e;
+                      _piso = null;
+                    }),
+                    onPiso: (p) => setState(() => _piso = p),
                   ),
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: _construirCuerpo(),
@@ -179,7 +158,9 @@ class _SalonesPageState extends State<SalonesPage> {
       case Carga.ok:
         final lista = _salones.filtrados
             .where((s) => _edificio == null || s.edificio == _edificio)
-            .toList();
+            .where((s) => _piso == null || s.piso == _piso)
+            .toList()
+          ..sort((a, b) => compararCodigos(a.nombre, b.nombre));
         if (lista.isEmpty) {
           return const VistaVacia(
             mensaje: 'No hay salones que coincidan',
@@ -192,7 +173,7 @@ class _SalonesPageState extends State<SalonesPage> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Aparecer(
-                  key: ValueKey('${_edificio ?? ''}-${s.id}'),
+                  key: ValueKey('${_edificio ?? ''}-${_piso ?? ''}-${s.id}'),
                   orden: i,
                   child: _FilaSalon(
                     salon: s,
@@ -440,170 +421,6 @@ class _SolicitudSalonSheetState extends State<_SolicitudSalonSheet> {
             onPressed: _enviando ? null : _enviar,
             icon: const Icon(Icons.send_outlined),
             label: Text(_enviando ? 'Enviando...' : 'Enviar solicitud'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Sheet: Crear nuevo salón ─────────────────────────────────────────────────
-
-class _CrearSalonSheet extends StatefulWidget {
-  const _CrearSalonSheet({required this.onExito});
-  // #4 — callback para limpiar el buscador tras crear exitosamente
-  final VoidCallback onExito;
-
-  @override
-  State<_CrearSalonSheet> createState() => _CrearSalonSheetState();
-}
-
-class _CrearSalonSheetState extends State<_CrearSalonSheet> {
-  final SalonesController _salones = sl<SalonesController>();
-  final TextEditingController _nombreCtrl = TextEditingController();
-  final TextEditingController _ubicacionCtrl = TextEditingController();
-  final TextEditingController _edificioCtrl = TextEditingController();
-  final TextEditingController _pisoCtrl = TextEditingController();
-  final TextEditingController _capacidadCtrl =
-      TextEditingController(text: '30');
-  final TextEditingController _descripcionCtrl = TextEditingController();
-  TipoSalon _tipo = TipoSalon.aula;
-
-  bool _enviando = false;
-
-  @override
-  void dispose() {
-    _nombreCtrl.dispose();
-    _ubicacionCtrl.dispose();
-    _edificioCtrl.dispose();
-    _pisoCtrl.dispose();
-    _capacidadCtrl.dispose();
-    _descripcionCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _guardar() async {
-    final nombre = _nombreCtrl.text.trim();
-    final ubicacion = _ubicacionCtrl.text.trim();
-    final capacidad = int.tryParse(_capacidadCtrl.text.trim()) ?? 0;
-
-    if (nombre.isEmpty || ubicacion.isEmpty || capacidad <= 0) {
-      mostrarMensaje(context, 'Completa los campos obligatorios');
-      return;
-    }
-
-    setState(() => _enviando = true);
-    final error = await _salones.crear(
-      nombre: nombre,
-      ubicacion: ubicacion,
-      edificio: _edificioCtrl.text.trim(),
-      piso: int.tryParse(_pisoCtrl.text.trim()),
-      capacidad: capacidad,
-      tipo: _tipo,
-      descripcion: _descripcionCtrl.text,
-    );
-    setState(() => _enviando = false);
-
-    if (!mounted) return;
-    if (error != null) {
-      mostrarMensaje(context, error);
-    } else {
-      Navigator.of(context).pop();
-      // #4 — notificar al padre para limpiar búsqueda y mostrar el nuevo salón
-      widget.onExito();
-      mostrarMensaje(context, 'Salón creado exitosamente');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'Nuevo Salón / Aula',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _nombreCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Nombre del salón *',
-              hintText: 'Ej. A-301, Lab Sistemas 1',
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _ubicacionCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Ubicación *',
-              hintText: 'Ej. Edificio A, Piso 3',
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _edificioCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Edificio (opc.)',
-                    hintText: 'Ej. A, B, C',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _pisoCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Piso (opc.)',
-                    hintText: 'Ej. 3',
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _capacidadCtrl,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Capacidad de personas *',
-              hintText: 'Ej. 35',
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Un salón nuevo aún no tiene equipos: la sugerencia de tipo aparece al editarlo.
-          CamposTipoSalon(
-            tipo: _tipo,
-            onTipo: (t) => setState(() => _tipo = t),
-            descripcion: _descripcionCtrl,
-          ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: _enviando ? null : _guardar,
-            child: _enviando
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Text('Registrar salón'),
           ),
         ],
       ),

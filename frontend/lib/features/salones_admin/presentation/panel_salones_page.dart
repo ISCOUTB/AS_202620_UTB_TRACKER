@@ -294,6 +294,27 @@ class _Filtros extends StatelessWidget {
             ],
             onElegir: controller.fijarConEquipo,
           ),
+          // Filtros del catálogo UTB (ADR-0021).
+          if (controller.edificios.length > 1)
+            _Menu<String?>(
+              etiqueta: controller.edificio ?? 'Edificio',
+              activo: controller.edificio != null,
+              opciones: [
+                (null, 'Todos los edificios'),
+                for (final e in controller.edificios) (e, 'Edificio $e'),
+              ],
+              onElegir: controller.fijarEdificio,
+            ),
+          if (controller.edificio != null && controller.pisos.length > 1)
+            _Menu<int?>(
+              etiqueta: controller.piso == null ? 'Piso' : 'Piso ${controller.piso}',
+              activo: controller.piso != null,
+              opciones: [
+                (null, 'Todos los pisos'),
+                for (final p in controller.pisos) (p, 'Piso $p'),
+              ],
+              onElegir: controller.fijarPiso,
+            ),
         ],
       ),
     );

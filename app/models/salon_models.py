@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     Time,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import relationship
 
@@ -38,6 +39,8 @@ class Salon(Base):
     edificio = Column(String, nullable=True)
     piso = Column(Integer, nullable=True)
     capacidad = Column(Integer, nullable=False)
+    # True = valor por defecto sin dato oficial (ADR-0021); pasa a False al editar la capacidad.
+    capacidad_estimada = Column(Boolean, nullable=False, default=False, server_default=false())
     # aula | laboratorio_computo | sala_audiovisual | auditorio | sala_reuniones | otro (ADR-0017)
     tipo = Column(String(30), nullable=False, default="aula", server_default="aula")
     descripcion = Column(String(500), nullable=True)

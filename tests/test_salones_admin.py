@@ -216,11 +216,11 @@ def test_reportes_de_todos_los_salones_traen_nombre_del_salon(client, admin_head
 
 def test_recurso_expone_el_codigo_real_del_salon(client, admin_headers):
     salon = client.post("/salones", json={
-        "nombre": "A4-206", "ubicacion": "Aula de clase", "capacidad": 40, "edificio": "Aulas 4",
+        "nombre": "A4-206", "ubicacion": "Aula de clase", "capacidad": 40, "edificio": "A4",
     }, headers=admin_headers).json()
     r = client.post("/recursos", json={
         "categoria": "aire_ac", "salon_id": salon["id"], "serial": "AC-A4-206",
     }, headers=admin_headers)
     assert r.status_code == 201, r.text
     assert r.json()["salon_nombre"] == "A4-206"
-    assert r.json()["salon_edificio"] == "Aulas 4"
+    assert r.json()["salon_edificio"] == "A4"

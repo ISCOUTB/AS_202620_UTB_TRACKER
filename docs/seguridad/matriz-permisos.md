@@ -32,6 +32,7 @@ si se agrega un endpoint sin fila aquí, o la fila no coincide con el código, l
 | `equipos.gestionar` | — | ✅ | ✅ |
 | `horarios.gestionar` | — | ✅ | ✅ |
 | `usuarios.ver` | — | ✅ | ✅ |
+| `salones.crear_catalogo` (crear, renombrar, desactivar; ADR-0021) | — | — | ✅ |
 | `usuarios.gestionar` | — | — | ✅ |
 | `auditoria.ver` | — | — | ✅ |
 | `estadisticas.ver` | — | — | ✅ |
@@ -94,11 +95,14 @@ los huecos corregidos.
 | GET | `/salones/reportes` | auxiliar o admin | reportes.gestionar | |
 | GET | `/salones/{salon_id}/reportes` | sesión | reportes.gestionar | ⚠ cualquiera leía los reportes (con nombres) |
 | PATCH | `/salones/{salon_id}/reportes/{reporte_id}` | auxiliar o admin | reportes.gestionar | |
-| POST | `/salones` | auxiliar o admin | salones.administrar | |
+| POST | `/salones/catalogo/rango/vista-previa` | — | salones.crear_catalogo | Nuevo (ADR-0021): solo informa |
+| POST | `/salones/catalogo/rango` | — | salones.crear_catalogo | Nuevo (ADR-0021): crear varios, auditado |
+| GET | `/salones/catalogo/fuera` | — | salones.crear_catalogo | Nuevo (ADR-0021): reporte de reconciliación |
+| POST | `/salones` | auxiliar o admin | salones.crear_catalogo | ADR-0021: el Auditor ya no crea (evita errores de catálogo) |
 | GET | `/salones` | sesión | salones.ver | |
 | GET | `/salones/{salon_id}` | sesión | salones.ver | |
-| PUT | `/salones/{salon_id}` | auxiliar o admin | salones.administrar | |
-| DELETE | `/salones/{salon_id}` | auxiliar o admin | salones.administrar | |
+| PUT | `/salones/{salon_id}` | auxiliar o admin | salones.administrar | Renombrar o cambiar edificio/piso: solo `salones.crear_catalogo` (se controla en el servicio) |
+| DELETE | `/salones/{salon_id}` | auxiliar o admin | salones.crear_catalogo | ADR-0021: desactivar (nunca borra) solo Administrador |
 | GET | `/salones/{salon_id}/disponibilidad` | sesión | salones.ver | |
 | POST | `/horarios` | auxiliar o admin | horarios.gestionar | |
 | POST | `/horarios/bulk` | auxiliar o admin | horarios.gestionar | |

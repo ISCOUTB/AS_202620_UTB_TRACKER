@@ -12,18 +12,24 @@ from sqlalchemy.orm import Session
 
 from app.models.salon_models import Horario, PrestamoSalon, Salon
 from app.schemas.salones import SalonCreate, SalonUpdate
-from app.services import auditoria, equipamiento
+from app.core import permisos
+from app.services import auditoria, catalogo, equipamiento
+
+# Campos que definen el salón en el catálogo: solo el Administrador los cambia (ADR-0021).
+CAMPOS_CATALOGO = ("nombre", "edificio", "piso")
 
 
 def crear_salon(db: Session, datos: SalonCreate, actor_id: Optional[int] = None) -> Salon:
-    """Crea un salón nuevo. Rechaza con 409 si el nombre ya existe."""
-    existente = db.query(Salon).filter(Salon.nombre == datos.nombre).first()
+    """Crea un salón nuevo. Valida el código del catálogo (ADR-0021); 409 si el nombre ya existe."""
+    valores = catalogo.completar(datos.model_dump(mode="json"))
+    catalogo.validar(valores["nombre"], valores.get("edificio"), valores.get("piso"))
+    existente = db.query(Salon).filter(Salon.nombre == valores["nombre"]).first()
     if existente:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Ya existe un salón con ese nombre",
         )
-    nuevo = Salon(**datos.model_dump(mode="json"))
+    nuevo = Salon(**valores)
     db.add(nuevo)
     db.flush()
     auditoria.registrar(
@@ -44,6 +50,7 @@ def listar_salones(
     busqueda: Optional[str] = None,
     tipo: Optional[str] = None,
     con_equipo: Optional[str] = None,
+    piso: Optional[int] = None,
 ) -> tuple[list[Salon], int]:
     """Devuelve salones activos con filtros opcionales y paginación.
 
@@ -57,6 +64,8 @@ def listar_salones(
         query = query.filter(Salon.estado == estado)
     if edificio:
         query = query.filter(Salon.edificio == edificio)
+    if piso is not None:
+        query = query.filter(Salon.piso == piso)
     if tipo:
         query = query.filter(Salon.tipo == tipo)
     if con_equipo:
@@ -65,6 +74,8 @@ def listar_salones(
         termino = f"%{busqueda.strip()}%"
         query = query.filter(Salon.nombre.ilike(termino) | Salon.descripcion.ilike(termino))
     total = query.count()
+    # Orden natural de los códigos (A1-101, A1-102 … A1-201 … A2-201): con el formato fijo de
+    # ADR-0021 el orden alfabético del nombre ES el natural, así que se hace en la base.
     items = query.order_by(Salon.nombre).offset(skip).limit(limit).all()
     return equipamiento.adjuntar(db, items), total
 
@@ -86,14 +97,40 @@ def obtener_salon(db: Session, salon_id: int) -> Salon:
 
 
 def actualizar_salon(
-    db: Session, salon_id: int, datos: SalonUpdate, actor_id: Optional[int] = None
+    db: Session, salon_id: int, datos: SalonUpdate, actor_id: Optional[int] = None,
+    actor_rol: Optional[str] = None,
 ) -> Salon:
-    """Actualiza un salón existente. Solo modifica campos proporcionados."""
+    """Actualiza un salón existente. Solo modifica campos proporcionados.
+
+    Renombrar o cambiar edificio/piso es del catálogo: solo el Administrador (403 al Auditor).
+    """
     salon = obtener_salon(db, salon_id)
     update_data = datos.model_dump(exclude_unset=True, mode="json")
-    # El tipo es obligatorio en la base: "null" no lo borra.
-    if update_data.get("tipo", "") is None:
-        update_data.pop("tipo")
+    # Columnas obligatorias en la base: "null" no las borra.
+    for campo in ("tipo", "nombre", "ubicacion", "capacidad", "estado"):
+        if campo in update_data and update_data[campo] is None:
+            update_data.pop(campo)
+    toca_catalogo = any(
+        c in update_data and update_data[c] != getattr(salon, c) for c in CAMPOS_CATALOGO
+    )
+    if toca_catalogo:
+        if actor_rol is not None and not permisos.tiene(
+            actor_rol, permisos.Permiso.SALONES_CREAR_CATALOGO
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo un administrador puede renombrar un salón o cambiar su edificio o piso.",
+            )
+        nombre = catalogo.normalizar_codigo(update_data.get("nombre", salon.nombre))             if catalogo.es_codigo_de_catalogo(update_data.get("nombre", salon.nombre))             else update_data.get("nombre", salon.nombre)
+        catalogo.validar(nombre, update_data.get("edificio", salon.edificio),
+                         update_data.get("piso", salon.piso))
+        if "nombre" in update_data:
+            update_data["nombre"] = nombre
+            if db.query(Salon.id).filter(Salon.nombre == nombre, Salon.id != salon.id).first():
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                    detail="Ya existe un salón con ese nombre")
+    if "capacidad" in update_data and update_data["capacidad"] is not None:
+        update_data["capacidad_estimada"] = False
     cambios = {
         campo: {"de": getattr(salon, campo), "a": valor}
         for campo, valor in update_data.items() if getattr(salon, campo) != valor
