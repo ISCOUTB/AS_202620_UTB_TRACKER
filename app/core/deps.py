@@ -105,27 +105,30 @@ def require_permiso(permiso: Permiso, *, verificado: bool = False):
     return verificar_permiso
 
 
-def Con(permiso: Permiso, *, verificado: bool = False):  # noqa: N802 (se usa como un tipo)
+def con_permiso(permiso: Permiso, *, verificado: bool = False):
     """Alias de tipo: `current_user: Con(Permiso.EQUIPOS_GESTIONAR)`."""
     return Annotated[Usuario, Depends(require_permiso(permiso, verificado=verificado))]
 
+
+# Alias para retrocompatibilidad
+Con = con_permiso
 
 # Alias de tipo para patrones comunes de inyección
 CurrentUser = Annotated[Usuario, Depends(get_current_user)]
 VerifiedUser = Annotated[Usuario, Depends(require_verified)]
 
 # Un alias por permiso (nombre = lo que la persona puede hacer). Los routers solo usan estos.
-VeSalones = Con(Permiso.SALONES_VER)
-SolicitaSalon = Con(Permiso.SALONES_SOLICITAR, verificado=True)
-TieneSolicitudes = Con(Permiso.SOLICITUDES_PROPIAS)
-CreaReportes = Con(Permiso.REPORTES_CREAR)
-VeEquipos = Con(Permiso.EQUIPOS_VER)
-VeHorarios = Con(Permiso.HORARIOS_VER)
-GestionaSolicitudes = Con(Permiso.SOLICITUDES_GESTIONAR)
-AdministraSalones = Con(Permiso.SALONES_ADMINISTRAR)
-GestionaReportes = Con(Permiso.REPORTES_GESTIONAR)
-GestionaEquipos = Con(Permiso.EQUIPOS_GESTIONAR)
-GestionaHorarios = Con(Permiso.HORARIOS_GESTIONAR)
-GestionaUsuarios = Con(Permiso.USUARIOS_GESTIONAR)
-VeAuditoria = Con(Permiso.AUDITORIA_VER)
-VeEstadisticas = Con(Permiso.ESTADISTICAS_VER)
+VeSalones = con_permiso(Permiso.SALONES_VER)
+SolicitaSalon = con_permiso(Permiso.SALONES_SOLICITAR, verificado=True)
+TieneSolicitudes = con_permiso(Permiso.SOLICITUDES_PROPIAS)
+CreaReportes = con_permiso(Permiso.REPORTES_CREAR)
+VeEquipos = con_permiso(Permiso.EQUIPOS_VER)
+VeHorarios = con_permiso(Permiso.HORARIOS_VER)
+GestionaSolicitudes = con_permiso(Permiso.SOLICITUDES_GESTIONAR)
+AdministraSalones = con_permiso(Permiso.SALONES_ADMINISTRAR)
+GestionaReportes = con_permiso(Permiso.REPORTES_GESTIONAR)
+GestionaEquipos = con_permiso(Permiso.EQUIPOS_GESTIONAR)
+GestionaHorarios = con_permiso(Permiso.HORARIOS_GESTIONAR)
+GestionaUsuarios = con_permiso(Permiso.USUARIOS_GESTIONAR)
+VeAuditoria = con_permiso(Permiso.AUDITORIA_VER)
+VeEstadisticas = con_permiso(Permiso.ESTADISTICAS_VER)

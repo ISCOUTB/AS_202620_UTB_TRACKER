@@ -90,7 +90,7 @@ class NotificadorSimulado:
             self._fallos_restantes -= 1
             raise RuntimeError(f"[NotificadorSimulado] Fallo simulado ({self._fallos_restantes} restantes)")
         self._envios += 1
-        logger.info("[NotificadorSimulado] Notificaci?n enviada ? email=%s asunto=%r envio_num=%d", email, asunto, self._envios)
+        logger.info("[NotificadorSimulado] Notificación enviada — email=%s asunto=%r longitud=%d envio_num=%d", email, asunto, len(cuerpo), self._envios)
 
 
 class NotificadorSMTP:
