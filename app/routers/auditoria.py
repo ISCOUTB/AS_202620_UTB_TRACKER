@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import SoloAdministrador
+from app.core.deps import VeAuditoria
 from app.schemas.auditoria import AuditoriaResponse
 from app.services import auditoria as service
 
@@ -21,7 +21,7 @@ router = APIRouter()
 @router.get("", response_model=list[AuditoriaResponse])
 def listar_auditoria(
     db: Annotated[Session, Depends(get_db)],
-    current_user: SoloAdministrador,
+    current_user: VeAuditoria,
     accion: Annotated[Optional[str], Query(description="Acción exacta o prefijo (ej. 'salon')")] = None,
     entidad: Optional[str] = None,
     actor_id: Optional[int] = None,
@@ -37,7 +37,7 @@ def listar_auditoria(
 @router.get("/exportar", response_class=Response)
 def exportar_auditoria(
     db: Annotated[Session, Depends(get_db)],
-    current_user: SoloAdministrador,
+    current_user: VeAuditoria,
     accion: Optional[str] = None,
     entidad: Optional[str] = None,
     actor_id: Optional[int] = None,

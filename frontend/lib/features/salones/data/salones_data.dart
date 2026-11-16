@@ -72,6 +72,12 @@ class PrestamoSalonModel {
             : DateTime.now(),
         salonNombre: j['salon_nombre'] as String?,
         usuarioNombre: j['usuario_nombre'] as String?,
+        respuesta: j['respuesta'] as String?,
+        atendidoPorNombre: j['atendido_por_nombre'] as String?,
+        atendidoEn: j['atendido_en'] != null
+            ? parsearFechaServidor(j['atendido_en'].toString())
+            : null,
+        conflicto: j['conflicto'] as String?,
       );
 }
 

@@ -8,8 +8,9 @@ import re
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.core import permisos as permisos_core
 from app.core.politica import PASSWORD_MINIMO, normalizar_nombre
 
 TamanoTexto = Literal["normal", "grande", "extra_grande"]
@@ -62,6 +63,16 @@ class PerfilResponse(BaseModel):
     dependencia: Optional[str] = None
     color_avatar: Optional[str] = None
     preferencias: Preferencias = Field(default_factory=Preferencias)
+    # ADR-0018: `rol` conserva el valor guardado (usuario_utb | auxiliar | administrador) para
+    # las APK instaladas; la etiqueta y los permisos se calculan de app/core/permisos.py.
+    rol_etiqueta: str = ""
+    permisos: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _permisos_del_rol(self):
+        self.rol_etiqueta = permisos_core.etiqueta(self.rol)
+        self.permisos = permisos_core.lista_permisos(self.rol)
+        return self
 
     @field_validator("preferencias", mode="before")
     @classmethod

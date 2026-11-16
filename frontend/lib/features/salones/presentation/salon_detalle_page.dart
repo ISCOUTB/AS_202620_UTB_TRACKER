@@ -4,6 +4,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
+import '../../auth/domain/permisos.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../../shared/equipamiento_chips.dart';
 import '../domain/entities/salon.dart';
@@ -58,7 +59,7 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
 
     // Carga los préstamos pendientes del usuario actual para este salón
     List<PrestamoSalon> pendientes = [];
-    if (!_auth.esAdministrador) {
+    if (!_auth.permisos.opera) {
       final usuario = _auth.usuario;
       if (usuario != null) {
         final (todos, _) =
@@ -186,7 +187,7 @@ class _SalonDetallePageState extends State<SalonDetallePage> {
                   children: [
                     const BackButton(),
                     const Spacer(),
-                    if (_auth.esAdministrador)
+                    if (_auth.permisos.puede(Permisos.horariosGestionar))
                       IconButton(
                         icon: const Icon(Icons.more_time_rounded),
                         tooltip: 'Configurar horario de clase',

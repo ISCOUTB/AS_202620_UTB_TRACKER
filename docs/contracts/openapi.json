@@ -239,7 +239,7 @@
           "auth"
         ],
         "summary": "Me Endpoint",
-        "description": "Perfil completo del usuario autenticado (datos, verificación y preferencias).",
+        "description": "Perfil completo: datos, verificación, preferencias y, desde ADR-0018, `rol_etiqueta` y\n`permisos` (la app decide qué mostrar por permisos, nunca comparando el texto del rol).",
         "operationId": "me_endpoint_auth_me_get",
         "responses": {
           "200": {
@@ -490,7 +490,7 @@
           "auth"
         ],
         "summary": "Delete User Endpoint",
-        "description": "Elimina (soft-delete) un usuario. Requiere rol admin/auxiliar.",
+        "description": "Desactiva (soft-delete) un usuario. Solo administrador (ADR-0018).",
         "operationId": "delete_user_endpoint_auth_delete__user_id__delete",
         "security": [
           {
@@ -536,6 +536,7 @@
           "auth"
         ],
         "summary": "Get User Endpoint",
+        "description": "Uno mismo, o auditor/administrador (para mostrar quién pidió o reportó).",
         "operationId": "get_user_endpoint_auth_user__user_id__get",
         "security": [
           {
@@ -583,7 +584,7 @@
           "auth"
         ],
         "summary": "Get Users Endpoint",
-        "description": "Lista todos los usuarios para el panel administrativo. Requiere rol admin/auxiliar.",
+        "description": "Lista usuarios (legado; la app nueva usa GET /usuarios). Solo administrador.",
         "operationId": "get_users_endpoint_auth_users_get",
         "security": [
           {
@@ -678,7 +679,7 @@
           "auth"
         ],
         "summary": "Update User Role Endpoint",
-        "description": "Asigna o actualiza el rol de un usuario desde el panel administrativo. Requiere rol admin/auxiliar.",
+        "description": "Cambia el rol (legado; la app nueva usa PATCH /usuarios/{id}/rol). Solo administrador.",
         "operationId": "update_user_role_endpoint_auth_user__user_id__role_put",
         "security": [
           {
@@ -734,7 +735,7 @@
           "auth"
         ],
         "summary": "Update User Role Endpoint",
-        "description": "Asigna o actualiza el rol de un usuario desde el panel administrativo. Requiere rol admin/auxiliar.",
+        "description": "Cambia el rol (legado; la app nueva usa PATCH /usuarios/{id}/rol). Solo administrador.",
         "operationId": "update_user_role_endpoint_auth_user__user_id__role_patch",
         "security": [
           {
@@ -1462,7 +1463,7 @@
           "prestamos"
         ],
         "summary": "Listar Prestamos",
-        "description": "Lista préstamos de recursos.\nAdmin/auxiliar ve todos; usuario normal solo ve los suyos.\nDevuelve el total en el header X-Total-Count.",
+        "description": "Lista préstamos de recursos (histórico). Solo auditor y administrador (ADR-0018).\nDevuelve el total en el header X-Total-Count.",
         "operationId": "listar_prestamos_prestamos_get",
         "security": [
           {
@@ -2886,7 +2887,7 @@
           "prestamos-salon"
         ],
         "summary": "Listar Prestamos Salon",
-        "description": "Lista préstamos de salón con filtros.\nAdmin/auxiliar ve todos; usuario normal solo ve los suyos.\nDevuelve el total de registros en el header X-Total-Count.",
+        "description": "Lista préstamos de salón con filtros.\nQuien gestiona solicitudes ve todas; el estudiante solo las suyas (ADR-0018).\nDevuelve el total de registros en el header X-Total-Count.",
         "operationId": "listar_prestamos_salon_prestamos_salon_get",
         "security": [
           {
@@ -2978,13 +2979,196 @@
         }
       }
     },
+    "/prestamos-salon/mias": {
+      "get": {
+        "tags": [
+          "prestamos-salon"
+        ],
+        "summary": "Listar Mis Solicitudes",
+        "description": "Mis solicitudes (pantalla del estudiante). Siempre solo las propias.",
+        "operationId": "listar_mis_solicitudes_prestamos_salon_mias_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estado"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PrestamoSalonResponse"
+                  },
+                  "title": "Response Listar Mis Solicitudes Prestamos Salon Mias Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prestamos-salon/gestion": {
+      "get": {
+        "tags": [
+          "prestamos-salon"
+        ],
+        "summary": "Bandeja De Solicitudes",
+        "description": "Bandeja del auditor: solicitudes de todos los estudiantes con su conflicto, si lo hay.",
+        "operationId": "bandeja_de_solicitudes_prestamos_salon_gestion_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "estado",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Por defecto 'pendiente'; 'todas' para todas",
+              "default": "pendiente",
+              "title": "Estado"
+            },
+            "description": "Por defecto 'pendiente'; 'todas' para todas"
+          },
+          {
+            "name": "salon_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Salon Id"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PrestamoSalonResponse"
+                  },
+                  "title": "Response Bandeja De Solicitudes Prestamos Salon Gestion Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/prestamos-salon/{prestamo_id}": {
       "get": {
         "tags": [
           "prestamos-salon"
         ],
         "summary": "Obtener Prestamo Salon",
-        "description": "Obtiene un préstamo de salón por ID.\nUsuario normal solo puede consultar el suyo; admin/auxiliar cualquiera.",
+        "description": "Obtiene un préstamo de salón por ID.\nEl estudiante solo puede consultar el suyo; quien gestiona solicitudes, cualquiera.",
         "operationId": "obtener_prestamo_salon_prestamos_salon__prestamo_id__get",
         "security": [
           {
@@ -3030,7 +3214,7 @@
           "prestamos-salon"
         ],
         "summary": "Actualizar Estado Prestamo Salon",
-        "description": "Actualiza el estado de un préstamo de salón.\nSolo admin/auxiliar puede aprobar, rechazar o cambiar estados.\nValida transiciones: pendiente→aprobado/rechazado/cancelado,\naprobado→en_uso/cancelado, en_uso→finalizado.",
+        "description": "Actualiza el estado de un préstamo de salón.\nSolo auditor/administrador puede aprobar, rechazar o cambiar estados.\nValida transiciones: pendiente→aprobado/rechazado/cancelado,\naprobado→en_uso/cancelado, en_uso→finalizado.",
         "operationId": "actualizar_estado_prestamo_salon_prestamos_salon__prestamo_id__patch",
         "security": [
           {
@@ -3128,13 +3312,136 @@
         }
       }
     },
+    "/prestamos-salon/{prestamo_id}/aprobar": {
+      "post": {
+        "tags": [
+          "prestamos-salon"
+        ],
+        "summary": "Aprobar Solicitud",
+        "description": "Aprueba (nota opcional). 409 si la franja ya choca con otra aprobada o con una clase.",
+        "operationId": "aprobar_solicitud_prestamos_salon__prestamo_id__aprobar_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "prestamo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Prestamo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RespuestaSolicitud"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Datos"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestamoSalonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prestamos-salon/{prestamo_id}/rechazar": {
+      "post": {
+        "tags": [
+          "prestamos-salon"
+        ],
+        "summary": "Rechazar Solicitud",
+        "description": "Rechaza con un motivo obligatorio, que el estudiante ve en la app y en el correo.",
+        "operationId": "rechazar_solicitud_prestamos_salon__prestamo_id__rechazar_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "prestamo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Prestamo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RechazoSolicitud"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrestamoSalonResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/prestamos-salon/expirar": {
       "post": {
         "tags": [
           "prestamos-salon"
         ],
         "summary": "Expirar Prestamos Pendientes",
-        "description": "Marca como 'cancelado' todos los préstamos pendientes cuya fecha_inicio\nya pasó. Debe llamarse periódicamente (cron/scheduler).\nSolo admin/auxiliar.",
+        "description": "Marca como 'cancelado' todos los préstamos pendientes cuya fecha_inicio\nya pasó. Debe llamarse periódicamente (cron/scheduler).\nSolo auditor/administrador.",
         "operationId": "expirar_prestamos_pendientes_prestamos_salon_expirar_post",
         "responses": {
           "200": {
@@ -3341,6 +3648,57 @@
             "OAuth2PasswordBearer": []
           }
         ]
+      }
+    },
+    "/stats/admin": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Estadisticas Admin",
+        "description": "Estadísticas del administrador: usuarios por rol, solicitudes, salones y reportes.",
+        "operationId": "estadisticas_admin_stats_admin_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dias",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 365,
+              "minimum": 1,
+              "default": 30,
+              "title": "Dias"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadisticasAdmin"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/auditoria": {
@@ -3606,6 +3964,238 @@
           }
         }
       }
+    },
+    "/usuarios": {
+      "get": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Listar Usuarios",
+        "description": "Usuarios con búsqueda, filtro por rol y su última actividad. Total en X-Total-Count.",
+        "operationId": "listar_usuarios_usuarios_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "busqueda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Busqueda"
+            }
+          },
+          {
+            "name": "rol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "usuario_utb | auxiliar | administrador",
+              "title": "Rol"
+            },
+            "description": "usuario_utb | auxiliar | administrador"
+          },
+          {
+            "name": "activo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Activo"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UsuarioAdmin"
+                  },
+                  "title": "Response Listar Usuarios Usuarios Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/usuarios/{usuario_id}/rol": {
+      "patch": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Cambiar Rol",
+        "description": "Cambia el rol. 409 sobre uno mismo o si dejaría el sistema sin administrador.",
+        "operationId": "cambiar_rol_usuarios__usuario_id__rol_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioRol"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioAdmin"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/usuarios/{usuario_id}/estado": {
+      "patch": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Cambiar Estado",
+        "description": "Activa o desactiva la cuenta. Mismas protecciones que el cambio de rol.",
+        "operationId": "cambiar_estado_usuarios__usuario_id__estado_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioEstado"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioAdmin"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3739,6 +4329,33 @@
         ],
         "title": "CambiarPasswordRequest"
       },
+      "CambioEstado": {
+        "properties": {
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "activo"
+        ],
+        "title": "CambioEstado"
+      },
+      "CambioRol": {
+        "properties": {
+          "rol": {
+            "type": "string",
+            "title": "Rol",
+            "description": "usuario_utb (Estudiante), auxiliar (Auditor), administrador (Administrador)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rol"
+        ],
+        "title": "CambioRol"
+      },
       "Canal": {
         "properties": {
           "cuenta": {
@@ -3837,6 +4454,72 @@
         ],
         "title": "EquipoCategoria",
         "description": "Equipamiento calculado (ADR-0017): no se guarda, sale de los recursos activos."
+      },
+      "EstadisticasAdmin": {
+        "properties": {
+          "dias": {
+            "type": "integer",
+            "title": "Dias"
+          },
+          "usuarios_activos_por_rol": {
+            "items": {
+              "$ref": "#/components/schemas/UsuariosPorRol"
+            },
+            "type": "array",
+            "title": "Usuarios Activos Por Rol"
+          },
+          "usuarios_inactivos": {
+            "type": "integer",
+            "title": "Usuarios Inactivos"
+          },
+          "solicitudes_por_estado": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Solicitudes Por Estado"
+          },
+          "salones_mas_solicitados": {
+            "items": {
+              "$ref": "#/components/schemas/SalonSolicitado"
+            },
+            "type": "array",
+            "title": "Salones Mas Solicitados"
+          },
+          "salones_por_tipo": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Salones Por Tipo"
+          },
+          "reportes_salon_por_estado": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Reportes Salon Por Estado"
+          },
+          "reportes_salon_por_tipo": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Reportes Salon Por Tipo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dias",
+          "usuarios_activos_por_rol",
+          "usuarios_inactivos",
+          "solicitudes_por_estado",
+          "salones_mas_solicitados",
+          "salones_por_tipo",
+          "reportes_salon_por_estado",
+          "reportes_salon_por_tipo"
+        ],
+        "title": "EstadisticasAdmin"
       },
       "EstadoRecurso": {
         "type": "string",
@@ -4558,6 +5241,18 @@
           },
           "preferencias": {
             "$ref": "#/components/schemas/Preferencias"
+          },
+          "rol_etiqueta": {
+            "type": "string",
+            "title": "Rol Etiqueta",
+            "default": ""
+          },
+          "permisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permisos"
           }
         },
         "type": "object",
@@ -4977,6 +5672,52 @@
               }
             ],
             "title": "Usuario Nombre"
+          },
+          "respuesta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Respuesta"
+          },
+          "atendido_por_nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Atendido Por Nombre"
+          },
+          "atendido_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Atendido En"
+          },
+          "conflicto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflicto",
+            "description": "Solo en la bandeja: con qué choca la franja, si choca"
           }
         },
         "type": "object",
@@ -5004,6 +5745,18 @@
             ],
             "title": "Estado",
             "description": "Estado destino del préstamo"
+          },
+          "respuesta": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Respuesta"
           }
         },
         "type": "object",
@@ -5011,6 +5764,23 @@
           "estado"
         ],
         "title": "PrestamoSalonUpdate"
+      },
+      "RechazoSolicitud": {
+        "properties": {
+          "respuesta": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Respuesta",
+            "description": "Motivo del rechazo que verá el estudiante"
+          }
+        },
+        "type": "object",
+        "required": [
+          "respuesta"
+        ],
+        "title": "RechazoSolicitud",
+        "description": "Rechazar exige explicar por qué: el estudiante ve el motivo."
       },
       "RecursoCreate": {
         "properties": {
@@ -5506,6 +6276,25 @@
         ],
         "title": "ResetPasswordRequest"
       },
+      "RespuestaSolicitud": {
+        "properties": {
+          "respuesta": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Respuesta"
+          }
+        },
+        "type": "object",
+        "title": "RespuestaSolicitud",
+        "description": "POST /prestamos-salon/{id}/aprobar|rechazar (ADR-0018)."
+      },
       "SalonCreate": {
         "properties": {
           "nombre": {
@@ -5702,6 +6491,24 @@
           "estado"
         ],
         "title": "SalonResponse"
+      },
+      "SalonSolicitado": {
+        "properties": {
+          "salon": {
+            "type": "string",
+            "title": "Salon"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "salon",
+          "total"
+        ],
+        "title": "SalonSolicitado"
       },
       "SalonUpdate": {
         "properties": {
@@ -5953,6 +6760,16 @@
             "type": "boolean",
             "title": "Email Verificado",
             "default": true
+          },
+          "rol_etiqueta": {
+            "type": "string",
+            "title": "Rol Etiqueta",
+            "default": ""
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo",
+            "default": true
           }
         },
         "type": "object",
@@ -5964,6 +6781,97 @@
           "rol"
         ],
         "title": "UserResponse"
+      },
+      "UsuarioAdmin": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "nombre_mostrar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre Mostrar"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "rol": {
+            "type": "string",
+            "title": "Rol"
+          },
+          "rol_etiqueta": {
+            "type": "string",
+            "title": "Rol Etiqueta"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          },
+          "email_verificado": {
+            "type": "boolean",
+            "title": "Email Verificado"
+          },
+          "dependencia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dependencia"
+          },
+          "fecha_registro": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Registro"
+          },
+          "ultima_actividad": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultima Actividad",
+            "description": "Último registro de la bitácora donde la persona actuó"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "email",
+          "rol",
+          "rol_etiqueta",
+          "activo",
+          "email_verificado"
+        ],
+        "title": "UsuarioAdmin",
+        "description": "Fila de la lista de usuarios (pantalla Usuarios del administrador)."
       },
       "UsuarioCreate": {
         "properties": {
@@ -6034,6 +6942,29 @@
         ],
         "title": "UsuarioRoleUpdate",
         "description": "Esquema para asignar o actualizar el rol desde el panel administrativo."
+      },
+      "UsuariosPorRol": {
+        "properties": {
+          "rol": {
+            "type": "string",
+            "title": "Rol"
+          },
+          "etiqueta": {
+            "type": "string",
+            "title": "Etiqueta"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rol",
+          "etiqueta",
+          "total"
+        ],
+        "title": "UsuariosPorRol"
       },
       "ValidationError": {
         "properties": {

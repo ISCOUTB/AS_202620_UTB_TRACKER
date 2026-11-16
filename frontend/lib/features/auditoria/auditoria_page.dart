@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import '../../core/config/api_config.dart';
 import '../../core/di/injection.dart';
 import '../../core/state/carga.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/utilidades.dart';
+import '../../features/auth/domain/permisos.dart';
+import '../../shared/sin_acceso.dart';
 import '../../shared/utb_ui.dart';
 import '../../shared/widgets.dart';
 import 'auditoria.dart';
 
-/// Bitácora de auditoría para el administrador: línea de tiempo filtrable por entidad.
+/// Bitácora de auditoría (ADR-0010) para el administrador: línea de tiempo filtrable por
+/// entidad y por acción, y exportación a CSV. Ojo: "Auditor" es un ROL que administra salones;
+/// esta bitácora de cambios solo la ve el administrador (permiso `auditoria.ver`, ADR-0018).
 class AuditoriaPage extends StatefulWidget {
   const AuditoriaPage({super.key});
 
@@ -26,66 +30,106 @@ class _AuditoriaPageState extends State<AuditoriaPage> {
     _c.cargar(entidad: null, cambiarFiltro: true);
   }
 
+  Future<void> _exportar() async {
+    try {
+      final csv = await _c.exportarCsv();
+      await Clipboard.setData(ClipboardData(text: csv));
+      // Líneas sin contar el encabezado.
+      final filas = '\n'.allMatches(csv.trimRight()).length;
+      if (mounted) {
+        mostrarMensaje(context, 'CSV copiado ($filas filas): pégalo en Excel o Google Sheets.');
+      }
+    } catch (e) {
+      if (mounted) mostrarMensaje(context, 'No se pudo exportar el CSV');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListenableBuilder(
-        listenable: _c,
-        builder: (context, _) => RefreshIndicator(
-          onRefresh: () => _c.cargar(),
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 40),
-            children: [
-              EncabezadoDegradado(
-                padding: const EdgeInsets.fromLTRB(12, 4, 20, 22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const BackButton(),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Text('Auditoría',
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800)),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8, top: 4),
-                      child: Text(
-                        'Quién hizo qué y cuándo. El CSV se descarga desde '
-                        '${ApiConfig.baseUrl}/auditoria/exportar',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
+      body: ConPermiso(
+        permiso: Permisos.auditoriaVer,
+        child: ListenableBuilder(
+          listenable: _c,
+          builder: (context, _) => RefreshIndicator(
+            onRefresh: () => _c.cargar(),
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 40),
+              children: [
+                EncabezadoDegradado(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 20, 22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const BackButton(),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Text('Bitácora de auditoría',
+                            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                height: 58,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                  children: [
-                    for (final e in [null, ...AuditoriaController.entidades.keys])
                       Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          showCheckmark: false,
-                          label: Text(e == null ? 'Todo' : AuditoriaController.entidades[e]!),
-                          selected: _c.entidad == e,
-                          onSelected: (_) => _c.cargar(entidad: e, cambiarFiltro: true),
-                          selectedColor: AppColors.primario,
-                          backgroundColor: AppColors.superficieAlta,
-                          side: BorderSide.none,
-                          shape: const StadiumBorder(),
+                        padding: const EdgeInsets.only(left: 8, top: 4),
+                        child: Text(
+                          'Quién hizo qué y cuándo, en todo el sistema.',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
                         ),
                       ),
-                  ],
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 12, 0, 0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                textInputAction: TextInputAction.search,
+                                onSubmitted: _c.fijarAccion,
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  prefixIcon: Icon(Icons.search_rounded),
+                                  hintText: 'Acción (ej. usuario.rol)',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton.tonalIcon(
+                              onPressed: _exportar,
+                              icon: const Icon(Icons.download_rounded, size: 18),
+                              label: const Text('CSV'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                child: _cuerpo(),
-              ),
-            ],
+                SizedBox(
+                  height: 58,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                    children: [
+                      for (final e in [null, ...AuditoriaController.entidades.keys])
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            showCheckmark: false,
+                            label: Text(e == null ? 'Todo' : AuditoriaController.entidades[e]!),
+                            selected: _c.entidad == e,
+                            onSelected: (_) => _c.cargar(entidad: e, cambiarFiltro: true),
+                            selectedColor: AppColors.primario,
+                            backgroundColor: AppColors.superficieAlta,
+                            side: BorderSide.none,
+                            shape: const StadiumBorder(),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                  child: _cuerpo(),
+                ),
+              ],
+            ),
           ),
         ),
       ),

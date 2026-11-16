@@ -136,7 +136,9 @@ def test_el_cambio_de_rol_registra_quien_lo_hizo(client, admin_headers):
     r = _auditoria(client, admin_headers, accion="usuario.rol")[0]
     assert r["actor_nombre"] == "Admin prueba"
     assert r["entidad_id"] == objetivo["id"]
-    assert json.loads(r["detalle"]) == {"de": "usuario_utb", "a": "auxiliar"}
+    detalle = json.loads(r["detalle"])
+    assert {k: detalle[k] for k in ("de", "a")} == {"de": "usuario_utb", "a": "auxiliar"}
+    assert detalle["a_etiqueta"] == "Auditor"  # ADR-0018: etiqueta además del valor guardado
 
 
 def test_crud_de_salones_y_horarios_se_audita(client, admin_headers):

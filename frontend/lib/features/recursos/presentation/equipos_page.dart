@@ -5,6 +5,7 @@ import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
+import '../../auth/domain/permisos.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/recurso.dart';
 import 'crear_recurso_page.dart';
@@ -94,7 +95,7 @@ class _EquiposPageState extends State<EquiposPage> {
                   ],
                 ),
               ),
-              if (_auth.esAdministrador)
+              if (_auth.permisos.puede(Permisos.equiposGestionar))
                 IconButton.filled(
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.white.withValues(alpha: 0.18),

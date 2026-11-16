@@ -323,32 +323,11 @@ def reset_password(db: Session, token: str, new_password: str) -> None:
 # --------------------------------------------------------------------------
 # Administración de usuarios (panel)
 # --------------------------------------------------------------------------
-def delete_user(db: Session, user_id: int, actor_id: Optional[int] = None) -> dict:
-    user = db.query(Usuario).filter(Usuario.id == user_id).first()
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=_MSG_USUARIO_NO_ENCONTRADO
-        )
-    try:
-        # Soft-delete: marcar como inactivo en vez de borrar
-        if hasattr(user, "activo"):
-            user.activo = False
-            auditoria.registrar(
-                db, "usuario.desactivar", "usuario", user.id, actor_id=actor_id,
-                detalle={"nombre": user.nombre},
-            )
-            db.commit()
-            return {"message": "Usuario desactivado correctamente"}
-        else:
-            db.delete(user)
-            db.commit()
-            return {"message": "Usuario eliminado correctamente"}
-    except Exception as exc:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error interno al eliminar usuario",
-        ) from exc
+def delete_user(db: Session, user_id: int, actor: Usuario) -> dict:
+    """DELETE /auth/delete/{id} (legado): desactiva con las mismas reglas que el panel."""
+    from app.services import usuarios
+    usuarios.cambiar_estado(db, user_id, False, actor)
+    return {"message": "Usuario desactivado correctamente"}
 
 
 def get_user_by_id(db: Session, user_id: int) -> Usuario:
@@ -401,39 +380,7 @@ def get_all_users(
     return query.order_by(Usuario.id.asc()).offset(skip).limit(limit).all()
 
 
-def update_user_role(
-    db: Session, user_id: int, new_role: str, actor_id: Optional[int] = None
-) -> Usuario:
-    """
-    Actualiza el rol de un usuario desde el panel administrativo.
-    Roles válidos: usuario_utb, auxiliar, administrador.
-    """
-    user = db.query(Usuario).filter(Usuario.id == user_id).first()
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=_MSG_USUARIO_NO_ENCONTRADO
-        )
-
-    rol_normalizado = new_role.strip().lower()
-    if rol_normalizado not in ("usuario_utb", "administrador", "auxiliar"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Rol no permitido. Roles válidos: usuario_utb, auxiliar, administrador",
-        )
-
-    try:
-        anterior = user.rol
-        user.rol = rol_normalizado
-        auditoria.registrar(
-            db, "usuario.rol", "usuario", user.id, actor_id=actor_id,
-            detalle={"de": anterior, "a": rol_normalizado},
-        )
-        db.commit()
-        db.refresh(user)
-        return user
-    except Exception as exc:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error interno al actualizar rol de usuario",
-        ) from exc
+def update_user_role(db: Session, user_id: int, new_role: str, actor: Usuario) -> Usuario:
+    """PATCH/PUT /auth/user/{id}/role (legado): mismas reglas que PATCH /usuarios/{id}/rol."""
+    from app.services import usuarios
+    return usuarios.cambiar_rol(db, user_id, new_role, actor)

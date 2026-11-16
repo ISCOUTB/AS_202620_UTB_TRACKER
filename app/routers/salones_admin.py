@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AdminUser, CurrentUser
+from app.core.deps import AdministraSalones, CreaReportes, GestionaReportes
 from app.schemas.enums import EstadoReporteSalon
 from app.schemas.salones_admin import (
     OcupacionSalon,
@@ -34,7 +34,7 @@ MomentoQuery = Annotated[
 @router.get("/ocupacion", response_model=list[OcupacionSalon])
 def listar_ocupacion(
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: AdministraSalones,
     momento: MomentoQuery = None,
 ):
     """Estado en vivo de todos los salones: quién los tiene y si el profesor llegó."""
@@ -45,7 +45,7 @@ def listar_ocupacion(
 def obtener_ocupacion(
     salon_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: AdministraSalones,
     momento: MomentoQuery = None,
 ):
     return service.obtener_ocupacion(db, salon_id, momento)
@@ -60,7 +60,7 @@ def registrar_presencia(
     salon_id: int,
     datos: PresenciaUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: AdministraSalones,
     momento: MomentoQuery = None,
 ):
     """Confirma o desmiente que el profesor llegó a la clase en curso."""
@@ -72,7 +72,7 @@ def crear_reporte(
     salon_id: int,
     datos: ReporteSalonCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: CreaReportes,
 ):
     return service.crear_reporte(db, salon_id, datos, current_user.id)
 
@@ -80,7 +80,7 @@ def crear_reporte(
 @router.get("/reportes", response_model=list[ReporteSalonResponse])
 def listar_todos_los_reportes(
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaReportes,
     estado: Optional[EstadoReporteSalon] = None,
 ):
     """Reportes de todos los salones (solo auxiliar/administrador)."""
@@ -91,7 +91,7 @@ def listar_todos_los_reportes(
 def listar_reportes(
     salon_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: GestionaReportes,
     estado: Optional[EstadoReporteSalon] = None,
 ):
     return service.listar_reportes(db, salon_id, estado.value if estado else None)
@@ -103,7 +103,7 @@ def actualizar_reporte(
     reporte_id: int,
     datos: ReporteSalonUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaReportes,
 ):
     """Marca un reporte como resuelto (o lo reabre). Solo auxiliar/administrador."""
     return service.actualizar_estado_reporte(

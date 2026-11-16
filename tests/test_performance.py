@@ -72,7 +72,7 @@ def test_concurrencia_prestamos_mismo_recurso_postgresql(
             "/prestamos",
             json=payload,
             headers={
-                **auth_headers,
+                **admin_headers,
                 "X-Idempotency-Key": f"concurrency-test-{indice}",
             },
         ).status_code

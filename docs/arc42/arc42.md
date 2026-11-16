@@ -213,6 +213,24 @@ recursos activos (una consulta agrupada para todos los salones), con sugerencia 
 *Requisitos que cumple:* QS-05 (usabilidad) y QS-02 (sin consultas N+1) —
 `tests/test_salones_tipo_equipamiento.py`.
 
+### roles y permisos (ADR-0018)
+
+*Responsabilidad:* decidir qué puede hacer cada rol (Estudiante = `usuario_utb`, Auditor =
+`auxiliar`, Administrador = `administrador`) con UNA tabla de permisos; gestión de usuarios y
+roles por el administrador (con protección del último administrador), bandeja de solicitudes
+del auditor y estadísticas del administrador. "Auditor" (rol) no es la bitácora de auditoría.
+*Interfaz:* `GET /auth/me` (`rol_etiqueta`, `permisos`), `GET /usuarios`,
+`PATCH /usuarios/{id}/rol|estado`, `GET /prestamos-salon/mias`, `GET /prestamos-salon/gestion`,
+`POST /prestamos-salon/{id}/aprobar|rechazar`, `GET /stats/admin`.
+*Ubicación:* `app/core/permisos.py` (tabla) → `app/core/deps.py` (`require_permiso` y alias por
+permiso) → routers; `app/services/usuarios.py`, `app/services/prestamos_salon.py`,
+`app/services/estadisticas.py`; en la app `frontend/lib/features/auth/domain/permisos.dart`,
+`features/home/presentation/shell_page.dart` (pestañas por permisos), `features/solicitudes/`,
+`features/admin/`, `shared/sin_acceso.dart`.
+*Requisitos que cumple:* QS-04 (seguridad) — `tests/test_matriz_permisos.py` (cada endpoint ×
+cada rol contra `docs/seguridad/matriz-permisos.md`), `tests/test_roles.py`,
+`frontend/test/roles_test.dart`.
+
 ## Nivel 2
 
 ### White Box *recursos*
@@ -332,6 +350,36 @@ stateDiagram-v2
 ```
 
 
+
+### Escenario 4 — Solicitud de salón por rol (ADR-0018)
+
+El Estudiante pide un salón; el Auditor lo aprueba o rechaza desde su bandeja; el Estudiante
+ve la respuesta en "Mis solicitudes" y le llega un correo (si no apagó los avisos de salones).
+
+```mermaid
+sequenceDiagram
+    actor E as Estudiante
+    actor A as Auditor
+    participant API as UTB Tracker (FastAPI)
+    participant DB as Base de datos
+    participant W as Worker (outbox)
+
+    E->>API: POST /prestamos-salon (permiso salones.solicitar + correo verificado)
+    API->>DB: valida conflictos con clases y otras solicitudes, guarda "pendiente"
+    A->>API: GET /prestamos-salon/gestion (permiso solicitudes.gestionar)
+    API->>DB: pendientes + 2 consultas para el conflicto de toda la página
+    API-->>A: lista con "conflicto" por solicitud
+    A->>API: POST /prestamos-salon/{id}/rechazar {respuesta}
+    API->>DB: estado, respuesta, atendido_por/en + bitácora + correo en el outbox (1 transacción)
+    W->>DB: lee el outbox
+    W-->>E: correo "Tu solicitud ... fue rechazada" (respeta preferencias)
+    E->>API: GET /prestamos-salon/mias
+    API-->>E: estado y motivo del rechazo
+```
+
+Un Estudiante que llame a la bandeja o a aprobar recibe 403 y la app muestra "No tienes acceso a
+esto". El modo prueba del Administrador solo cambia lo que la app dibuja: la API sigue
+aplicando su rol real.
 
 ## Infrastructure Level 1
 
@@ -498,6 +546,7 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0015](../adr/0015-servicio-de-correo.md) — Servicio de correo con plantillas y entrega por el outbox
 - [ADR-0016](../adr/0016-perfil-y-preferencias-en-el-servidor.md) — Perfil personalizable y preferencias guardadas en el servidor
 - [ADR-0017](../adr/0017-tipo-de-salon-y-equipamiento-calculado.md) — Tipo de salón y equipamiento calculado desde los recursos
+- [ADR-0018](../adr/0018-modelo-de-roles-y-permisos.md) — Modelo de roles y permisos con una matriz única (etiquetas Estudiante/Auditor/Administrador, permisos en /auth/me, modo prueba solo de interfaz)
 
 # Requisitos de calidad
 

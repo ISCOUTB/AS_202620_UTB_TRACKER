@@ -14,6 +14,7 @@ from app.routers import auth
 from app.core.database import Base  # noqa: F401  — Base expuesto para que conftest pueda usarlo
 from app.routers import auditoria, health, resources, loans
 from app.routers import salones, salones_admin, horarios, prestamos_salon, maintenance, stats
+from app.routers import usuarios
 
 # Importar todos los modelos para que Base.metadata los registre
 from app.models import auth_models, auditoria_models, recurso_models, salon_models  # noqa: F401
@@ -134,3 +135,4 @@ app.include_router(prestamos_salon.router, prefix="/prestamos-salon", tags=["pre
 app.include_router(maintenance.router, prefix="/mantenimientos", tags=["mantenimientos"])
 app.include_router(stats.router)
 app.include_router(auditoria.router, prefix="/auditoria", tags=["auditoria"])
+app.include_router(usuarios.router, prefix="/usuarios", tags=["usuarios"])

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AdminUser, CurrentUser
+from app.core.deps import GestionaHorarios, VeHorarios
 from app.schemas.horarios import (
     HorarioBulkCreate,
     HorarioCreate,
@@ -26,7 +26,7 @@ router = APIRouter()
 def crear_horario(
     horario: HorarioCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaHorarios,
 ):
     """Crea un horario académico. Valida conflictos temporales."""
     return horarios_service.crear_horario(db, horario, actor_id=current_user.id)
@@ -36,7 +36,7 @@ def crear_horario(
 def crear_horarios_bulk(
     datos: HorarioBulkCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaHorarios,
 ):
     """Carga masiva de horarios para un semestre completo."""
     return horarios_service.crear_horarios_bulk(db, datos.items, actor_id=current_user.id)
@@ -45,7 +45,7 @@ def crear_horarios_bulk(
 @router.get("", response_model=list[HorarioResponse])
 def listar_horarios(
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: VeHorarios,
     salon_id: Optional[int] = None,
     dia_semana: Annotated[Optional[int], Query(ge=1, le=7)] = None,
     semestre: Optional[str] = None,
@@ -58,7 +58,7 @@ def listar_horarios(
 def obtener_horario(
     horario_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: VeHorarios,
 ):
     """Obtiene un horario por ID."""
     return horarios_service.obtener_horario(db, horario_id)
@@ -69,7 +69,7 @@ def actualizar_horario(
     horario_id: int,
     horario: HorarioUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaHorarios,
 ):
     """Actualiza un horario existente. Valida conflictos si cambian las horas."""
     return horarios_service.actualizar_horario(db, horario_id, horario, actor_id=current_user.id)
@@ -79,7 +79,7 @@ def actualizar_horario(
 def eliminar_horario(
     horario_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaHorarios,
 ):
     """Soft-delete de un horario."""
     return horarios_service.eliminar_horario(db, horario_id, actor_id=current_user.id)

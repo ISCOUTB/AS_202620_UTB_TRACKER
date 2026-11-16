@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AdminUser, CurrentUser
+from app.core.deps import AdministraSalones, VeSalones
 from app.schemas.enums import CategoriaRecurso, TipoSalon
 from app.schemas.salones import SalonCreate, SalonResponse, SalonUpdate
 from app.services import salones as salones_service
@@ -23,7 +23,7 @@ router = APIRouter()
 def crear_salon(
     salon: SalonCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: AdministraSalones,
 ):
     """Crea un nuevo salón. Requiere rol administrador o auxiliar."""
     return salones_service.crear_salon(db, salon, actor_id=current_user.id)
@@ -32,7 +32,7 @@ def crear_salon(
 @router.get("", response_model=list[SalonResponse])
 def listar_salones(
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: VeSalones,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     estado: Optional[str] = None,
@@ -57,7 +57,7 @@ def listar_salones(
 def obtener_salon(
     salon_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: VeSalones,
 ):
     """Obtiene un salón por ID, con su equipamiento y tipo sugerido."""
     return salones_service.obtener_salon_con_equipamiento(db, salon_id)
@@ -68,7 +68,7 @@ def actualizar_salon(
     salon_id: int,
     salon: SalonUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: AdministraSalones,
 ):
     """Actualiza un salón existente. Requiere rol admin/auxiliar."""
     return salones_service.actualizar_salon(db, salon_id, salon, actor_id=current_user.id)
@@ -78,7 +78,7 @@ def actualizar_salon(
 def eliminar_salon(
     salon_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: AdministraSalones,
 ):
     """Soft-delete de un salón. Requiere rol admin/auxiliar."""
     return salones_service.eliminar_salon(db, salon_id, actor_id=current_user.id)
@@ -89,7 +89,7 @@ def obtener_disponibilidad(
     salon_id: int,
     dia_semana: Annotated[int, Query(ge=1, le=7, description="1=Lunes, 7=Domingo")],
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: VeSalones,
     fecha: Optional[date] = None,
 ):
     """

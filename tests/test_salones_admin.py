@@ -169,12 +169,12 @@ def test_reportes_abiertos_se_cuentan_y_se_filtran(client, admin_headers, auth_h
     for desc in ("Piso sucio", "Tablero roto"):
         client.post(f"/salones/{salon_id}/reportes",
                     json={"tipo": "limpieza", "descripcion": desc}, headers=auth_headers)
-    primero = client.get(f"/salones/{salon_id}/reportes", headers=auth_headers).json()[0]
+    primero = client.get(f"/salones/{salon_id}/reportes", headers=admin_headers).json()[0]
     client.patch(f"/salones/{salon_id}/reportes/{primero['id']}",
                  json={"estado": "resuelto"}, headers=admin_headers)
 
     abiertos = client.get(f"/salones/{salon_id}/reportes", params={"estado": "abierto"},
-                          headers=auth_headers).json()
+                          headers=admin_headers).json()
     ocupacion = client.get(f"/salones/{salon_id}/ocupacion", params={"momento": LUNES_13_00},
                            headers=admin_headers).json()
 

@@ -6,6 +6,10 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/uber_widgets.dart';
 import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
+import '../../admin/presentation/estadisticas_page.dart';
+import '../../admin/presentation/usuarios_page.dart';
+import '../../auditoria/auditoria_page.dart';
+import '../../auth/domain/permisos.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../recursos/presentation/equipos_page.dart';
 import '../../recursos/presentation/recursos_controller.dart';
@@ -16,16 +20,19 @@ import '../../salones_admin/domain/entities/ocupacion.dart';
 import '../../salones_admin/presentation/salon_control_page.dart';
 import '../../salones_admin/presentation/salones_admin_controller.dart';
 import '../../salones_admin/presentation/salones_admin_estilos.dart';
+import '../../solicitudes/presentation/solicitudes_controller.dart';
+import '../../solicitudes/presentation/tarjeta_solicitud.dart';
 
 /// Inicio: encabezado en degradado con saludo, una tarjeta destacada de vidrio con
-/// lo más importante del momento y, debajo, lo que hay que atender. Cambia según el rol:
-/// el auxiliar ve el estado del campus; el usuario UTB, los salones que puede pedir.
+/// lo más importante del momento y, debajo, lo que hay que atender. Cambia según los
+/// PERMISOS (ADR-0018): quien opera (Auditor/Administrador) ve el campus y las solicitudes por
+/// atender; el Estudiante, sus solicitudes y los salones que puede pedir.
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.onIrSalones, required this.onIrControl});
+  const HomePage({super.key, required this.onIrSalones, required this.onIrSolicitudes});
 
   /// Abre la pestaña Salones (el auxiliar puede llegar con un filtro aplicado).
   final ValueChanged<FiltroPanel?> onIrSalones;
-  final VoidCallback onIrControl;
+  final VoidCallback onIrSolicitudes;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -36,13 +43,19 @@ class _HomePageState extends State<HomePage> {
   final SalonesAdminController _panel = sl<SalonesAdminController>();
   final SalonesController _salones = sl<SalonesController>();
   final RecursosController _recursos = sl<RecursosController>();
+  final SolicitudesController _mias = sl<SolicitudesController>(instanceName: 'mias');
+  final SolicitudesController _bandeja = sl<SolicitudesController>(instanceName: 'bandeja');
 
-  bool get _esAuxiliar => _auth.esAdministrador;
+  bool get _esAuxiliar => _auth.permisos.opera;
 
   @override
   void initState() {
     super.initState();
-    _refrescar();
+    // Después del primer cuadro: si esta pantalla aparece mientras otra aún se dibuja
+    // (cambio de pestaña o de rol en el modo prueba), no se avisa a mitad del build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refrescar();
+    });
   }
 
   /// Si ya hay datos (al volver a la pestaña) se recarga en silencio, sin mostrar "Cargando".
@@ -51,16 +64,22 @@ class _HomePageState extends State<HomePage> {
       await Future.wait([
         _panel.cargar(silencioso: _panel.carga == Carga.ok),
         _recursos.cargar(silencioso: _recursos.carga == Carga.ok),
+        if (_auth.permisos.puede(Permisos.solicitudesGestionar))
+          _bandeja.cargar(silencioso: _bandeja.carga == Carga.ok),
       ]);
     } else {
-      await _salones.cargar(silencioso: _salones.carga == Carga.ok);
+      await Future.wait([
+        _salones.cargar(silencioso: _salones.carga == Carga.ok),
+        if (_auth.permisos.puede(Permisos.solicitudesPropias))
+          _mias.cargar(silencioso: _mias.carga == Carga.ok),
+      ]);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([_auth, _panel, _salones, _recursos]),
+      listenable: Listenable.merge([_auth, _panel, _salones, _recursos, _mias, _bandeja]),
       builder: (context, _) => RefreshIndicator(
         onRefresh: _refrescar,
         child: ListView(
@@ -149,6 +168,24 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       const SizedBox(height: 14),
+      if (_auth.permisos.puede(Permisos.solicitudesGestionar)) ...[
+        Aparecer(
+          orden: 1,
+          child: TarjetaPromo(
+            etiqueta: 'Solicitudes',
+            titulo: _tituloBandeja(),
+            detalle: 'Aprueba o rechaza los pedidos de los estudiantes',
+            accion: 'Abrir bandeja',
+            icono: Icons.event_available_rounded,
+            onTap: widget.onIrSolicitudes,
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+      if (_auth.permisos.puede(Permisos.usuariosGestionar)) ...[
+        Aparecer(orden: 1, child: _AccesosAdmin(permisos: _auth.permisos)),
+        const SizedBox(height: 10),
+      ],
       Aparecer(
         orden: 1,
         child: TarjetaPromo(
@@ -215,14 +252,37 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  String _tituloBandeja() {
+    if (_bandeja.carga != Carga.ok) return 'Solicitudes de salón';
+    final n = _bandeja.pendientes.length;
+    return switch (n) {
+      0 => 'Nada por atender',
+      1 => '1 solicitud por atender',
+      _ => '$n solicitudes por atender',
+    };
+  }
+
   List<Widget> _cuerpoUsuario(BuildContext context) {
     final libres = _libres;
+    final novedades = _mias.carga == Carga.ok ? _mias.novedades() : const <PrestamoSalon>[];
+    final pendientes = _mias.contar('pendiente');
+    final aprobadas = _mias.contar('aprobado');
     return [
+      // Aviso cuando un auditor responde (también llega por correo si lo tiene activado).
+      if (novedades.isNotEmpty) ...[
+        Aparecer(
+          child: TarjetaSolicitud(
+            solicitud: novedades.first,
+            acciones: [botonSecundario('Ver mis solicitudes', widget.onIrSolicitudes)],
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
       Aparecer(
         child: TarjetaPromo(
           etiqueta: 'Solicitud',
           titulo: 'Solicita un salón',
-          detalle: 'Elige salón, hora y motivo; el auxiliar confirma',
+          detalle: 'Elige por tipo y equipamiento; un auditor la revisa',
           accion: 'Ver salones',
           icono: Icons.add_location_alt_rounded,
           onTap: () => widget.onIrSalones(null),
@@ -233,11 +293,13 @@ class _HomePageState extends State<HomePage> {
         orden: 1,
         child: TarjetaPromo(
           etiqueta: 'Mis solicitudes',
-          titulo: 'Sigue tus pedidos',
-          detalle: 'Aprobaciones de salones y reportes',
-          accion: 'Abrir control',
-          icono: Icons.fact_check_rounded,
-          onTap: widget.onIrControl,
+          titulo: _mias.carga != Carga.ok || (pendientes == 0 && aprobadas == 0)
+              ? 'Sigue tus pedidos'
+              : '$pendientes pendientes · $aprobadas aprobadas',
+          detalle: 'Estado, motivo del rechazo y cancelar',
+          accion: 'Ver solicitudes',
+          icono: Icons.event_available_rounded,
+          onTap: widget.onIrSolicitudes,
         ),
       ),
       const SizedBox(height: 20),
@@ -447,6 +509,50 @@ class _TarjetaClase extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+/// Accesos del Administrador (usuarios, estadísticas, bitácora).
+class _AccesosAdmin extends StatelessWidget {
+  const _AccesosAdmin({required this.permisos});
+  final Permisos permisos;
+
+  @override
+  Widget build(BuildContext context) {
+    void abrir(Widget p) =>
+        Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => p));
+    final accesos = [
+      if (permisos.puede(Permisos.usuariosGestionar))
+        (Icons.admin_panel_settings_rounded, 'Usuarios', const UsuariosPage()),
+      if (permisos.puede(Permisos.estadisticasVer))
+        (Icons.insights_rounded, 'Estadísticas', const EstadisticasPage()),
+      if (permisos.puede(Permisos.auditoriaVer))
+        (Icons.history_rounded, 'Bitácora', const AuditoriaPage()),
+    ];
+    return Row(
+      children: [
+        for (final (i, (icono, texto, pagina)) in accesos.indexed) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: TarjetaBorde(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+              onTap: () => abrir(pagina),
+              child: Column(
+                children: [
+                  Icon(icono, color: AppColors.indigoClaro),
+                  const SizedBox(height: 4),
+                  Text(texto,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

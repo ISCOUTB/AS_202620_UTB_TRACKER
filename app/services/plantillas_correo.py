@@ -14,6 +14,7 @@ INDIGO = "#332D83"
 # Categorías (para preferencias, Fase 2). "seguridad" siempre se envía.
 SEGURIDAD = "seguridad"
 CUENTA = "cuenta"
+SALONES = "salones"  # respuestas a solicitudes de salón (preferencia del perfil, ADR-0016)
 
 
 def _e(valor) -> str:
@@ -212,6 +213,31 @@ def inicio_sesion_sospechoso(d: dict) -> tuple[str, str, str]:
     return asunto, texto, html
 
 
+def solicitud_salon_respuesta(d: dict) -> tuple[str, str, str]:
+    """El auditor aprobó o rechazó una solicitud de salón (ADR-0018)."""
+    aprobada = d.get("estado") == "aprobado"
+    resultado = "aprobada" if aprobada else "rechazada"
+    asunto = f"Tu solicitud del salón {d.get('salon', '')} fue {resultado}"
+    respuesta = (d.get("respuesta") or "").strip()
+    etiqueta = "Nota del auditor" if aprobada else "Motivo"
+    texto = _texto([
+        f"Hola, {d.get('nombre', '')}:",
+        "",
+        f"Tu solicitud del salón {d.get('salon', '')} para {d.get('franja', '')} fue {resultado}.",
+        *([f"{etiqueta}: {respuesta}"] if respuesta else []),
+        "",
+        "Puedes ver el detalle en la app, en Mis solicitudes.",
+    ])
+    html = _layout(f"Solicitud {resultado}", (
+        f"<p>Hola, <b>{_e(d.get('nombre'))}</b>:</p>"
+        f"<p>Tu solicitud del salón <b>{_e(d.get('salon'))}</b> para "
+        f"<b>{_e(d.get('franja'))}</b> fue <b>{resultado}</b>.</p>"
+        + (f"<p><b>{etiqueta}:</b> {_e(respuesta)}</p>" if respuesta else "")
+        + "<p>Puedes ver el detalle en la app, en <b>Mis solicitudes</b>.</p>"
+    ))
+    return asunto, texto, html
+
+
 PLANTILLAS: dict[str, tuple[Callable[[dict], tuple[str, str, str]], str]] = {
     "verificacion": (verificacion, SEGURIDAD),
     "bienvenida": (bienvenida, CUENTA),
@@ -220,6 +246,7 @@ PLANTILLAS: dict[str, tuple[Callable[[dict], tuple[str, str, str]], str]] = {
     "cambio_correo_aviso": (cambio_correo_aviso, SEGURIDAD),
     "cambio_password": (cambio_password, SEGURIDAD),
     "inicio_sesion_sospechoso": (inicio_sesion_sospechoso, SEGURIDAD),
+    "solicitud_salon_respuesta": (solicitud_salon_respuesta, SALONES),
 }
 
 

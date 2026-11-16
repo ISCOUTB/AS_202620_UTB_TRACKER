@@ -11,6 +11,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.core import permisos
 from app.core.politica import (
     MSG_CORREO_INVALIDO,
     PASSWORD_MINIMO,
@@ -78,6 +79,14 @@ class UserResponse(BaseModel):
     fecha_registro: datetime
     rol: str
     email_verificado: bool = True
+    # ADR-0018: etiqueta para mostrar (el valor de `rol` no cambia).
+    rol_etiqueta: str = ""
+    activo: bool = True
+
+    @model_validator(mode="after")
+    def _etiqueta(self):
+        self.rol_etiqueta = permisos.etiqueta(self.rol)
+        return self
 
 
 class UserMeResponse(BaseModel):

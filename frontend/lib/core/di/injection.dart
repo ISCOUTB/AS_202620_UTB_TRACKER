@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 
-import '../../features/admin/presentation/admin_usuarios_controller.dart';
+import '../../features/admin/data/admin_data.dart';
+import '../../features/admin/presentation/admin_controllers.dart';
 import '../../features/auditoria/auditoria.dart';
 import '../../features/auth/data/auth_data.dart';
 import '../../features/auth/domain/auth_domain.dart';
@@ -20,6 +21,8 @@ import '../../features/salones/presentation/salones_controller.dart';
 import '../../features/salones_admin/data/salones_admin_data.dart';
 import '../../features/salones_admin/domain/repositories/salones_admin_repository.dart';
 import '../../features/salones_admin/presentation/salones_admin_controller.dart';
+import '../../features/solicitudes/data/solicitudes_data.dart';
+import '../../features/solicitudes/presentation/solicitudes_controller.dart';
 import '../../features/stats/data/stats_data.dart';
 import '../../features/stats/presentation/stats_controller.dart';
 import '../network/api_client.dart';
@@ -56,7 +59,15 @@ Future<void> configurarDependencias({ApiClient? api}) async {
 
   // Controladores de estado (uno por sesión de app)
   sl.registerLazySingleton(() => AuthController(sl(), sl()));
-  sl.registerLazySingleton(() => AdminUsuariosController(sl()));
+  // Roles y permisos (ADR-0018): solicitudes por rol y pantallas del administrador.
+  sl.registerLazySingleton<SolicitudesRepository>(() => SolicitudesRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => SolicitudesController(sl(), bandeja: false),
+      instanceName: 'mias');
+  sl.registerLazySingleton(() => SolicitudesController(sl(), bandeja: true),
+      instanceName: 'bandeja');
+  sl.registerLazySingleton<AdminRepository>(() => AdminRepositoryImpl(sl()));
+  sl.registerLazySingleton(() => UsuariosController(sl()));
+  sl.registerLazySingleton(() => EstadisticasController(sl()));
   sl.registerLazySingleton(() => RecursosController(sl()));
   sl.registerLazySingleton(() => MantenimientoController(sl()));
   sl.registerLazySingleton(() => PrestamosController(sl()));

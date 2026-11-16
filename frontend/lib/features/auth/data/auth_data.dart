@@ -19,6 +19,9 @@ class UsuarioModel {
         dependencia: j['dependencia'] as String?,
         colorAvatar: j['color_avatar'] as String?,
         preferencias: Preferencias.desdeJson(j['preferencias']),
+        // ADR-0018 (servidores anteriores no los mandan: se calculan del rol).
+        rolEtiqueta: j['rol_etiqueta'] as String?,
+        permisos: Permisos.desdeJson(j['permisos'], (j['rol'] ?? '').toString()),
       );
 }
 
