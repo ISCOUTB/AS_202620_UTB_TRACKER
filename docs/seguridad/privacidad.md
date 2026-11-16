@@ -175,3 +175,15 @@ Reglas aplicadas:
   (ignorado por git). Las contraseñas nunca van en esa lista.
 - **Caché en el teléfono:** las fotos descargadas se guardan solo en memoria mientras la app
   está abierta y se olvidan al cerrar sesión.
+
+## 8. Salones deshabilitados y equipos (ADR-0022, 2026-11-16)
+
+- **Sin datos personales nuevos.** El historial del salón guarda qué cambió y el nombre de quien
+  lo hizo (igual que la bitácora). La nota de deshabilitación es texto libre del Auditor: la
+  pantalla pide describir el salón, no a personas.
+- **Aviso al estudiante:** si el salón de su solicitud se deshabilita, recibe un correo con el
+  salón, la franja, el motivo y la reapertura estimada. Es de la categoría "salones": si la
+  persona la apagó en su perfil, no se envía.
+- **CSV del catálogo:** solo datos de salones y equipos (códigos, capacidad, estado); ningún
+  nombre ni correo.
+

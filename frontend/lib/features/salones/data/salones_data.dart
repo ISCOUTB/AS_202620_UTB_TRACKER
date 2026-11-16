@@ -28,6 +28,16 @@ class SalonModel {
         ],
         tipoSugerido: j['tipo_sugerido'] == null ? null : TipoSalon.desdeApi(j['tipo_sugerido']),
         capacidadEstimada: j['capacidad_estimada'] as bool? ?? false,
+        // ADR-0022; un servidor anterior no los manda (se deduce del estado de siempre).
+        habilitado: j['habilitado'] as bool? ??
+            !['mantenimiento', 'fuera_servicio'].contains(j['estado']),
+        motivoDeshabilitado: j['motivo_deshabilitado'] as String?,
+        notaDeshabilitado: j['nota_deshabilitado'] as String?,
+        reaperturaEstimada: j['reapertura_estimada'] == null
+            ? null
+            : DateTime.tryParse(j['reapertura_estimada'].toString()),
+        avisoDeshabilitado: j['aviso_deshabilitado'] as String?,
+        ocupadoAhora: j['ocupado_ahora'] as bool? ?? j['estado'] == 'ocupado',
       );
 }
 
@@ -79,6 +89,7 @@ class PrestamoSalonModel {
             ? parsearFechaServidor(j['atendido_en'].toString())
             : null,
         conflicto: j['conflicto'] as String?,
+        avisoSalon: j['aviso_salon'] as String?,
       );
 }
 

@@ -20,8 +20,10 @@ import '../../features/salones/data/salones_data.dart';
 import '../../features/salones/domain/repositories/salones_repository.dart';
 import '../../features/salones/presentation/salones_controller.dart';
 import '../../features/salones_admin/data/catalogo_data.dart';
+import '../../features/salones_admin/data/disponibilidad_data.dart';
 import '../../features/salones_admin/data/salones_admin_data.dart';
 import '../../features/salones_admin/domain/catalogo.dart';
+import '../../features/salones_admin/domain/disponibilidad.dart';
 import '../../features/salones_admin/domain/repositories/salones_admin_repository.dart';
 import '../../features/salones_admin/presentation/salones_admin_controller.dart';
 import '../../features/solicitudes/data/solicitudes_data.dart';
@@ -58,6 +60,7 @@ Future<void> configurarDependencias({ApiClient? api}) async {
   sl.registerLazySingleton<SalonesRepository>(
       () => SalonesRepositoryImpl(sl()));
   sl.registerLazySingleton<CatalogoRepository>(() => CatalogoRepositoryImpl(sl()));
+  sl.registerLazySingleton<DisponibilidadRepository>(() => DisponibilidadRepositoryImpl(sl()));
   sl.registerLazySingleton<SalonesAdminRepository>(
       () => SalonesAdminRepositoryImpl(sl()));
 

@@ -78,6 +78,10 @@ los huecos corregidos.
 | PATCH | `/auth/fcm-token` | sesión | sesión | |
 | POST | `/recursos` | auxiliar o admin | equipos.gestionar | |
 | GET | `/recursos` | sesión | equipos.ver | |
+| GET | `/recursos/plantillas` | — | equipos.gestionar | Nuevo (ADR-0022) |
+| POST | `/recursos/plantillas/vista-previa` | — | equipos.gestionar | Nuevo (ADR-0022): solo informa |
+| POST | `/recursos/plantillas/aplicar` | — | equipos.gestionar | Nuevo (ADR-0022): solo lo que falta, auditado |
+| PATCH | `/recursos/{recurso_id}/estado` | — | equipos.gestionar | Nuevo (ADR-0022): operativo/dañado/mantenimiento; "prestado" rechazado |
 | GET | `/recursos/{recurso_id}` | sesión | equipos.ver | |
 | PUT | `/recursos/{recurso_id}` | auxiliar o admin | equipos.gestionar | |
 | DELETE | `/recursos/{recurso_id}` | auxiliar o admin | equipos.gestionar | |
@@ -88,6 +92,12 @@ los huecos corregidos.
 | PATCH | `/prestamos/{prestamo_id}/devolver` | sesión | equipos.gestionar | ⚠ legado: cualquiera devolvía préstamos ajenos |
 | POST | `/prestamos/marcar-vencidos` | auxiliar o admin | equipos.gestionar | Legado |
 | POST | `/prestamos/jobs/marcar-vencidos` | auxiliar o admin | equipos.gestionar | Legado |
+| POST | `/salones/habilitacion/lote/vista-previa` | — | salones.administrar | Nuevo (ADR-0022): solo informa |
+| POST | `/salones/habilitacion/lote` | — | salones.administrar | Nuevo (ADR-0022): edificio o piso, todo o nada, auditado |
+| GET | `/salones/ocupacion/resumen` | — | salones.administrar | Nuevo (ADR-0022): libres/ocupados/deshabilitados por piso |
+| GET | `/salones/exportar.csv` | — | salones.administrar | Nuevo (ADR-0022): catálogo y equipos, sin datos personales |
+| PATCH | `/salones/{salon_id}/habilitacion` | — | salones.administrar | Nuevo (ADR-0022): motivo obligatorio al deshabilitar; avisa a los afectados |
+| GET | `/salones/{salon_id}/historial` | — | salones.administrar | Nuevo (ADR-0022) |
 | GET | `/salones/ocupacion` | auxiliar o admin | salones.administrar | |
 | GET | `/salones/{salon_id}/ocupacion` | auxiliar o admin | salones.administrar | |
 | PUT | `/salones/{salon_id}/presencia` | auxiliar o admin | salones.administrar | |

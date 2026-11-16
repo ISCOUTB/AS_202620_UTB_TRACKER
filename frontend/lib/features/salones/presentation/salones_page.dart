@@ -177,7 +177,9 @@ class _SalonesPageState extends State<SalonesPage> {
                   orden: i,
                   child: _FilaSalon(
                     salon: s,
-                    puedeSolicitar: _auth.permisos.puede(Permisos.salonesSolicitar) && !_auth.permisos.opera && s.disponible,
+                    puedeSolicitar: _auth.permisos.puede(Permisos.salonesSolicitar) &&
+                        !_auth.permisos.opera &&
+                        s.solicitable,
                     onSolicitar: () => _abrirSolicitud(s),
                   ),
                 ),
@@ -274,6 +276,11 @@ class _FilaSalon extends StatelessWidget {
                   texto: disponible ? 'Libre' : _estadoLegible(salon.estado),
                   color: color,
                 ),
+                if (salon.avisoDeshabilitado != null) ...[
+                  const SizedBox(height: 6),
+                  Text(salon.avisoDeshabilitado!,
+                      style: const TextStyle(color: AppColors.danado, fontSize: 12.5)),
+                ],
               ],
             ),
           ),
@@ -293,9 +300,9 @@ class _FilaSalon extends StatelessWidget {
   }
 
   static String _estadoLegible(String e) => switch (e.toLowerCase()) {
-        'mantenimiento' => 'Mantenimiento',
-        'fuera_servicio' => 'Fuera de servicio',
-        'ocupado' => 'Ocupado',
+        'mantenimiento' => 'Deshabilitado',
+        'fuera_servicio' => 'Deshabilitado',
+        'ocupado' => 'Ocupado ahora',
         _ => e,
       };
 }

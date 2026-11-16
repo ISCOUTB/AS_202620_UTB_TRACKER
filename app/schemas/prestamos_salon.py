@@ -89,3 +89,6 @@ class PrestamoSalonResponse(BaseModel):
     atendido_en: Optional[datetime] = None
     conflicto: Optional[str] = Field(
         default=None, description="Solo en la bandeja: con qué choca la franja, si choca")
+    # ADR-0022: el salón de una solicitud pendiente o aprobada quedó deshabilitado.
+    aviso_salon: Optional[str] = Field(
+        default=None, description="Motivo si el salón de esta solicitud está deshabilitado")

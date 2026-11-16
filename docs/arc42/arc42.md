@@ -268,6 +268,26 @@ propuesta; dejar crear, renombrar y desactivar solo al Administrador.
 *Requisitos que cumple:* QS-06 (confiabilidad de los datos) y QS-05 —
 `tests/test_catalogo_salones.py`, `frontend/test/catalogo_test.dart`.
 
+### habilitación, ocupación y equipos del salón (ADR-0022)
+
+*Responsabilidad:* separar la HABILITACIÓN manual (con motivo obligatorio, nota y reapertura)
+de la OCUPACIÓN calculada (clase u horario aprobado ahora); calcular `estado` para los
+clientes de siempre; impedir solicitar o aprobar un salón deshabilitado y señalar y avisar las
+solicitudes afectadas; llevar el historial legible del salón; cambiar el estado de los equipos
+fijos (nunca "prestado") con sugerencia de reporte; aplicar plantillas con vista previa.
+*Interfaz:* `PATCH /salones/{id}/habilitacion`, `GET /salones/{id}/historial`,
+`POST /salones/habilitacion/lote[/vista-previa]`, `GET /salones/ocupacion/resumen`,
+`GET /salones/exportar.csv`, `PATCH /recursos/{id}/estado`, `GET /recursos/plantillas`,
+`POST /recursos/plantillas/{vista-previa|aplicar}`; campos `habilitado`, `aviso_deshabilitado`,
+`ocupado_ahora` y `aviso_salon`.
+*Ubicación:* `app/services/estado_salon.py`, `app/services/equipos.py`,
+`app/services/exportar.py`, `app/routers/estado_salon.py`, `app/schemas/estado_salon.py`,
+`app/schemas/equipos.py`, modelo `HistorialSalon`; en la app
+`features/salones_admin/domain/disponibilidad.dart`, `data/disponibilidad_data.dart`,
+`presentation/disponibilidad_secciones.dart`.
+*Requisitos que cumple:* QS-06 (confiabilidad), QS-02 (sin N+1 en el panel) y QS-05 —
+`tests/test_habilitacion_equipos.py`, `frontend/test/habilitacion_test.dart`.
+
 ## Nivel 2
 
 ### White Box *recursos*
@@ -610,6 +630,7 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0018](../adr/0018-modelo-de-roles-y-permisos.md) — Modelo de roles y permisos con una matriz única (etiquetas Estudiante/Auditor/Administrador, permisos en /auth/me, modo prueba solo de interfaz)
 - [ADR-0019](../adr/0019-correo-institucional-y-rol-por-asignacion.md) — Solo correos institucionales (dominio exacto, sin bloquear cuentas antiguas) y rol por una lista de asignación que solo aplica con el correo comprobado; el rol manual gana
 - [ADR-0020](../adr/0020-foto-de-perfil.md) — Foto de perfil como miniatura limpia (firma real, sin EXIF/GPS, sin librerías nuevas en el backend) en la tabla aparte `fotos_perfil`
+- [ADR-0022](../adr/0022-habilitacion-ocupacion-y-equipos-del-salon.md) — Habilitación manual del salón (motivo obligatorio) separada de la ocupación calculada; `estado` calculado con los valores de siempre; salón deshabilitado no se solicita y sus solicitudes se señalan y avisan sin cancelarse solas; historial del salón; equipos fijos con estado (nunca "prestado"), plantillas con vista previa; panel sin N+1
 - [ADR-0021](../adr/0021-catalogo-de-salones-utb.md) — Catálogo de salones UTB: regla del código en un solo lugar, lista provisional en un archivo de datos (59 salones, corregida con una tesis de la biblioteca UTB), carga idempotente que nunca borra y solo el Administrador crea, renombra y desactiva
 
 # Requisitos de calidad

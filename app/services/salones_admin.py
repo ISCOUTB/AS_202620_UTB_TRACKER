@@ -7,13 +7,13 @@ Reglas:
 - La presencia del profesor solo se puede registrar mientras hay una clase en curso.
 - Los reportes los puede crear cualquier usuario autenticado; solo el auxiliar los resuelve.
 """
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.auth_models import Usuario
 from app.models.salon_models import (
     Horario,
     PrestamoSalon,
@@ -23,51 +23,16 @@ from app.models.salon_models import (
 )
 from app.schemas.enums import EstadoReporteSalon
 from app.schemas.salones_admin import PresenciaUpdate, ReporteSalonCreate
-from app.services import auditoria, equipamiento
+from app.services import auditoria, equipamiento, estado_salon
 from app.services.salones import obtener_salon
 
-# Colombia no tiene horario de verano: un desfase fijo evita depender de tzdata.
-ZONA_CAMPUS = timezone(timedelta(hours=-5))
-
-
-def _ahora_campus(momento: Optional[datetime]) -> datetime:
-    """Hora local del campus. `momento` (sin zona) permite simular otra hora."""
-    if momento is not None:
-        return momento.replace(tzinfo=None)
-    return datetime.now(ZONA_CAMPUS).replace(tzinfo=None)
-
-
-def _a_utc_naive(local: datetime) -> datetime:
-    """Convierte una hora local del campus (COT, UTC-5) a UTC sin zona (como guarda el backend)."""
-    return local + timedelta(hours=5)
+# Hora del campus y conversión a UTC: una sola definición (ADR-0022, estado_salon).
+_ahora_campus = estado_salon.ahora_campus
+_a_utc_naive = estado_salon.a_utc_naive
 
 
 def _clase_en_curso(db: Session, salon_id: int, local: datetime) -> Optional[Horario]:
-    return (
-        db.query(Horario)
-        .filter(
-            Horario.salon_id == salon_id,
-            Horario.activo.is_(True),
-            Horario.dia_semana == local.isoweekday(),
-            Horario.hora_inicio <= local.time(),
-            Horario.hora_fin > local.time(),
-        )
-        .first()
-    )
-
-
-def _prestamo_en_curso(db: Session, salon_id: int, utc: datetime) -> Optional[PrestamoSalon]:
-    return (
-        db.query(PrestamoSalon)
-        .filter(
-            PrestamoSalon.salon_id == salon_id,
-            PrestamoSalon.estado.in_(["aprobado", "en_uso"]),
-            PrestamoSalon.fecha_inicio <= utc,
-            PrestamoSalon.fecha_fin > utc,
-        )
-        .order_by(PrestamoSalon.estado.desc())  # 'en_uso' antes que 'aprobado'
-        .first()
-    )
+    return estado_salon.clases_en_curso(db, [salon_id], local).get(salon_id)
 
 
 def _presencia(db: Session, horario_id: int, fecha: date) -> Optional[PresenciaSalon]:
@@ -78,74 +43,74 @@ def _presencia(db: Session, horario_id: int, fecha: date) -> Optional[PresenciaS
     )
 
 
-def _ocupacion_de(db: Session, salon: Salon, local: datetime) -> dict:
-    utc = _a_utc_naive(local)
-    clase = _clase_en_curso(db, salon.id, local)
-    prestamo = _prestamo_en_curso(db, salon.id, utc)
-
-    ocupante = "libre"
-    clase_actual = None
-    prestamo_actual = None
-    profesor_presente = None
-
-    if clase is not None:
-        ocupante = "clase"
-        clase_actual = {
-            "horario_id": clase.id,
-            "materia": clase.materia,
-            "profesor": clase.profesor,
-            "hora_inicio": clase.hora_inicio,
-            "hora_fin": clase.hora_fin,
-        }
-        registro = _presencia(db, clase.id, local.date())
-        profesor_presente = registro.profesor_presente if registro else None
-    elif prestamo is not None:
-        ocupante = "prestamo"
-
-    if prestamo is not None:
-        usuario = db.query(Usuario).filter(Usuario.id == prestamo.usuario_id).first()
-        prestamo_actual = {
-            "prestamo_id": prestamo.id,
-            "usuario_id": prestamo.usuario_id,
-            "usuario_nombre": usuario.nombre if usuario else f"Usuario #{prestamo.usuario_id}",
-            "estado": prestamo.estado,
-            "fecha_inicio": prestamo.fecha_inicio,
-            "fecha_fin": prestamo.fecha_fin,
-            "motivo": prestamo.motivo,
-        }
-
-    pendientes = (
-        db.query(PrestamoSalon)
-        .filter(PrestamoSalon.salon_id == salon.id, PrestamoSalon.estado == "pendiente")
-        .count()
+def _conteos(db: Session, modelo, estado: str, ids: list[int]) -> dict[int, int]:
+    """{salon_id: cuántas filas con ese estado} en UNA consulta agrupada."""
+    if not ids:
+        return {}
+    filas = (
+        db.query(modelo.salon_id, func.count(modelo.id))
+        .filter(modelo.salon_id.in_(ids), modelo.estado == estado)
+        .group_by(modelo.salon_id)
+        .all()
     )
-    abiertos = (
-        db.query(ReporteSalon)
-        .filter(ReporteSalon.salon_id == salon.id, ReporteSalon.estado == "abierto")
-        .count()
-    )
-    return {
-        "salon": salon,
-        "ocupante": ocupante,
-        "clase_actual": clase_actual,
-        "prestamo_actual": prestamo_actual,
-        "profesor_presente": profesor_presente,
-        "solicitudes_pendientes": pendientes,
-        "reportes_abiertos": abiertos,
-    }
+    return {salon_id: int(n) for salon_id, n in filas}
+
+
+def _ocupaciones(db: Session, salones: list[Salon], local: datetime) -> list[dict]:
+    """Foto en vivo de muchos salones con un número FIJO de consultas (sin N+1)."""
+    ids = [s.id for s in salones]
+    clases = estado_salon.clases_en_curso(db, ids, local)
+    solicitudes = estado_salon.solicitudes_en_curso(db, ids, _a_utc_naive(local))
+    horarios = [c.id for c in clases.values()]
+    presencias = {
+        p.horario_id: p for p in db.query(PresenciaSalon).filter(
+            PresenciaSalon.horario_id.in_(horarios), PresenciaSalon.fecha == local.date()
+        ).all()
+    } if horarios else {}
+    pendientes = _conteos(db, PrestamoSalon, "pendiente", ids)
+    abiertos = _conteos(db, ReporteSalon, "abierto", ids)
+
+    resultado = []
+    for salon in salones:
+        clase = clases.get(salon.id)
+        prestamo = solicitudes.get(salon.id)
+        ocupante = "clase" if clase else "prestamo" if prestamo else "libre"
+        registro = presencias.get(clase.id) if clase else None
+        resultado.append({
+            "salon": salon,
+            "ocupante": ocupante,
+            "clase_actual": {
+                "horario_id": clase.id, "materia": clase.materia, "profesor": clase.profesor,
+                "hora_inicio": clase.hora_inicio, "hora_fin": clase.hora_fin,
+            } if clase else None,
+            "prestamo_actual": {
+                "prestamo_id": prestamo.id,
+                "usuario_id": prestamo.usuario_id,
+                "usuario_nombre": (prestamo.usuario.nombre if prestamo.usuario
+                                   else f"Usuario #{prestamo.usuario_id}"),
+                "estado": prestamo.estado,
+                "fecha_inicio": prestamo.fecha_inicio,
+                "fecha_fin": prestamo.fecha_fin,
+                "motivo": prestamo.motivo,
+            } if prestamo else None,
+            "profesor_presente": registro.profesor_presente if registro else None,
+            "solicitudes_pendientes": pendientes.get(salon.id, 0),
+            "reportes_abiertos": abiertos.get(salon.id, 0),
+        })
+    return resultado
 
 
 def listar_ocupacion(db: Session, momento: Optional[datetime] = None) -> list[dict]:
     local = _ahora_campus(momento)
     salones = db.query(Salon).filter(Salon.activo.is_(True)).order_by(Salon.nombre).all()
-    # Tipo, descripción y equipamiento (ADR-0017): una sola consulta agrupada para todos.
-    equipamiento.adjuntar(db, salones)
-    return [_ocupacion_de(db, s, local) for s in salones]
+    # Tipo, equipamiento y estado calculado (ADR-0017/0022): consultas agrupadas para todos.
+    equipamiento.adjuntar(db, salones, momento)
+    return _ocupaciones(db, salones, local)
 
 
 def obtener_ocupacion(db: Session, salon_id: int, momento: Optional[datetime] = None) -> dict:
-    salon = equipamiento.adjuntar(db, [obtener_salon(db, salon_id)])[0]
-    return _ocupacion_de(db, salon, _ahora_campus(momento))
+    salon = equipamiento.adjuntar(db, [obtener_salon(db, salon_id)], momento)[0]
+    return _ocupaciones(db, [salon], _ahora_campus(momento))[0]
 
 
 def registrar_presencia(

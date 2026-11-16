@@ -7,11 +7,11 @@ y eliminación lógica (soft-delete) sobre equipos tecnológicos de la universid
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models import recurso_models
 from app.schemas import schemas
-from app.services import auditoria
+from app.services import auditoria, estado_salon
 from app.services import maintenance as maintenance_service
 from app.messaging.publisher import publicar_evento
 
@@ -33,6 +33,9 @@ def crear_recurso(
         db, "recurso.crear", "recurso", nuevo.id, actor_id=actor_id,
         detalle={"serial": nuevo.serial, "categoria": nuevo.categoria, "salon_id": nuevo.salon_id},
     )
+    estado_salon.registrar_historial(
+        db, nuevo.salon_id, "equipo.agregado",
+        f"Equipo agregado: {nuevo.categoria} {nuevo.serial}", actor_id)
     db.commit()
     db.refresh(nuevo)
     return nuevo
@@ -63,7 +66,8 @@ def listar_recursos(
             | recurso_models.Recurso.descripcion.ilike(f"%{busqueda}%")
         )
     total = query.count()
-    items = query.offset(skip).limit(limit).all()
+    # joinedload: el nombre y edificio del salón de cada equipo sin una consulta por fila.
+    items = query.options(joinedload(recurso_models.Recurso.salon)).offset(skip).limit(limit).all()
     return items, total
 
 
@@ -118,6 +122,9 @@ def eliminar_recurso(db: Session, recurso_id: int, actor_id: Optional[int] = Non
         db, "recurso.eliminar", "recurso", recurso.id, actor_id=actor_id,
         detalle={"serial": recurso.serial},
     )
+    estado_salon.registrar_historial(
+        db, recurso.salon_id, "equipo.retirado",
+        f"Equipo retirado: {recurso.categoria} {recurso.serial}", actor_id)
     db.commit()
     return {"message": "Recurso eliminado correctamente"}
 
