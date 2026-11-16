@@ -12,9 +12,9 @@
     "semantic_hash": ""
   },
   "app/main.py": {
-    "mtime": 1794803782.2542052,
-    "seen": 1794850383.5137858,
-    "ast_hash": "e47f173303f79d9e12236240f609373d",
+    "mtime": 1794854874.7846923,
+    "seen": 1794857204.2518644,
+    "ast_hash": "79c6cedcb7886660b833a0a8cc1d38a1",
     "semantic_hash": ""
   },
   "app/routers/__init__.py": {
@@ -114,15 +114,15 @@
     "semantic_hash": ""
   },
   "docs/arc42/arc42.md": {
-    "mtime": 1794806546.805779,
-    "seen": 1794850383.5153155,
-    "ast_hash": "8db0253e6c066131ab8f43e50f41ed4d",
+    "mtime": 1794856584.1143703,
+    "seen": 1794857204.2529557,
+    "ast_hash": "e2a061cac8a9927b7dbe1e96c3e6c12d",
     "semantic_hash": ""
   },
   "docs/aspectos.md": {
-    "mtime": 1794806546.8087778,
-    "seen": 1794850383.5153234,
-    "ast_hash": "3a74ef744c2fe95766730ac2de3d4707",
+    "mtime": 1794856584.1328466,
+    "seen": 1794857204.2529595,
+    "ast_hash": "bde5a1b241041380de75a0c16877e7ef",
     "semantic_hash": ""
   },
   "docs/c4/C2.md": {
@@ -150,9 +150,9 @@
     "semantic_hash": ""
   },
   "docs/ia.md": {
-    "mtime": 1794821180.2989106,
-    "seen": 1794850383.5154054,
-    "ast_hash": "940cca9aa8b9b71ed6248b160cfbe341",
+    "mtime": 1794856618.7139838,
+    "seen": 1794857204.2530131,
+    "ast_hash": "c82867c09486f2f32e7a85aec9ded137",
     "semantic_hash": ""
   },
   "docs/matriz_estilos.md": {
@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "app/core/deps.py": {
-    "mtime": 1794853867.0245435,
-    "seen": 1794853987.5553062,
-    "ast_hash": "465caf18bf9d04bbd111b62db6058291",
+    "mtime": 1794854605.1831236,
+    "seen": 1794857204.2518265,
+    "ast_hash": "7ca2764b4e18af2240461442a470bf03",
     "semantic_hash": ""
   },
   "app/core/hashing.py": {
@@ -288,9 +288,9 @@
     "semantic_hash": ""
   },
   "app/models/salon_models.py": {
-    "mtime": 1794777896.791854,
-    "seen": 1794850383.5138628,
-    "ast_hash": "19e956fb1d009e2a143ade4621627d98",
+    "mtime": 1794854738.1982434,
+    "seen": 1794857204.2519433,
+    "ast_hash": "70567ea3539f2b61cb0eb140e675a977",
     "semantic_hash": ""
   },
   "app/routers/auth.py": {
@@ -312,9 +312,9 @@
     "semantic_hash": ""
   },
   "app/routers/salones.py": {
-    "mtime": 1794777808.6273146,
-    "seen": 1794850383.5139518,
-    "ast_hash": "2b8005c3820c2855aaccd6a5c8ef915a",
+    "mtime": 1794855762.0674603,
+    "seen": 1794857204.2519763,
+    "ast_hash": "4e477efd528dfd6bb818f6c727706541",
     "semantic_hash": ""
   },
   "app/schemas/auth.py": {
@@ -348,9 +348,9 @@
     "semantic_hash": ""
   },
   "app/schemas/salones.py": {
-    "mtime": 1794697788.6702676,
-    "seen": 1794701923.6213925,
-    "ast_hash": "948bbf1b8d60790d35d58e1c3b5cb1b4",
+    "mtime": 1794856412.4830332,
+    "seen": 1794857204.2520075,
+    "ast_hash": "521b61b6b209987a5e66d4126dc90bf4",
     "semantic_hash": ""
   },
   "app/schemas/schemas.py": {
@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "app/services/salones.py": {
-    "mtime": 1794697788.672263,
-    "seen": 1794701923.6214917,
-    "ast_hash": "d7cf88d39945178fab1bcfbc2dce4f5a",
+    "mtime": 1794856412.4920125,
+    "seen": 1794857204.252105,
+    "ast_hash": "457e89107d9382773965db4c4ea8f7a7",
     "semantic_hash": ""
   },
   "frontend/lib/app.dart": {
@@ -414,9 +414,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/core/di/injection.dart": {
-    "mtime": 1794805564.6747434,
-    "seen": 1794850383.514257,
-    "ast_hash": "6cc6f8bdb00bacf9aeb6cf4c5ffd8c09",
+    "mtime": 1794856020.2589264,
+    "seen": 1794857204.2521644,
+    "ast_hash": "c33e8fa18fc10a2f2ce65034d0184799",
     "semantic_hash": ""
   },
   "frontend/lib/core/error/api_exception.dart": {
@@ -480,9 +480,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/features/cuenta/presentation/cuenta_page.dart": {
-    "mtime": 1794805639.527522,
-    "seen": 1794850383.5144417,
-    "ast_hash": "e71e6bb43da4d8d6cd928af6852017b5",
+    "mtime": 1794856032.9306288,
+    "seen": 1794857204.2522733,
+    "ast_hash": "a580ec5ec1efcd66d340d92a80c4367b",
     "semantic_hash": ""
   },
   "frontend/lib/features/home/presentation/home_page.dart": {
@@ -570,15 +570,15 @@
     "semantic_hash": ""
   },
   "frontend/lib/features/salones/data/salones_data.dart": {
-    "mtime": 1794781307.0655494,
-    "seen": 1794850383.5145724,
-    "ast_hash": "8286998ec8797a0856ab4069e09ff1da",
+    "mtime": 1794855684.6106696,
+    "seen": 1794857204.2523985,
+    "ast_hash": "4fbe13c1e9d751c4079476aa90b1eb22",
     "semantic_hash": ""
   },
   "frontend/lib/features/salones/domain/entities/salon.dart": {
-    "mtime": 1794781307.0635552,
-    "seen": 1794850383.5145779,
-    "ast_hash": "1500b5be3d347f7f4ea2dd4012ee84e6",
+    "mtime": 1794855684.6176176,
+    "seen": 1794857204.252402,
+    "ast_hash": "8c41ab3570b816d8f0bd2eae4cf43434",
     "semantic_hash": ""
   },
   "frontend/lib/features/salones/domain/repositories/salones_repository.dart": {
@@ -600,9 +600,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/features/salones/presentation/salones_page.dart": {
-    "mtime": 1794782031.6382926,
-    "seen": 1794850383.5146034,
-    "ast_hash": "e5dbb185a38f13de826f10e0ba6a60dc",
+    "mtime": 1794856067.3382318,
+    "seen": 1794857204.2524288,
+    "ast_hash": "2cef222b482804e0ef7241041a73da62",
     "semantic_hash": ""
   },
   "frontend/lib/main.dart": {
@@ -774,9 +774,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/features/salones_admin/presentation/panel_salones_page.dart": {
-    "mtime": 1794698628.8492424,
-    "seen": 1794701923.6219256,
-    "ast_hash": "b4d20a83cf8f3937da46ae985395f593",
+    "mtime": 1794855980.6356838,
+    "seen": 1794857204.2524672,
+    "ast_hash": "4ba94dd949908fda36e8f06061ce2954",
     "semantic_hash": ""
   },
   "frontend/lib/features/salones_admin/presentation/plano_salones.dart": {
@@ -804,9 +804,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/features/salones_admin/presentation/salones_admin_controller.dart": {
-    "mtime": 1794698373.4186306,
-    "seen": 1794701923.621956,
-    "ast_hash": "b8b6c83f52d45c1e4235466ebfe2979c",
+    "mtime": 1794855993.5128534,
+    "seen": 1794857204.2524993,
+    "ast_hash": "987d012e875c8856776f7c9f707acc7c",
     "semantic_hash": ""
   },
   "frontend/lib/features/salones_admin/presentation/salones_admin_estilos.dart": {
@@ -828,9 +828,9 @@
     "semantic_hash": ""
   },
   "scripts/seed_demo.py": {
-    "mtime": 1794803749.3875613,
-    "seen": 1794850383.5149555,
-    "ast_hash": "91b9b347288db8f86f1eab93d1299c01",
+    "mtime": 1794856641.0368361,
+    "seen": 1794857204.2527368,
+    "ast_hash": "7ee6c0d2b29030f5b8304b889ebff5a7",
     "semantic_hash": ""
   },
   "scripts/ver_db.py": {
@@ -840,9 +840,9 @@
     "semantic_hash": ""
   },
   "tests/test_salones_admin.py": {
-    "mtime": 1794780366.169728,
-    "seen": 1794850383.5151231,
-    "ast_hash": "1d9bc9308fbc06666000713dd97a6e7d",
+    "mtime": 1794855006.4426863,
+    "seen": 1794857204.2528439,
+    "ast_hash": "b7332669b242d2ba358c3e14ebb7c37f",
     "semantic_hash": ""
   },
   "docs/COMO_EJECUTAR.md": {
@@ -1002,9 +1002,9 @@
     "semantic_hash": ""
   },
   "docs/seguridad/modelo-amenazas.md": {
-    "mtime": 1794806546.8107722,
-    "seen": 1794850383.5154748,
-    "ast_hash": "c28468d77980c3bc0fcc86b8e4a4b6f0",
+    "mtime": 1794856584.1363504,
+    "seen": 1794857204.2530577,
+    "ast_hash": "8cc2dbf4c84b904a7238c1c6a6473597",
     "semantic_hash": ""
   },
   "docs/seguridad/privacidad.md": {
@@ -1386,9 +1386,9 @@
     "semantic_hash": ""
   },
   "app/core/permisos.py": {
-    "mtime": 1794777724.0268207,
-    "seen": 1794850383.5137603,
-    "ast_hash": "5605d415fd6fd3f85044d9635d096225",
+    "mtime": 1794854605.1818488,
+    "seen": 1794857204.251839,
+    "ast_hash": "dac664653e378041067eed1ca0820ada",
     "semantic_hash": ""
   },
   "app/routers/asignaciones.py": {
@@ -1488,9 +1488,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/features/auth/domain/permisos.dart": {
-    "mtime": 1794781041.809702,
-    "seen": 1794850383.5143814,
-    "ast_hash": "fe556ada6c1fd329ed203aafa1428ca5",
+    "mtime": 1794855683.7678218,
+    "seen": 1794857204.2522423,
+    "ast_hash": "ca54a0064d13a86b84ff8435b2956a4d",
     "semantic_hash": ""
   },
   "frontend/lib/features/cuenta/presentation/foto_perfil_sheet.dart": {
@@ -1554,9 +1554,9 @@
     "semantic_hash": ""
   },
   "frontend/test/roles_test.dart": {
-    "mtime": 1794782879.2679715,
-    "seen": 1794850383.5148742,
-    "ast_hash": "cc1ff8be1a692341d3388f52dc35e806",
+    "mtime": 1794856270.3610137,
+    "seen": 1794857204.252668,
+    "ast_hash": "b1425898fae8e81597d24467a5fe04f3",
     "semantic_hash": ""
   },
   "scripts/cargar_asignaciones.py": {
@@ -1602,9 +1602,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1794806638.3894198,
-    "seen": 1794850383.515138,
-    "ast_hash": "97b3ce0877dfcd243eb85827641432e2",
+    "mtime": 1794856618.8367922,
+    "seen": 1794857204.252852,
+    "ast_hash": "06658401240fd6fc750bba5bfc3a83fe",
     "semantic_hash": ""
   },
   "docs/adr/0018-modelo-de-roles-y-permisos.md": {
@@ -1626,9 +1626,87 @@
     "semantic_hash": ""
   },
   "docs/seguridad/matriz-permisos.md": {
-    "mtime": 1794805022.028936,
-    "seen": 1794850383.5154686,
-    "ast_hash": "a39b158ede2ede2e4a7c5deed98750f2",
+    "mtime": 1794854930.2437356,
+    "seen": 1794857204.2530541,
+    "ast_hash": "2b6f2b0424a9f000a1f5c7a4c8af0679",
+    "semantic_hash": ""
+  },
+  "alembic/versions/c9d0e1f2a3b4_capacidad_estimada_de_salones.py": {
+    "mtime": 1794854720.1308901,
+    "seen": 1794857204.2517862,
+    "ast_hash": "0b5db0bdbe0db80dfc8db8874bb8c4f5",
+    "semantic_hash": ""
+  },
+  "app/routers/catalogo.py": {
+    "mtime": 1794854843.517958,
+    "seen": 1794857204.2519584,
+    "ast_hash": "6cd54c4a247daf4170b4a296430954eb",
+    "semantic_hash": ""
+  },
+  "app/schemas/catalogo.py": {
+    "mtime": 1794854806.521639,
+    "seen": 1794857204.2519922,
+    "ast_hash": "1e34b9a97d104e2efce71fc45c30a19d",
+    "semantic_hash": ""
+  },
+  "app/services/catalogo.py": {
+    "mtime": 1794856412.4870276,
+    "seen": 1794857204.2520223,
+    "ast_hash": "376b9111297e62cf32169e3f87902e03",
+    "semantic_hash": ""
+  },
+  "frontend/lib/features/salones_admin/data/catalogo_data.dart": {
+    "mtime": 1794855788.71582,
+    "seen": 1794857204.2524376,
+    "ast_hash": "11edda7e1000c566bc874cc6e12b423b",
+    "semantic_hash": ""
+  },
+  "frontend/lib/features/salones_admin/domain/catalogo.dart": {
+    "mtime": 1794855788.6206272,
+    "seen": 1794857204.2524452,
+    "ast_hash": "0cee271b04f2953bd17b12a2ee14cd78",
+    "semantic_hash": ""
+  },
+  "frontend/lib/features/salones_admin/presentation/catalogo_page.dart": {
+    "mtime": 1794856157.7557664,
+    "seen": 1794857204.2524607,
+    "ast_hash": "814cf20ad25b02105a48cdb94478b070",
+    "semantic_hash": ""
+  },
+  "frontend/test/catalogo_test.dart": {
+    "mtime": 1794856119.5507996,
+    "seen": 1794857204.2526274,
+    "ast_hash": "2ab95acf126742daeda7e19f08d6f95e",
+    "semantic_hash": ""
+  },
+  "scripts/cargar_catalogo_utb.py": {
+    "mtime": 1794854874.8957307,
+    "seen": 1794857204.252711,
+    "ast_hash": "f313ae4e425ed07eff19146ac6356e88",
+    "semantic_hash": ""
+  },
+  "scripts/datos/catalogo_utb.json": {
+    "mtime": 1794854630.9733503,
+    "seen": 1794857204.2527199,
+    "ast_hash": "2780345ec2f10ae3a86046ba9ac7c5d2",
+    "semantic_hash": ""
+  },
+  "tests/test_catalogo_salones.py": {
+    "mtime": 1794856412.4940078,
+    "seen": 1794857204.252767,
+    "ast_hash": "7817c15835c4f9aa0cffb3c8863ace8d",
+    "semantic_hash": ""
+  },
+  "docs/adr/0021-catalogo-de-salones-utb.md": {
+    "mtime": 1794856353.7337196,
+    "seen": 1794857204.2529516,
+    "ast_hash": "3e8456e734dc915f7c5b418f23bd30fb",
+    "semantic_hash": ""
+  },
+  "docs/despliegue/catalogo-salones.md": {
+    "mtime": 1794856585.1762242,
+    "seen": 1794857204.2529964,
+    "ast_hash": "5f4f3951bb1b187a0ef3116d2fac34ea",
     "semantic_hash": ""
   }
 }
