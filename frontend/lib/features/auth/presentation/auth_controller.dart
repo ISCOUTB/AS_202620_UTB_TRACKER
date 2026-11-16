@@ -7,6 +7,7 @@ import '../../../core/error/api_exception.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/notifications/fcm_registration.dart';
 import '../../../core/storage/token_storage.dart';
+import '../../../core/utils/politica.dart';
 import '../data/auth_data.dart';
 import '../domain/auth_domain.dart';
 
@@ -161,6 +162,30 @@ class AuthController extends ChangeNotifier {
     return ok;
   }
 
+  // ── Foto de perfil (ADR-0020) ─────────────────────────────────────────
+
+  void _fijarFoto({required bool tiene, required int version}) {
+    final s = _sesion;
+    if (s == null) return;
+    _sesion = Sesion(
+      token: s.token,
+      refreshToken: s.refreshToken,
+      usuario: s.usuario.conFoto(tiene: tiene, version: version),
+    );
+  }
+
+  /// PUT /auth/me/foto con los bytes ya reducidos. El servidor revisa el tipo real y quita
+  /// los metadatos; la versión nueva hace que las pantallas la vuelvan a pedir.
+  Future<bool> subirFoto(Uint8List bytes, String tipo) => _ejecutar(() async {
+        final r = await _api.putBytes('/auth/me/foto', bytes, tipo: tipo) as Map<String, dynamic>;
+        _fijarFoto(tiene: true, version: (r['foto_version'] as num?)?.toInt() ?? 0);
+      });
+
+  Future<bool> quitarFoto() => _ejecutar(() async {
+        await _api.delete('/auth/me/foto');
+        _fijarFoto(tiene: false, version: 0);
+      });
+
   Future<bool> guardarPreferencias(Preferencias p) =>
       guardarPerfil({'preferencias': p.aJson()});
 
@@ -293,14 +318,13 @@ class AuthController extends ChangeNotifier {
   Future<bool> registrar({
     required String nombre,
     required String email,
-    String rol = 'usuario_utb',
     required String password,
   }) async {
+    // Sin rol: lo decide el servidor por la lista de asignaciones (ADR-0019).
     final ok = await _ejecutar(() async {
       final nuevo = await _repo.registrar(
         nombre: nombre.trim(),
-        email: email.trim(),
-        rol: rol,
+        email: Politica.normalizarCorreo(email),
         password: password,
       );
       _sesion = await _repo.iniciarSesion(

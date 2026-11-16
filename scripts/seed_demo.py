@@ -33,7 +33,9 @@ from app.core import config  # noqa: E402
 from app.core.database import Base, SessionLocal, engine  # noqa: E402
 from app.core.permisos import etiqueta  # noqa: E402
 from app.core.hashing import hash_password  # noqa: E402
-from app.models import Horario, Prestamo, PrestamoSalon, Recurso, Reporte, Salon, Usuario  # noqa: E402
+from app.models import (  # noqa: E402
+    AsignacionRol, Horario, Prestamo, PrestamoSalon, Recurso, Reporte, Salon, Usuario,
+)
 from app.models.salon_models import PresenciaSalon, ReporteSalon  # noqa: E402
 
 CAMPUS = timezone(timedelta(hours=-5))  # Colombia no tiene horario de verano
@@ -51,6 +53,16 @@ USUARIOS = [
     ("Andres Torres", "andres@utb.edu.co", "usuario_utb", "Estudiante123!"),
     ("Valentina Diaz", "valentina@utb.edu.co", "usuario_utb", "Estudiante123!"),
 ]
+
+# Lista de asignación de roles por correo (ADR-0019): los auditores demo reciben su rol por la
+# lista (origen "correo institucional"); el administrador demo es manual. La última fila es de un
+# correo SIN cuenta: regístrate con él en la app, verifica el correo y entrarás como Auditor.
+ASIGNACIONES = [
+    ("auxiliar@utb.edu.co", "auxiliar", "Auxiliar de planta"),
+    ("auxiliar2@utb.edu.co", "auxiliar", "Auxiliar de laboratorio"),
+    ("nuevo.auditor@utb.edu.co", "auxiliar", "Auxiliar de planta"),
+]
+_CORREOS_CON_ASIGNACION = {c for c, _, _ in ASIGNACIONES}
 
 # (código, edificio, piso, capacidad, estado, descripción del espacio)
 SALONES = [
@@ -236,8 +248,16 @@ def main() -> None:
             # Cuentas de demostración: correo ya verificado (ADR-0014).
             fila.email_verificado = True
             fila.email_verificado_en = utc(ahora)
+            # Rol alto sin fila en la lista = puesto a mano (ADR-0019).
+            fila.rol_manual = rol != "usuario_utb" and email not in _CORREOS_CON_ASIGNACION
             u[email] = fila
         db.flush()
+        for correo_asig, rol_asig, cargo in ASIGNACIONES:
+            asig = db.query(AsignacionRol).filter(AsignacionRol.correo == correo_asig).first()
+            if not asig:
+                db.add(AsignacionRol(correo=correo_asig, rol=rol_asig, cargo=cargo))
+            else:
+                asig.rol, asig.cargo = rol_asig, cargo
 
         # ── Salones ──────────────────────────────────────────────────────────
         s = {}

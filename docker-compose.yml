@@ -20,6 +20,8 @@ x-backend: &backend
     URL_PUBLICA: ${URL_PUBLICA:-http://localhost:8000}
     USE_REAL_MAIL: ${USE_REAL_MAIL:-false}
     VERIFICACION_OBLIGATORIA: ${VERIFICACION_OBLIGATORIA:-true}
+    # ADR-0019: solo correos institucionales (amplíala solo en desarrollo).
+    DOMINIOS_PERMITIDOS: ${DOMINIOS_PERMITIDOS:-utb.edu.co}
     CORREOS_DIR: /app/logs/correos
     SMTP_HOST: ${SMTP_HOST:-}
     SMTP_PORT: ${SMTP_PORT:-587}

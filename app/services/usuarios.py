@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.core import permisos
 from app.core.permisos import Rol
 from app.models.auditoria_models import RegistroAuditoria
-from app.models.auth_models import Usuario
+from app.models.auth_models import FotoPerfil, Usuario
 from app.services import auditoria
 
 MSG_NO_ENCONTRADO = "Usuario no encontrado"
@@ -58,7 +58,7 @@ def _invalidar_sesiones(user: Usuario) -> None:
 def listar(
     db: Session, busqueda: Optional[str] = None, rol: Optional[str] = None,
     activo: Optional[bool] = None, skip: int = 0, limit: int = 50,
-) -> tuple[list[tuple[Usuario, object]], int]:
+) -> tuple[list[tuple[Usuario, object, Optional[int]]], int]:
     """Usuarios con su última actividad (último registro en la bitácora donde actuaron).
 
     La última actividad sale de UNA subconsulta agrupada, no de una consulta por usuario.
@@ -70,7 +70,11 @@ def listar(
         .group_by(RegistroAuditoria.actor_id)
         .subquery()
     )
-    query = db.query(Usuario, ultima.c.en).outerjoin(ultima, ultima.c.uid == Usuario.id)
+    query = (
+        db.query(Usuario, ultima.c.en, FotoPerfil.version)
+        .outerjoin(ultima, ultima.c.uid == Usuario.id)
+        .outerjoin(FotoPerfil, FotoPerfil.usuario_id == Usuario.id)  # solo la versión, no bytes
+    )
     if busqueda and busqueda.strip():
         termino = f"%{busqueda.strip()}%"
         query = query.filter(or_(Usuario.nombre.ilike(termino), Usuario.email.ilike(termino),
@@ -81,7 +85,7 @@ def listar(
         query = query.filter(Usuario.activo.is_(activo))
     total = query.order_by(None).count()
     filas = query.order_by(Usuario.nombre.asc()).offset(skip).limit(limit).all()
-    return [(u, en) for u, en in filas], total
+    return [(u, en, version) for u, en, version in filas], total
 
 
 def cambiar_rol(db: Session, usuario_id: int, nuevo_rol: str, actor: Usuario) -> Usuario:
@@ -96,12 +100,15 @@ def cambiar_rol(db: Session, usuario_id: int, nuevo_rol: str, actor: Usuario) ->
     if user.id == actor.id:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=MSG_A_SI_MISMO)
     anterior = permisos.normalizar_rol(user.rol)
-    if anterior == rol:
+    if anterior == rol and user.rol_manual:
         return user
-    if anterior == Rol.ADMINISTRADOR.value:
+    if anterior == Rol.ADMINISTRADOR.value and rol != anterior:
         proteger_ultimo_admin(db, user)
     user.rol = rol
-    _invalidar_sesiones(user)
+    # Lo decidió un administrador: gana sobre la lista de asignaciones (ADR-0019).
+    user.rol_manual = True
+    if anterior != rol:
+        _invalidar_sesiones(user)
     auditoria.registrar(
         db, "usuario.rol", "usuario", user.id, actor_id=actor.id,
         detalle={"usuario": user.nombre, "de": anterior, "a": rol,
@@ -120,6 +127,9 @@ def cambiar_estado(db: Session, usuario_id: int, activo: bool, actor: Usuario) -
         return user
     if not activo:
         proteger_ultimo_admin(db, user)
+        # Al desactivar se borra la foto (dato personal, ADR-0020).
+        db.query(FotoPerfil).filter(FotoPerfil.usuario_id == user.id).delete(
+            synchronize_session=False)
     user.activo = activo
     _invalidar_sesiones(user)
     auditoria.registrar(

@@ -7,7 +7,8 @@ Delega toda la lógica de negocio y hashing seguro (bcrypt) a app.services.auth.
 """
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
@@ -23,14 +24,17 @@ from app.schemas.auth import (
     UsuarioLogin,
     UsuarioRoleUpdate,
 )
+from app.routers.fotos import leer_cuerpo_limitado, respuesta_foto
 from app.schemas.perfil import (
     CambiarPasswordRequest,
+    FotoEstado,
     PasswordRequest,
     PerfilResponse,
     PerfilUpdate,
     SesionRenovada,
 )
 from app.services import auth as auth_service
+from app.services import fotos as fotos_service
 from app.services import paginas_auth, perfil as perfil_service
 from app.services import usuarios as usuarios_service
 
@@ -111,10 +115,11 @@ def restablecer_pagina_endpoint(
 
 
 @router.get("/me", response_model=PerfilResponse)
-def me_endpoint(current_user: CurrentUser):
+def me_endpoint(current_user: CurrentUser, db: Annotated[Session, Depends(get_db)]):
     """Perfil completo: datos, verificación, preferencias y, desde ADR-0018, `rol_etiqueta` y
-    `permisos` (la app decide qué mostrar por permisos, nunca comparando el texto del rol)."""
-    return current_user
+    `permisos` (la app decide qué mostrar por permisos, nunca comparando el texto del rol).
+    Desde ADR-0019: `correo_institucional`, `rol_origen`, `rol_origen_texto` y `cargo`."""
+    return perfil_service.respuesta(db, current_user)
 
 
 @router.patch("/me", response_model=PerfilResponse)
@@ -124,7 +129,55 @@ def actualizar_perfil_endpoint(
     current_user: CurrentUser,
 ):
     """Edita nombre para mostrar, teléfono, dependencia/cargo, color de avatar y preferencias."""
-    return perfil_service.actualizar_perfil(db, current_user, body)
+    return perfil_service.respuesta(db, perfil_service.actualizar_perfil(db, current_user, body))
+
+
+_CUERPO_FOTO = {
+    "requestBody": {
+        "required": True,
+        "description": "Los bytes de la foto (JPEG o PNG, ya reducida por la app). El tipo se "
+                       "decide por el contenido, no por el Content-Type.",
+        "content": {t: {"schema": {"type": "string", "format": "binary"}}
+                    for t in ("image/jpeg", "image/png")},
+    }
+}
+
+
+@router.put("/me/foto", response_model=FotoEstado, openapi_extra=_CUERPO_FOTO,
+            responses={413: {"description": "Demasiado grande"},
+                       415: {"description": "No es JPEG ni PNG"},
+                       422: {"description": "Dañada o de dimensiones no admitidas"},
+                       429: {"description": "Demasiadas subidas"}})
+async def subir_foto_endpoint(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Sube o reemplaza la foto propia (ADR-0020). Se quitan sus metadatos (EXIF/GPS)."""
+    datos = await leer_cuerpo_limitado(request)
+    foto = await run_in_threadpool(fotos_service.guardar, db, current_user, datos)
+    return FotoEstado(tiene_foto=True, foto_version=foto.version, tipo=foto.tipo,
+                      tamano=foto.tamano, ancho=foto.ancho, alto=foto.alto)
+
+
+@router.delete("/me/foto", response_model=FotoEstado)
+def quitar_foto_endpoint(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Quita la foto propia: el contenido se borra de la base."""
+    fotos_service.quitar(db, current_user)
+    return FotoEstado(tiene_foto=False)
+
+
+@router.get("/me/foto", response_class=Response,
+            responses={200: {"content": {"image/jpeg": {}, "image/png": {}}},
+                       404: {"description": "Sin foto"}})
+def ver_mi_foto_endpoint(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    return respuesta_foto(fotos_service.obtener(db, current_user.id, current_user))
 
 
 @router.post("/me/cambiar-password", response_model=SesionRenovada,

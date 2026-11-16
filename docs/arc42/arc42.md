@@ -231,6 +231,27 @@ permiso) → routers; `app/services/usuarios.py`, `app/services/prestamos_salon.
 cada rol contra `docs/seguridad/matriz-permisos.md`), `tests/test_roles.py`,
 `frontend/test/roles_test.dart`.
 
+### cuenta institucional, rol por asignación y foto (ADR-0019, ADR-0020)
+
+*Responsabilidad:* admitir solo correos institucionales en registros y cambios de correo
+(`DOMINIOS_PERMITIDOS`, por defecto `utb.edu.co`, coincidencia exacta) sin bloquear cuentas
+antiguas; decidir el rol con UNA función a partir de la lista `asignaciones_rol` que mantiene
+el administrador, solo con el correo comprobado (un rol manual gana); guardar la foto de perfil
+como miniatura limpia (sin EXIF/GPS) en una tabla aparte.
+*Interfaz:* `GET /auth/me` (`correo_institucional`, `rol_origen`, `rol_origen_texto`, `cargo`,
+`tiene_foto`, `foto_version`), `GET|POST /usuarios/asignaciones`,
+`PATCH|DELETE /usuarios/asignaciones/{id}`, `POST /usuarios/asignaciones/importar`,
+`POST /usuarios/{id}/rol/automatico`, `PUT|DELETE|GET /auth/me/foto`, `GET /usuarios/{id}/foto`.
+*Ubicación:* `app/core/politica.py` (`error_correo_nuevo`), `app/core/config.py`,
+`app/services/asignaciones.py` (`rol_resuelto`, `recalcular`, importación),
+`app/services/fotos.py`, `app/services/imagenes.py` (firma, estructura y limpieza sin
+librerías), `app/routers/asignaciones.py`, `app/routers/fotos.py`, `scripts/cargar_asignaciones.py`;
+en la app `frontend/lib/core/utils/politica.dart`, `features/admin/presentation/asignaciones_page.dart`,
+`features/cuenta/presentation/foto_perfil_sheet.dart`, `shared/foto_perfil.dart`.
+*Requisitos que cumple:* QS-04 (seguridad) y privacidad — `tests/test_correo_institucional.py`,
+`tests/test_rol_por_correo.py`, `tests/test_foto_perfil.py`,
+`frontend/test/correo_institucional_test.dart`, `asignaciones_test.dart`, `perfil_foto_test.dart`.
+
 ## Nivel 2
 
 ### White Box *recursos*
@@ -380,6 +401,30 @@ sequenceDiagram
 Un Estudiante que llame a la bandeja o a aprobar recibe 403 y la app muestra "No tienes acceso a
 esto". El modo prueba del Administrador solo cambia lo que la app dibuja: la API sigue
 aplicando su rol real.
+
+### Escenario 5 — Registro institucional y rol por asignación (ADR-0019)
+
+```mermaid
+sequenceDiagram
+    actor Ad as Administrador
+    actor P as Persona nueva
+    participant API as UTB Tracker (FastAPI)
+    participant DB as Base de datos
+
+    Ad->>API: POST /usuarios/asignaciones {correo exacto, rol Auditor, cargo}
+    API->>DB: guarda la fila + bitácora (correo oculto)
+    P->>API: POST /auth/register {correo @utb.edu.co, ...} (un "rol" en el cuerpo se ignora)
+    API->>API: error_correo_nuevo: dominio exacto en DOMINIOS_PERMITIDOS (si no, 422)
+    API->>DB: cuenta con rol base (Estudiante) y SIN verificar + correo de verificación
+    P->>API: GET /auth/verificar-correo?token=...
+    API->>DB: correo comprobado -> rol_resuelto = rol de la asignación
+    API->>DB: sube sesion_version (cierra sesiones) + bitácora usuario.rol_automatico
+    P->>API: POST /auth/login -> GET /auth/me
+    API-->>P: rol Auditor, rol_origen "correo", cargo
+```
+
+Sin correo real en producción la cuenta nace "verificada" pero sin `email_verificado_en`: no
+cuenta como comprobada y se queda con el rol base hasta que un administrador le asigne otro.
 
 ## Infrastructure Level 1
 
@@ -547,6 +592,8 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0016](../adr/0016-perfil-y-preferencias-en-el-servidor.md) — Perfil personalizable y preferencias guardadas en el servidor
 - [ADR-0017](../adr/0017-tipo-de-salon-y-equipamiento-calculado.md) — Tipo de salón y equipamiento calculado desde los recursos
 - [ADR-0018](../adr/0018-modelo-de-roles-y-permisos.md) — Modelo de roles y permisos con una matriz única (etiquetas Estudiante/Auditor/Administrador, permisos en /auth/me, modo prueba solo de interfaz)
+- [ADR-0019](../adr/0019-correo-institucional-y-rol-por-asignacion.md) — Solo correos institucionales (dominio exacto, sin bloquear cuentas antiguas) y rol por una lista de asignación que solo aplica con el correo comprobado; el rol manual gana
+- [ADR-0020](../adr/0020-foto-de-perfil.md) — Foto de perfil como miniatura limpia (firma real, sin EXIF/GPS, sin librerías nuevas en el backend) en la tabla aparte `fotos_perfil`
 
 # Requisitos de calidad
 

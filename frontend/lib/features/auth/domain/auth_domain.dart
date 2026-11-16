@@ -20,6 +20,12 @@ class Usuario {
     this.preferencias = const Preferencias(),
     String? rolEtiqueta,
     Permisos? permisos,
+    this.correoInstitucional = true,
+    this.rolOrigen = 'base',
+    this.rolOrigenTexto,
+    this.cargo,
+    this.tieneFoto = false,
+    this.fotoVersion = 0,
   })  : _rolEtiqueta = rolEtiqueta,
         _permisos = permisos;
 
@@ -53,6 +59,43 @@ class Usuario {
 
   /// Permisos REALES (los que aplica el servidor).
   Permisos get permisos => _permisos ?? Permisos.deRol(rol);
+
+  /// False en cuentas antiguas con correo no institucional: el perfil avisa (ADR-0019).
+  final bool correoInstitucional;
+
+  /// De dónde sale el rol (solo lectura): "base", "correo" (lista de asignaciones) o
+  /// "manual" (lo puso un administrador). [rolOrigenTexto] lo explica en español.
+  final String rolOrigen;
+  final String? rolOrigenTexto;
+
+  /// Cargo o dependencia que viene de la asignación (no editable en el perfil).
+  final String? cargo;
+
+  /// Foto de perfil (ADR-0020). [fotoVersion] cambia con cada subida: sirve de clave de caché.
+  final bool tieneFoto;
+  final int fotoVersion;
+
+  /// Copia con la foto actualizada sin volver a pedir el perfil.
+  Usuario conFoto({required bool tiene, required int version}) => Usuario(
+        id: id,
+        nombre: nombre,
+        email: email,
+        rol: rol,
+        emailVerificado: emailVerificado,
+        nombreMostrar: nombreMostrar,
+        telefono: telefono,
+        dependencia: dependencia,
+        colorAvatar: colorAvatar,
+        preferencias: preferencias,
+        rolEtiqueta: _rolEtiqueta,
+        permisos: _permisos,
+        correoInstitucional: correoInstitucional,
+        rolOrigen: rolOrigen,
+        rolOrigenTexto: rolOrigenTexto,
+        cargo: cargo,
+        tieneFoto: tiene,
+        fotoVersion: version,
+      );
 }
 
 class Sesion {
@@ -77,7 +120,6 @@ abstract class AuthRepository {
   Future<Usuario> registrar({
     required String nombre,
     required String email,
-    required String rol,
     required String password,
   });
 

@@ -31,7 +31,7 @@ from app.core.security import (
 from app.models.auth_models import Usuario
 from app.models.seguridad_models import TokenUsado
 from app.schemas.auth import UsuarioCreate, UsuarioLogin
-from app.services import auditoria, correo, limites
+from app.services import asignaciones, auditoria, correo, limites
 
 logger = logging.getLogger("utb_tracker")
 
@@ -123,16 +123,16 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
             detail="Ya hay una cuenta con ese correo. Inicia sesión o recupera tu contraseña.",
         )
 
-    # El registro público SIEMPRE asigna el rol base 'usuario_utb'.
-    # La asignación de roles privilegiados (auxiliar, administrador) solo es permitida
-    # desde el panel administrativo.
-    rol = "usuario_utb"
+    # El registro SIEMPRE nace con el rol base: el cliente no elige rol (ADR-0019). Un rol de la
+    # lista de asignaciones solo se aplica cuando la persona COMPRUEBA su correo (verificar).
+    rol = asignaciones.ROL_BASE
 
     try:
         new_user = Usuario(
             nombre=schema.nombre,
             email=schema.email,
             rol=rol,
+            rol_manual=False,
             password=hash_password(schema.password),  # hash bcrypt — S9 req. 9.8
             # Sin correo real en producción la cuenta nace verificada (config.VERIFICACION_OBLIGATORIA).
             email_verificado=not config.VERIFICACION_OBLIGATORIA,
@@ -168,11 +168,12 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
 def verificar_correo(db: Session, token: str) -> Usuario:
     """Marca el correo como verificado (token de un solo uso) y envía la bienvenida."""
     _, user = consumir_token(db, token, PROPOSITO_VERIFICAR)
-    if not user.email_verificado:
+    if not user.email_verificado or not user.email_verificado_en:
         user.email_verificado = True
         user.email_verificado_en = _ahora()
         auditoria.registrar(db, "usuario.verificar_correo", "usuario", user.id, actor_id=user.id)
         correo.encolar(db, user.email, "bienvenida", {"nombre": user.nombre}, usuario_id=user.id)
+    asignaciones.recalcular(db, user, "correo_verificado", actor_id=user.id)
     db.commit()
     return user
 
@@ -246,6 +247,9 @@ def login(db: Session, schema: UsuarioLogin, ip: str = "desconocida") -> dict:
         }, usuario_id=user.id)
     limites.limpiar(db, clave)
     limites.limpiar(db, f"login-fallido:{user.id}")
+    # Si la lista de asignaciones cambió, el rol se pone al día aquí (los tokens que se emiten
+    # abajo ya llevan la versión de sesión nueva).
+    asignaciones.recalcular(db, user, "inicio_sesion", actor_id=user.id)
     auditoria.registrar(db, "auth.login", "usuario", user.id, actor_id=user.id,
                         detalle={"tras_fallidos": fallidos} if fallidos else None)
     db.commit()
@@ -274,7 +278,8 @@ def request_password_reset(db: Session, email: str, ip: str = "desconocida") -> 
     """Deja en el outbox el correo de recuperación con un token de un solo uso.
 
     La respuesta HTTP es la misma exista o no el correo (no revela cuentas). El límite por
-    correo y por IP evita usar este endpoint para llenar de correos a alguien.
+    correo y por IP evita usar este endpoint para llenar de correos a alguien. Un correo no
+    institucional solo recibe algo si es de una cuenta ANTIGUA (ADR-0019: no se bloquea a nadie).
     """
     email = normalizar_correo(email)
     for clave in (f"recuperar:{email}", f"recuperar-ip:{ip}"):
@@ -313,10 +318,11 @@ def reset_password(db: Session, token: str, new_password: str) -> None:
     _, user = consumir_token(db, token, PROPOSITO_RECUPERAR)
     aplicar_nueva_password(db, user, new_password)
     # Quien recibió el enlace demostró poseer el correo.
-    if not user.email_verificado:
+    if not user.email_verificado or not user.email_verificado_en:
         user.email_verificado = True
         user.email_verificado_en = _ahora()
     auditoria.registrar(db, "auth.recuperar_password", "usuario", user.id, actor_id=user.id)
+    asignaciones.recalcular(db, user, "correo_comprobado", actor_id=user.id)
     db.commit()
 
 

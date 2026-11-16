@@ -4,11 +4,13 @@ import '../../../core/config/api_config.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/politica.dart';
+import '../../../shared/foto_perfil.dart';
 import '../../../shared/servidor.dart';
 import '../../../shared/uber_widgets.dart';
 import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
 import '../../admin/presentation/estadisticas_page.dart';
+import '../../admin/presentation/asignaciones_page.dart';
 import '../../admin/presentation/usuarios_page.dart';
 import '../../auditoria/auditoria_page.dart';
 import '../../auth/domain/auth_domain.dart';
@@ -16,6 +18,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../auth/presentation/cambiar_correo_sheet.dart';
 import '../../recursos/presentation/equipos_page.dart';
 import '../../recursos/presentation/mantenimiento_page.dart';
+import 'foto_perfil_sheet.dart';
 
 /// Versión mostrada en el perfil (la de pubspec.yaml).
 const String versionApp = '0.1.1';
@@ -38,8 +41,8 @@ Color? colorDeHex(String? hex) {
   return Color(int.parse(hex.substring(1), radix: 16) | 0xFF000000);
 }
 
-/// Perfil (ADR-0016): cabecera, datos personales, seguridad, preferencias, servidor y cuenta.
-/// Todo lo que se cambia aquí se guarda en el servidor.
+/// Perfil (ADR-0016, ADR-0019, ADR-0020): cabecera con foto, rol de solo lectura, datos
+/// personales, seguridad, preferencias, servidor y cuenta. Todo se guarda en el servidor.
 class CuentaPage extends StatefulWidget {
   const CuentaPage({super.key});
 
@@ -84,7 +87,7 @@ class _CuentaPageState extends State<CuentaPage> {
             children: [
               EncabezadoDegradado(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
-                child: _Cabecera(usuario: u, onEditar: () => _editarDatos(u)),
+                child: _Cabecera(usuario: u, onFoto: () => mostrarHojaFoto(context)),
               ),
               if (_auth.cargando) const LinearProgressIndicator(minHeight: 2),
               Padding(
@@ -92,6 +95,11 @@ class _CuentaPageState extends State<CuentaPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (!u.correoInstitucional)
+                      _AvisoCorreoAntiguo(
+                          correo: u.email, onCambiar: () => mostrarCambiarCorreo(context)),
+                    const _Titulo('Tu rol'),
+                    _RolSoloLectura(usuario: u),
                     // Lo que se muestra depende de los PERMISOS (ADR-0018), nunca del texto del rol.
                     if (_auth.permisosReales.puede(Permisos.modoPrueba))
                       _ModoPrueba(auth: _auth),
@@ -122,6 +130,14 @@ class _CuentaPageState extends State<CuentaPage> {
                           detalle: 'Cambiar roles, activar o desactivar cuentas',
                           onTap: () => _abrir(const UsuariosPage()),
                         ),
+                      if (permisos.puede(Permisos.usuariosGestionar))
+                        _Fila(
+                          icono: Icons.alternate_email_rounded,
+                          color: AppColors.mantenimiento,
+                          titulo: 'Roles por correo',
+                          detalle: 'Quién es Auditor o Administrador según su correo',
+                          onTap: () => _abrir(const AsignacionesPage()),
+                        ),
                       if (permisos.puede(Permisos.estadisticasVer))
                         _Fila(
                           icono: Icons.insights_rounded,
@@ -141,6 +157,15 @@ class _CuentaPageState extends State<CuentaPage> {
                     ],
                     const _Titulo('Datos personales'),
                     _Fila(
+                      icono: Icons.account_circle_rounded,
+                      color: AppColors.primarioClaro,
+                      titulo: 'Foto de perfil',
+                      detalle: u.tieneFoto
+                          ? 'Toca para cambiarla o quitarla'
+                          : 'Sin foto (se ven tus iniciales)',
+                      onTap: () => mostrarHojaFoto(context),
+                    ),
+                    _Fila(
                       icono: Icons.badge_rounded,
                       color: AppColors.primarioClaro,
                       titulo: 'Nombre para mostrar',
@@ -154,19 +179,21 @@ class _CuentaPageState extends State<CuentaPage> {
                       detalle: u.telefono ?? 'Sin definir',
                       onTap: () => _editarDatos(u),
                     ),
-                    _Fila(
-                      icono: Icons.apartment_rounded,
-                      color: AppColors.primarioClaro,
-                      titulo: 'Dependencia o cargo',
-                      detalle: u.dependencia ?? 'Sin definir',
-                      onTap: () => _editarDatos(u),
-                    ),
+                    // Si el cargo viene de la lista de roles por correo, no se edita aquí.
+                    if (u.cargo == null)
+                      _Fila(
+                        icono: Icons.apartment_rounded,
+                        color: AppColors.primarioClaro,
+                        titulo: 'Dependencia o cargo',
+                        detalle: u.dependencia ?? 'Sin definir',
+                        onTap: () => _editarDatos(u),
+                      ),
                     const _Titulo('Seguridad'),
                     _Fila(
                       icono: Icons.alternate_email_rounded,
                       color: AppColors.indigoClaro,
                       titulo: 'Cambiar correo',
-                      detalle: u.email,
+                      detalle: '${u.email} · solo correos @${Politica.dominioInstitucional}',
                       onTap: () => mostrarCambiarCorreo(context),
                     ),
                     _Fila(
@@ -439,34 +466,44 @@ class _CuentaPageState extends State<CuentaPage> {
 // ── Piezas ───────────────────────────────────────────────────────────────
 
 class _Cabecera extends StatelessWidget {
-  const _Cabecera({required this.usuario, required this.onEditar});
+  const _Cabecera({required this.usuario, required this.onFoto});
   final Usuario usuario;
-  final VoidCallback onEditar;
+  final VoidCallback onFoto;
 
   @override
   Widget build(BuildContext context) {
-    final color = colorDeHex(usuario.colorAvatar) ?? AppColors.primario;
     final verificado = usuario.emailVerificado;
     return Row(
       children: [
         Semantics(
           button: true,
-          label: 'Avatar de ${usuario.nombreVisible}. Toca para editar tus datos.',
+          label: usuario.tieneFoto
+              ? 'Tu foto de perfil. Toca para cambiarla o quitarla.'
+              : 'Tus iniciales. Toca para poner una foto de perfil.',
+          excludeSemantics: true,
           child: InkWell(
-            onTap: onEditar,
+            onTap: onFoto,
             customBorder: const CircleBorder(),
-            child: Container(
-              width: 64,
-              height: 64,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2),
-              ),
-              child: Text(
-                AvatarIniciales.iniciales(usuario.nombreVisible),
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white),
+            child: SizedBox(
+              width: 70,
+              height: 68,
+              child: Stack(
+                children: [
+                  AvatarPerfil(usuario: usuario, tamano: 64),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: AppColors.primario,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      child: const Icon(Icons.photo_camera_rounded, size: 13, color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -499,12 +536,161 @@ class _Cabecera extends StatelessWidget {
                     texto: usuario.rolEtiqueta,
                     color: AppColors.indigoClaro,
                   ),
+                  if (usuario.cargo != null)
+                    _Chip(
+                      icono: Icons.work_outline_rounded,
+                      texto: usuario.cargo!,
+                      color: AppColors.mantenimiento,
+                    ),
                 ],
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Avatar del usuario conectado: su foto, o sus iniciales con el color que eligió.
+class AvatarPerfil extends StatelessWidget {
+  const AvatarPerfil({super.key, required this.usuario, this.tamano = 64});
+  final Usuario usuario;
+  final double tamano;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = colorDeHex(usuario.colorAvatar) ?? AppColors.primario;
+    final interior = tamano - 4;
+    return Container(
+      width: tamano,
+      height: tamano,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2),
+      ),
+      child: FotoOIniciales(
+        usuarioId: usuario.id,
+        fotoVersion: usuario.tieneFoto ? usuario.fotoVersion : 0,
+        tamano: interior,
+        propia: true,
+        respaldo: Text(
+          AvatarIniciales.iniciales(usuario.nombreVisible),
+          style: TextStyle(
+              fontSize: tamano * 0.37, fontWeight: FontWeight.w800, color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+/// El rol NO se elige (ADR-0019): se muestra de dónde viene y cómo pedir un cambio.
+class _RolSoloLectura extends StatelessWidget {
+  const _RolSoloLectura({required this.usuario});
+  final Usuario usuario;
+
+  String get _origen {
+    final texto = usuario.rolOrigenTexto;
+    if (texto != null && texto.isNotEmpty) return texto;
+    return switch (usuario.rolOrigen) {
+      'correo' => 'Asignado por tu correo institucional',
+      'manual' => 'Asignado por un administrador',
+      _ => 'Eres estudiante. Si trabajas en la UTB y necesitas otro rol, pídeselo a un '
+          'administrador.',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final icono = switch (usuario.rolOrigen) {
+      'correo' => Icons.alternate_email_rounded,
+      'manual' => Icons.admin_panel_settings_rounded,
+      _ => Icons.school_rounded,
+    };
+    return Semantics(
+      label: 'Tu rol: ${usuario.rolEtiqueta}. $_origen'
+          '${usuario.cargo == null ? '' : '. Cargo: ${usuario.cargo}'}',
+      excludeSemantics: true,
+      child: _Seccion(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icono, color: AppColors.indigoClaro, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(usuario.rolEtiqueta,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  if (usuario.cargo != null)
+                    Text(usuario.cargo!,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 2),
+                  Text(_origen,
+                      style: const TextStyle(color: AppColors.textoSuave, fontSize: 12.5)),
+                ],
+              ),
+            ),
+            const Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.textoTenue),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Cuenta antigua con correo que no es de la UTB: sigue entrando, pero se le pide pasarse al
+/// institucional (con verificación al correo nuevo).
+class _AvisoCorreoAntiguo extends StatelessWidget {
+  const _AvisoCorreoAntiguo({required this.correo, required this.onCambiar});
+  final String correo;
+  final VoidCallback onCambiar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.prestado.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.prestado.withValues(alpha: 0.6)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: AppColors.prestado, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text('Tu correo no es institucional',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Tu cuenta usa $correo. Cámbialo a tu correo de la UTB '
+              '(${Politica.ejemploCorreo}): te enviaremos un enlace para confirmar que es tuyo.',
+              style: const TextStyle(color: AppColors.textoSuave, fontSize: 13),
+            ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: onCambiar,
+                icon: const Icon(Icons.alternate_email_rounded),
+                label: const Text('Cambiar a mi correo institucional'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -649,7 +835,7 @@ class _EditarDatosSheetState extends State<_EditarDatosSheet> {
     final ok = await _auth.guardarPerfil({
       'nombre_mostrar': _nombre.text.trim(),
       'telefono': _telefono.text.trim(),
-      'dependencia': _dependencia.text.trim(),
+      if (widget.usuario.cargo == null) 'dependencia': _dependencia.text.trim(),
       'color_avatar': _color ?? '',
     }, avisoOk: 'Datos guardados');
     if (ok && mounted) Navigator.pop(context, true);
@@ -692,17 +878,21 @@ class _EditarDatosSheetState extends State<_EditarDatosSheet> {
                       : 'Usa solo números, espacios, +, - o paréntesis';
                 },
               ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _dependencia,
-                maxLength: 120,
-                decoration: const InputDecoration(
-                  labelText: 'Dependencia o cargo (opcional)',
-                  counterText: '',
+              if (widget.usuario.cargo == null) ...[
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _dependencia,
+                  maxLength: 120,
+                  decoration: const InputDecoration(
+                    labelText: 'Dependencia o cargo (opcional)',
+                    counterText: '',
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 12),
               const Text('Color del avatar', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Se usa cuando no tienes foto.',
+                  style: TextStyle(color: AppColors.textoTenue, fontSize: 12)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 10,

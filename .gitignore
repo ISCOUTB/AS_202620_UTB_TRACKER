@@ -109,3 +109,8 @@ tmp/
 
 # Graphify caché
 graphify-out/cache/
+
+# Listas reales de roles por correo (ADR-0019): NUNCA al repositorio.
+# Úsalas con: python scripts/cargar_asignaciones.py privado/asignaciones.csv
+privado/
+asignaciones*.csv

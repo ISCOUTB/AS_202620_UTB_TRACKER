@@ -239,7 +239,7 @@
           "auth"
         ],
         "summary": "Me Endpoint",
-        "description": "Perfil completo: datos, verificación, preferencias y, desde ADR-0018, `rol_etiqueta` y\n`permisos` (la app decide qué mostrar por permisos, nunca comparando el texto del rol).",
+        "description": "Perfil completo: datos, verificación, preferencias y, desde ADR-0018, `rol_etiqueta` y\n`permisos` (la app decide qué mostrar por permisos, nunca comparando el texto del rol).\nDesde ADR-0019: `correo_institucional`, `rol_origen`, `rol_origen_texto` y `cargo`.",
         "operationId": "me_endpoint_auth_me_get",
         "responses": {
           "200": {
@@ -293,6 +293,112 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/me/foto": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Ver Mi Foto Endpoint",
+        "operationId": "ver_mi_foto_endpoint_auth_me_foto_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {},
+              "image/png": {}
+            }
+          },
+          "404": {
+            "description": "Sin foto"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Subir Foto Endpoint",
+        "description": "Sube o reemplaza la foto propia (ADR-0020). Se quitan sus metadatos (EXIF/GPS).",
+        "operationId": "subir_foto_endpoint_auth_me_foto_put",
+        "requestBody": {
+          "description": "Los bytes de la foto (JPEG o PNG, ya reducida por la app). El tipo se decide por el contenido, no por el Content-Type.",
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FotoEstado"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Demasiado grande"
+          },
+          "415": {
+            "description": "No es JPEG ni PNG"
+          },
+          "422": {
+            "description": "Dañada o de dimensiones no admitidas"
+          },
+          "429": {
+            "description": "Demasiadas subidas"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Quitar Foto Endpoint",
+        "description": "Quita la foto propia: el contenido se borra de la base.",
+        "operationId": "quitar_foto_endpoint_auth_me_foto_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FotoEstado"
                 }
               }
             }
@@ -3965,6 +4071,293 @@
         }
       }
     },
+    "/usuarios/asignaciones": {
+      "get": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Listar Asignaciones",
+        "description": "Busca por correo o cargo. Total en X-Total-Count.",
+        "operationId": "listar_asignaciones_usuarios_asignaciones_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "busqueda",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Busqueda"
+            }
+          },
+          {
+            "name": "rol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Rol"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AsignacionRespuesta"
+                  },
+                  "title": "Response Listar Asignaciones Usuarios Asignaciones Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Crear Asignacion",
+        "operationId": "crear_asignacion_usuarios_asignaciones_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AsignacionCrear"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsignacionRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ya existe o dejaría sin administrador"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/usuarios/asignaciones/importar": {
+      "post": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Importar Asignaciones",
+        "description": "Todo o nada: con un error en cualquier línea no se guarda ninguna (`aplicado` = false).",
+        "operationId": "importar_asignaciones_usuarios_asignaciones_importar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportarAsignaciones"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoImportacion"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/usuarios/asignaciones/{asignacion_id}": {
+      "patch": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Editar Asignacion",
+        "operationId": "editar_asignacion_usuarios_asignaciones__asignacion_id__patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asignacion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Asignacion Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AsignacionEditar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsignacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Eliminar Asignacion",
+        "operationId": "eliminar_asignacion_usuarios_asignaciones__asignacion_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asignacion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Asignacion Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/usuarios": {
       "get": {
         "tags": [
@@ -4196,10 +4589,248 @@
           }
         }
       }
+    },
+    "/usuarios/{usuario_id}/rol/automatico": {
+      "post": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Rol Automatico",
+        "description": "Quita el rol manual: desde ahora manda la lista de asignaciones (ADR-0019).",
+        "operationId": "rol_automatico_usuarios__usuario_id__rol_automatico_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioAdmin"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/usuarios/{usuario_id}/foto": {
+      "get": {
+        "tags": [
+          "usuarios"
+        ],
+        "summary": "Foto De Usuario",
+        "description": "La propia, o la de otra persona con `usuarios.ver` (listas de auditor/administrador).",
+        "operationId": "foto_de_usuario_usuarios__usuario_id__foto_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {},
+              "image/png": {}
+            }
+          },
+          "403": {
+            "description": "Foto de otra persona sin permiso"
+          },
+          "404": {
+            "description": "Sin foto"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AsignacionCrear": {
+        "properties": {
+          "correo": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 5,
+            "title": "Correo",
+            "description": "Correo institucional exacto"
+          },
+          "rol": {
+            "type": "string",
+            "title": "Rol",
+            "description": "usuario_utb | auxiliar | administrador (o su etiqueta)"
+          },
+          "cargo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cargo",
+            "description": "p. ej. Auxiliar de planta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "correo",
+          "rol"
+        ],
+        "title": "AsignacionCrear"
+      },
+      "AsignacionEditar": {
+        "properties": {
+          "rol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rol"
+          },
+          "cargo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cargo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AsignacionEditar"
+      },
+      "AsignacionRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "correo": {
+            "type": "string",
+            "title": "Correo"
+          },
+          "rol": {
+            "type": "string",
+            "title": "Rol"
+          },
+          "rol_etiqueta": {
+            "type": "string",
+            "title": "Rol Etiqueta",
+            "default": ""
+          },
+          "cargo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cargo"
+          },
+          "creado_por_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creado Por Id"
+          },
+          "creado_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creado En"
+          },
+          "actualizado_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actualizado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "correo",
+          "rol"
+        ],
+        "title": "AsignacionRespuesta"
+      },
       "AuditoriaResponse": {
         "properties": {
           "id": {
@@ -4290,7 +4921,8 @@
             "type": "string",
             "maxLength": 254,
             "minLength": 5,
-            "title": "Correo Nuevo"
+            "title": "Correo Nuevo",
+            "description": "Correo institucional, p. ej. usuario@utb.edu.co"
           },
           "password": {
             "type": "string",
@@ -4455,6 +5087,24 @@
         "title": "EquipoCategoria",
         "description": "Equipamiento calculado (ADR-0017): no se guarda, sale de los recursos activos."
       },
+      "ErrorLinea": {
+        "properties": {
+          "linea": {
+            "type": "integer",
+            "title": "Linea"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "linea",
+          "error"
+        ],
+        "title": "ErrorLinea"
+      },
       "EstadisticasAdmin": {
         "properties": {
           "dias": {
@@ -4578,6 +5228,69 @@
           "email"
         ],
         "title": "ForgotPasswordRequest"
+      },
+      "FotoEstado": {
+        "properties": {
+          "tiene_foto": {
+            "type": "boolean",
+            "title": "Tiene Foto"
+          },
+          "foto_version": {
+            "type": "integer",
+            "title": "Foto Version",
+            "default": 0
+          },
+          "tipo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo"
+          },
+          "tamano": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tamano"
+          },
+          "ancho": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ancho"
+          },
+          "alto": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tiene_foto"
+        ],
+        "title": "FotoEstado",
+        "description": "Respuesta de PUT/DELETE /auth/me/foto."
       },
       "HTTPValidationError": {
         "properties": {
@@ -4850,6 +5563,27 @@
         },
         "type": "object",
         "title": "HorarioUpdate"
+      },
+      "ImportarAsignaciones": {
+        "properties": {
+          "texto": {
+            "type": "string",
+            "maxLength": 200000,
+            "title": "Texto",
+            "description": "Una línea por persona: correo,rol[,cargo] (coma o punto y coma)"
+          },
+          "simular": {
+            "type": "boolean",
+            "title": "Simular",
+            "description": "True: solo revisa y cuenta, no guarda nada",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "texto"
+        ],
+        "title": "ImportarAsignaciones"
       },
       "MantenimientoRecursoCreate": {
         "properties": {
@@ -5253,6 +5987,47 @@
             },
             "type": "array",
             "title": "Permisos"
+          },
+          "correo_institucional": {
+            "type": "boolean",
+            "title": "Correo Institucional",
+            "default": true
+          },
+          "rol_origen": {
+            "type": "string",
+            "enum": [
+              "base",
+              "correo",
+              "manual"
+            ],
+            "title": "Rol Origen",
+            "default": "base"
+          },
+          "rol_origen_texto": {
+            "type": "string",
+            "title": "Rol Origen Texto",
+            "default": ""
+          },
+          "cargo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cargo"
+          },
+          "tiene_foto": {
+            "type": "boolean",
+            "title": "Tiene Foto",
+            "default": false
+          },
+          "foto_version": {
+            "type": "integer",
+            "title": "Foto Version",
+            "default": 0
           }
         },
         "type": "object",
@@ -6295,6 +7070,48 @@
         "title": "RespuestaSolicitud",
         "description": "POST /prestamos-salon/{id}/aprobar|rechazar (ADR-0018)."
       },
+      "ResultadoImportacion": {
+        "properties": {
+          "validas": {
+            "type": "integer",
+            "title": "Validas"
+          },
+          "creadas": {
+            "type": "integer",
+            "title": "Creadas"
+          },
+          "actualizadas": {
+            "type": "integer",
+            "title": "Actualizadas"
+          },
+          "sin_cambios": {
+            "type": "integer",
+            "title": "Sin Cambios"
+          },
+          "errores": {
+            "items": {
+              "$ref": "#/components/schemas/ErrorLinea"
+            },
+            "type": "array",
+            "title": "Errores"
+          },
+          "aplicado": {
+            "type": "boolean",
+            "title": "Aplicado",
+            "description": "False si hubo errores (no se guardó NINGUNA línea) o si era simulación"
+          }
+        },
+        "type": "object",
+        "required": [
+          "validas",
+          "creadas",
+          "actualizadas",
+          "sin_cambios",
+          "errores",
+          "aplicado"
+        ],
+        "title": "ResultadoImportacion"
+      },
       "SalonCreate": {
         "properties": {
           "nombre": {
@@ -6858,6 +7675,21 @@
             ],
             "title": "Ultima Actividad",
             "description": "Último registro de la bitácora donde la persona actuó"
+          },
+          "rol_manual": {
+            "type": "boolean",
+            "title": "Rol Manual",
+            "default": false
+          },
+          "tiene_foto": {
+            "type": "boolean",
+            "title": "Tiene Foto",
+            "default": false
+          },
+          "foto_version": {
+            "type": "integer",
+            "title": "Foto Version",
+            "default": 0
           }
         },
         "type": "object",
@@ -6885,12 +7717,8 @@
             "type": "string",
             "maxLength": 254,
             "minLength": 5,
-            "title": "Email"
-          },
-          "rol": {
-            "type": "string",
-            "title": "Rol",
-            "default": "usuario_utb"
+            "title": "Email",
+            "description": "Correo institucional, p. ej. usuario@utb.edu.co"
           },
           "password": {
             "type": "string",

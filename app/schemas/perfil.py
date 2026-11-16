@@ -11,7 +11,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core import permisos as permisos_core
-from app.core.politica import PASSWORD_MINIMO, normalizar_nombre
+from app.core.politica import PASSWORD_MINIMO, es_institucional, normalizar_nombre
 
 TamanoTexto = Literal["normal", "grande", "extra_grande"]
 PantallaInicio = Literal["inicio", "salones", "control"]
@@ -67,11 +67,22 @@ class PerfilResponse(BaseModel):
     # las APK instaladas; la etiqueta y los permisos se calculan de app/core/permisos.py.
     rol_etiqueta: str = ""
     permisos: list[str] = Field(default_factory=list)
+    # ADR-0019: False en cuentas antiguas con correo no institucional (la app muestra un aviso
+    # para pasarse al de la UTB). Nunca bloquea la entrada.
+    correo_institucional: bool = True
+    # ADR-0019: el rol es de solo lectura; de dónde viene y el cargo de la asignación.
+    rol_origen: Literal["base", "correo", "manual"] = "base"
+    rol_origen_texto: str = ""
+    cargo: Optional[str] = None
+    # ADR-0020: la app pide GET /auth/me/foto?v=<foto_version> y la guarda en caché por versión.
+    tiene_foto: bool = False
+    foto_version: int = 0
 
     @model_validator(mode="after")
     def _permisos_del_rol(self):
         self.rol_etiqueta = permisos_core.etiqueta(self.rol)
         self.permisos = permisos_core.lista_permisos(self.rol)
+        self.correo_institucional = es_institucional(self.email)
         return self
 
     @field_validator("preferencias", mode="before")
@@ -134,3 +145,13 @@ class SesionRenovada(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+
+class FotoEstado(BaseModel):
+    """Respuesta de PUT/DELETE /auth/me/foto."""
+    tiene_foto: bool
+    foto_version: int = 0
+    tipo: Optional[str] = None
+    tamano: Optional[int] = None
+    ancho: Optional[int] = None
+    alto: Optional[int] = None

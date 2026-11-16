@@ -53,7 +53,7 @@ los huecos corregidos.
 |---|---|---|---|---|
 | GET | `/salud` | público | público | |
 | POST | `/auth/login` | público | público | |
-| POST | `/auth/register` | público | público | Siempre crea Estudiante, aunque el cuerpo traiga otro rol |
+| POST | `/auth/register` | público | público | Siempre crea Estudiante, aunque el cuerpo traiga otro rol; solo correos institucionales (ADR-0019) |
 | GET | `/auth/verificar-correo` | público | público | Enlace del correo |
 | POST | `/auth/reenviar-verificacion` | sesión | sesión | |
 | GET | `/auth/restablecer` | público | público | Página del enlace de recuperación |
@@ -62,7 +62,10 @@ los huecos corregidos.
 | POST | `/auth/me/cambiar-password` | sesión | sesión | |
 | POST | `/auth/me/cerrar-sesiones` | sesión | sesión | |
 | POST | `/auth/me/desactivar` | sesión | sesión | El último administrador no puede desactivarse (409) |
-| POST | `/auth/me/cambiar-correo` | sesión | sesión | |
+| POST | `/auth/me/cambiar-correo` | sesión | sesión | ADR-0019: solo correos institucionales |
+| PUT | `/auth/me/foto` | — | sesión | ADR-0020: solo la propia; JPEG/PNG por firma, tamaño y frecuencia limitados |
+| DELETE | `/auth/me/foto` | — | sesión | ADR-0020: borra el contenido |
+| GET | `/auth/me/foto` | — | sesión | ADR-0020 |
 | DELETE | `/auth/delete/{user_id}` | auxiliar o admin | usuarios.gestionar | ⚠ el auxiliar podía desactivar cuentas |
 | GET | `/auth/user/{user_id}` | sesión | propio o usuarios.ver | ⚠ cualquiera veía el correo de cualquiera |
 | GET | `/auth/users` | auxiliar o admin | usuarios.gestionar | ⚠ el auxiliar listaba todas las cuentas |
@@ -123,6 +126,13 @@ los huecos corregidos.
 | GET | `/usuarios` | — | usuarios.gestionar | Nuevo: búsqueda, rol, última actividad |
 | PATCH | `/usuarios/{usuario_id}/rol` | — | usuarios.gestionar | Nuevo: 409 sobre sí mismo o último administrador |
 | PATCH | `/usuarios/{usuario_id}/estado` | — | usuarios.gestionar | Nuevo: ídem |
+| POST | `/usuarios/{usuario_id}/rol/automatico` | — | usuarios.gestionar | ADR-0019: quita el rol manual y aplica la lista |
+| GET | `/usuarios/{usuario_id}/foto` | — | propio o usuarios.ver | ADR-0020: nunca pública |
+| GET | `/usuarios/asignaciones` | — | usuarios.gestionar | ADR-0019: lista de asignación de roles por correo |
+| POST | `/usuarios/asignaciones` | — | usuarios.gestionar | ADR-0019: 409 si ya existe o dejaría sin administrador |
+| POST | `/usuarios/asignaciones/importar` | — | usuarios.gestionar | ADR-0019: todo o nada, errores por línea |
+| PATCH | `/usuarios/asignaciones/{asignacion_id}` | — | usuarios.gestionar | ADR-0019 |
+| DELETE | `/usuarios/asignaciones/{asignacion_id}` | — | usuarios.gestionar | ADR-0019: protege al último administrador |
 
 ## Compatibilidad con las APK instaladas
 

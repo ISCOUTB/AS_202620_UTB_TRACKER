@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/foto_perfil.dart';
 import '../../../shared/uber_widgets.dart';
 import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
@@ -384,7 +385,25 @@ class _Encabezado extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: Colors.white.withValues(alpha: 0.92),
                 ),
-                child: AvatarIniciales(nombre: nombre, tamano: 46, color: AppColors.primario),
+                child: Builder(builder: (context) {
+                  // Foto de perfil si la hay (ADR-0020); si no, las iniciales de siempre.
+                  final u =
+                      sl.isRegistered<AuthController>() ? sl<AuthController>().usuario : null;
+                  final iniciales =
+                      AvatarIniciales(nombre: nombre, tamano: 46, color: AppColors.primario);
+                  if (u == null || !u.tieneFoto) return iniciales;
+                  return Semantics(
+                    image: true,
+                    label: 'Tu foto de perfil',
+                    child: FotoOIniciales(
+                      usuarioId: u.id,
+                      fotoVersion: u.fotoVersion,
+                      tamano: 46,
+                      propia: true,
+                      respaldo: iniciales,
+                    ),
+                  );
+                }),
               ),
             ],
           ),

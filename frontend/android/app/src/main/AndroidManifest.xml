@@ -46,5 +46,12 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Foto de perfil (ADR-0020): la app abre la cámara del sistema con este intent. NO se
+             declara android.permission.CAMERA ni permisos de almacenamiento: la cámara del
+             sistema toma la foto y la galería usa el selector de fotos de Android, así que la
+             app no pide permisos. -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE"/>
+        </intent>
     </queries>
 </manifest>

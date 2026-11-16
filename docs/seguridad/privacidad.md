@@ -149,3 +149,29 @@ Reglas aplicadas:
   supresión de los datos de contacto sigue pendiente.
 - **Avisos de seguridad:** el cambio de correo avisa al correo anterior y el cambio de contraseña
   avisa al correo actual; esos avisos no se pueden apagar desde las preferencias.
+
+## 7. Correo institucional, rol asignado y foto de perfil (ADR-0019 / ADR-0020, 2026-11-16)
+
+| Dato | Tabla y columna | Para qué | Quién lo ve | Obligatorio |
+|---|---|---|---|---|
+| Lista de roles por correo | `asignaciones_rol` (correo, rol, cargo, quién y cuándo) | Decidir quién es Auditor o Administrador sin deducirlo del correo | Solo administradores | Lo mantiene el administrador |
+| Rol manual | `usuarios.rol_manual` | Que la lista no pise un rol puesto a mano | Administradores | Automático |
+| Foto de perfil | `fotos_perfil` (bytes, tipo, tamaño, dimensiones, versión, fecha) | Reconocer a la persona en el perfil, en Inicio y en las listas de gestión | La persona; auditores y administradores (permiso `usuarios.ver`). **Nunca pública** | No |
+
+Reglas aplicadas:
+
+- **Minimización de la foto:** la app la reduce a 256 px antes de subirla; el servidor quita
+  todos los metadatos (EXIF con GPS, XMP, comentarios, bloques de texto PNG) y solo conserva la
+  orientación. Lo que se guarda no tiene la ubicación del teléfono (lo verifica
+  `tests/test_foto_perfil.py`).
+- **Borrado:** "Quitar foto" borra la fila con su contenido; desactivar la cuenta (por la
+  persona o por un administrador) también la borra; si se borrara el usuario, la base la borra
+  en cascada.
+- **Bitácora:** `usuario.foto_actualizada` guarda tipo, tamaño y dimensiones, nunca el
+  contenido; las asignaciones guardan el correo oculto (`a***@utb.edu.co`) y la importación solo
+  cifras.
+- **Datos reales fuera del repositorio:** la lista inicial se carga desde la pantalla de
+  administración o con `scripts/cargar_asignaciones.py` y un archivo local en `privado/`
+  (ignorado por git). Las contraseñas nunca van en esa lista.
+- **Caché en el teléfono:** las fotos descargadas se guardan solo en memoria mientras la app
+  está abierta y se olvidan al cerrar sesión.

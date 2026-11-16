@@ -17,7 +17,12 @@ El dueño (Mateo) no programa: explicar en lenguaje simple y con pasos copiables
 - `core/`: `config.py` (variables de entorno y reglas de producción), `security.py` (JWT:
   `sub` = id, `sv` = versión de sesión, tokens de propósito con `jti`), `deps.py`
   (`CurrentUser`, `VerifiedUser`, `AdminUser`…), `politica.py` (contraseña ≥ 8, correo;
+  `error_correo_nuevo` = solo `DOMINIOS_PERMITIDOS`, por defecto utb.edu.co, ADR-0019;
   espejo en `frontend/lib/core/utils/politica.dart`), `database.py`, `resilience.py`.
+- **Rol automático (ADR-0019):** `services/asignaciones.py` (`rol_resuelto` es la ÚNICA regla:
+  manual gana; sin correo comprobado = base; si no, la lista `asignaciones_rol`). Nadie elige
+  su rol; cuentas viejas con otro dominio siguen entrando. **Foto (ADR-0020):** tabla
+  `fotos_perfil`, `services/fotos.py` + `services/imagenes.py` (firma, limpieza EXIF sin Pillow).
 - `routers/` (registro en `main.py`; rutas FIJAS antes de `/{id}`): `auth` (registro, login,
   `/auth/me`, correo, contraseña), `salones` + `salones_admin` (ocupación, presencia,
   reportes), `horarios`, `prestamos_salon` (solicitudes de salón), `resources` (equipos),
@@ -25,7 +30,8 @@ El dueño (Mateo) no programa: explicar en lenguaje simple y con pasos copiables
 - `services/`: lógica. `auth.py`, `perfil.py`, `correo.py` + `plantillas_correo.py` +
   `paginas_auth.py` (correos y páginas HTML de los enlaces), `limites.py` (límites en BD),
   `equipamiento.py` (equipamiento calculado con UNA consulta agrupada), `salones*.py`,
-  `auditoria.py` (llamar `auditoria.registrar(..., actor_id=...)` en acciones sensibles).
+  `auditoria.py` (llamar `auditoria.registrar(..., actor_id=...)` en acciones sensibles),
+  `asignaciones.py`, `fotos.py`, `imagenes.py`.
 - `models/`: `auth_models` (Usuario), `salon_models` (Salon, Horario, PrestamoSalon…),
   `recurso_models`, `seguridad_models` (TokenUsado, IntentoLimitado), `auditoria_models`.
 - `messaging/`: outbox transaccional + `worker.py` (`python -m app.messaging`): envía correos
@@ -56,6 +62,7 @@ El dueño (Mateo) no programa: explicar en lenguaje simple y con pasos copiables
 - `scripts/preparar_bd.py`: actualiza una base local sin borrar datos.
 - `scripts/seed_demo.py`: datos de ejemplo (repetible, solo desarrollo). Una cuenta demo por
   rol; sus claves SOLO en ese archivo. Admin real: `scripts/crear_admin.py` (clave por consola).
+  Lista real de roles: `scripts/cargar_asignaciones.py privado/x.csv` (`privado/` en .gitignore).
 
 ## Comandos (PowerShell, desde la raíz)
 
