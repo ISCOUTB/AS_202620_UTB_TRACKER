@@ -137,6 +137,16 @@ class ApiClient {
     );
   }
 
+  /// GET que devuelve el cuerpo como texto (p. ej. el CSV de la bitácora), con la sesión.
+  Future<String> getTexto(String ruta, {Map<String, dynamic>? parametros}) async {
+    final r = await _enviar(
+      ruta,
+      () => _client.get(_uri(ruta, parametros), headers: _cabeceras()),
+      comoTexto: true,
+    );
+    return (r ?? '') as String;
+  }
+
   Future<dynamic> delete(String ruta) {
     return _enviar(ruta, () => _client.delete(_uri(ruta), headers: _cabeceras()));
   }
@@ -145,8 +155,9 @@ class ApiClient {
 
   Future<dynamic> _enviar(
     String ruta,
-    Future<http.Response> Function() peticion,
-  ) async {
+    Future<http.Response> Function() peticion, {
+    bool comoTexto = false,
+  }) async {
     try {
       var r = await peticion().timeout(ApiConfig.timeout);
       if (r.statusCode == 401 && _refresh != null && !_sinRefresco.contains(ruta)) {
@@ -156,7 +167,8 @@ class ApiClient {
       }
       if (r.statusCode >= 200 && r.statusCode < 300) {
         if (r.bodyBytes.isEmpty) return null;
-        return jsonDecode(utf8.decode(r.bodyBytes));
+        final texto = utf8.decode(r.bodyBytes);
+        return comoTexto ? texto : jsonDecode(texto);
       }
       throw ApiException.fromResponse(r);
     } on ApiException {

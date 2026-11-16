@@ -2,7 +2,7 @@
 Dependencias de autenticación y autorización para la API.
 
 Provee resolución del usuario autenticado a partir de tokens JWT
-y control de acceso basado en roles para los endpoints.
+y control de acceso por PERMISOS (tabla única en app/core/permisos.py, ADR-0018).
 """
 from typing import Annotated
 
@@ -11,7 +11,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core import permisos
 from app.core.database import get_db
+from app.core.permisos import Permiso
 from app.core.security import Sujeto, leer_access_token
 from app.models.auth_models import Usuario
 
@@ -81,26 +83,49 @@ def require_verified(
     return current_user
 
 
-def require_role(*roles: str):
+def require_permiso(permiso: Permiso, *, verificado: bool = False):
     """
-    Fábrica de dependencias para restringir acceso por rol.
-    Uso: Depends(require_role("administrador", "auxiliar"))
+    Fábrica de dependencias: exige un permiso de `app/core/permisos.py` (ADR-0018).
+    Uso: `Depends(require_permiso(Permiso.SALONES_ADMINISTRAR))`. Con `verificado=True`
+    además exige correo verificado (ADR-0014). 401 sin sesión, 403 sin permiso.
     """
-    def role_checker(
+    def verificar_permiso(
         current_user: Annotated[Usuario, Depends(get_current_user)],
     ) -> Usuario:
-        if current_user.rol not in roles:
+        if not permisos.tiene(current_user.rol, permiso):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Se requiere rol: {', '.join(roles)}",
+                detail="No tienes permiso para hacer esto.",
             )
+        if verificado:
+            require_verified(current_user)
         return current_user
-    return role_checker
+
+    verificar_permiso.permiso = permiso  # la prueba de matriz lo lee
+    return verificar_permiso
+
+
+def Con(permiso: Permiso, *, verificado: bool = False):  # noqa: N802 (se usa como un tipo)
+    """Alias de tipo: `current_user: Con(Permiso.EQUIPOS_GESTIONAR)`."""
+    return Annotated[Usuario, Depends(require_permiso(permiso, verificado=verificado))]
 
 
 # Alias de tipo para patrones comunes de inyección
 CurrentUser = Annotated[Usuario, Depends(get_current_user)]
 VerifiedUser = Annotated[Usuario, Depends(require_verified)]
-AdminUser = Annotated[Usuario, Depends(require_role("administrador", "auxiliar"))]
-# La bitácora de auditoría solo la ve el administrador (el auxiliar opera, no supervisa).
-SoloAdministrador = Annotated[Usuario, Depends(require_role("administrador"))]
+
+# Un alias por permiso (nombre = lo que la persona puede hacer). Los routers solo usan estos.
+VeSalones = Con(Permiso.SALONES_VER)
+SolicitaSalon = Con(Permiso.SALONES_SOLICITAR, verificado=True)
+TieneSolicitudes = Con(Permiso.SOLICITUDES_PROPIAS)
+CreaReportes = Con(Permiso.REPORTES_CREAR)
+VeEquipos = Con(Permiso.EQUIPOS_VER)
+VeHorarios = Con(Permiso.HORARIOS_VER)
+GestionaSolicitudes = Con(Permiso.SOLICITUDES_GESTIONAR)
+AdministraSalones = Con(Permiso.SALONES_ADMINISTRAR)
+GestionaReportes = Con(Permiso.REPORTES_GESTIONAR)
+GestionaEquipos = Con(Permiso.EQUIPOS_GESTIONAR)
+GestionaHorarios = Con(Permiso.HORARIOS_GESTIONAR)
+GestionaUsuarios = Con(Permiso.USUARIOS_GESTIONAR)
+VeAuditoria = Con(Permiso.AUDITORIA_VER)
+VeEstadisticas = Con(Permiso.ESTADISTICAS_VER)

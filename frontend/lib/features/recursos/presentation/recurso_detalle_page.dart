@@ -4,6 +4,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
+import '../../auth/domain/permisos.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/recurso.dart';
 import 'recursos_controller.dart';
@@ -155,7 +156,7 @@ class _RecursoDetallePageState extends State<RecursoDetallePage> {
                           onPressed: () => _mostrarReporte(context, r),
                         ),
                       ),
-                      if (_auth.esAdministrador && !r.disponible) ...[
+                      if (_auth.permisos.puede(Permisos.equiposGestionar) && !r.disponible) ...[
                         const SizedBox(width: 12),
                         Expanded(
                           flex: 2,

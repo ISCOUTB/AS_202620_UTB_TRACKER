@@ -45,7 +45,39 @@ class AuthController extends ChangeNotifier {
   Sesion? get sesion => _sesion;
   Usuario? get usuario => _sesion?.usuario;
   bool get autenticado => _sesion != null;
-  bool get esAdministrador => usuario?.esAdministrador ?? false;
+  /// Permisos REALES: los que aplica el servidor (ADR-0018).
+  Permisos get permisosReales => usuario?.permisos ?? Permisos.ninguno;
+
+  /// Permisos con los que se DIBUJA la app. Iguales a los reales, salvo en el modo prueba del
+  /// administrador, que muestra la navegación de otro rol. Es solo de interfaz: el servidor
+  /// sigue aplicando el rol real.
+  Permisos get permisos {
+    final vista = vistaComo;
+    return vista == null ? permisosReales : Permisos.deRol(vista);
+  }
+
+  String? _vistaComo;
+
+  /// Rol que el administrador está "viendo" (null = el suyo). Nunca para otros roles.
+  String? get vistaComo =>
+      permisosReales.puede(Permisos.modoPrueba) ? _vistaComo : null;
+
+  /// Activa o apaga el modo prueba. Se guarda solo en este dispositivo; no va al servidor ni
+  /// a la bitácora de auditoría.
+  Future<void> verComo(String? rol) async {
+    if (!permisosReales.puede(Permisos.modoPrueba)) return;
+    _vistaComo = (rol == null || rol == usuario?.rol) ? null : rol;
+    notifyListeners();
+    await TokenStorage.guardarVistaComo(_vistaComo);
+  }
+
+  Future<void> _cargarVistaComo() async {
+    try {
+      _vistaComo = await TokenStorage.leerVistaComo();
+    } catch (_) {
+      _vistaComo = null;
+    }
+  }
   bool get cargando => _cargando;
   String? get error => _error;
 
@@ -195,6 +227,7 @@ class AuthController extends ChangeNotifier {
         refreshToken: _api.refreshToken,
         usuario: u,
       );
+      await _cargarVistaComo();
       await _registrarFcm();
       notifyListeners();
       return true;
@@ -228,6 +261,7 @@ class AuthController extends ChangeNotifier {
     });
     if (ok && _sesion != null) {
       await TokenStorage.guardarTokens(_sesion!.token, _sesion!.refreshToken);
+      await _cargarVistaComo();
       await _registrarFcm();
     }
     return ok;
@@ -289,8 +323,10 @@ class AuthController extends ChangeNotifier {
     _error = null;
     _aviso = null;
     _verificacionPendienteVisible = false;
+    _vistaComo = null;
     _api.fijarTokens(null, null);
     TokenStorage.borrarToken();
+    TokenStorage.guardarVistaComo(null);
     notifyListeners();
   }
 
@@ -306,11 +342,14 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Vuelve a leer el perfil (y sus permisos). Se usa también cuando el servidor responde 403:
+  /// el rol pudo cambiar mientras la app estaba abierta.
   Future<bool> actualizarPerfil() async {
     try {
       final usuario = await _repo.usuarioActual();
       if (_sesion != null) {
-        _sesion = Sesion(token: _sesion!.token, usuario: usuario);
+        _sesion = Sesion(
+            token: _sesion!.token, refreshToken: _sesion!.refreshToken, usuario: usuario);
         notifyListeners();
       }
       return true;

@@ -8,7 +8,8 @@ import '../../../shared/servidor.dart';
 import '../../../shared/uber_widgets.dart';
 import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
-import '../../admin/presentation/panel_administrativo_page.dart';
+import '../../admin/presentation/estadisticas_page.dart';
+import '../../admin/presentation/usuarios_page.dart';
 import '../../auditoria/auditoria_page.dart';
 import '../../auth/domain/auth_domain.dart';
 import '../../auth/presentation/auth_controller.dart';
@@ -75,6 +76,7 @@ class _CuentaPageState extends State<CuentaPage> {
         final u = _auth.usuario;
         if (u == null) return const SizedBox.shrink();
         final p = u.preferencias;
+        final permisos = _auth.permisos;
         return RefreshIndicator(
           onRefresh: _auth.actualizarPerfil,
           child: ListView(
@@ -90,7 +92,10 @@ class _CuentaPageState extends State<CuentaPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (u.esAdministrador) ...[
+                    // Lo que se muestra depende de los PERMISOS (ADR-0018), nunca del texto del rol.
+                    if (_auth.permisosReales.puede(Permisos.modoPrueba))
+                      _ModoPrueba(auth: _auth),
+                    if (permisos.puede(Permisos.equiposGestionar)) ...[
                       const _Titulo('Herramientas'),
                       _Fila(
                         icono: Icons.devices_other_rounded,
@@ -104,18 +109,35 @@ class _CuentaPageState extends State<CuentaPage> {
                         titulo: 'Mantenimiento',
                         onTap: () => _abrir(const MantenimientoPage()),
                       ),
-                      _Fila(
-                        icono: Icons.history_rounded,
-                        color: AppColors.prestado,
-                        titulo: 'Auditoría',
-                        onTap: () => _abrir(const AuditoriaPage()),
-                      ),
-                      _Fila(
-                        icono: Icons.admin_panel_settings_rounded,
-                        color: AppColors.indigoClaro,
-                        titulo: 'Usuarios y roles',
-                        onTap: () => _abrir(const PanelAdministrativoPage()),
-                      ),
+                    ],
+                    if (permisos.puede(Permisos.usuariosGestionar) ||
+                        permisos.puede(Permisos.auditoriaVer) ||
+                        permisos.puede(Permisos.estadisticasVer)) ...[
+                      const _Titulo('Administración'),
+                      if (permisos.puede(Permisos.usuariosGestionar))
+                        _Fila(
+                          icono: Icons.admin_panel_settings_rounded,
+                          color: AppColors.indigoClaro,
+                          titulo: 'Usuarios y roles',
+                          detalle: 'Cambiar roles, activar o desactivar cuentas',
+                          onTap: () => _abrir(const UsuariosPage()),
+                        ),
+                      if (permisos.puede(Permisos.estadisticasVer))
+                        _Fila(
+                          icono: Icons.insights_rounded,
+                          color: AppColors.disponible,
+                          titulo: 'Estadísticas',
+                          detalle: 'Uso de salones, solicitudes y reportes',
+                          onTap: () => _abrir(const EstadisticasPage()),
+                        ),
+                      if (permisos.puede(Permisos.auditoriaVer))
+                        _Fila(
+                          icono: Icons.history_rounded,
+                          color: AppColors.prestado,
+                          titulo: 'Bitácora de auditoría',
+                          detalle: 'Quién hizo qué y cuándo',
+                          onTap: () => _abrir(const AuditoriaPage()),
+                        ),
                     ],
                     const _Titulo('Datos personales'),
                     _Fila(
@@ -203,7 +225,7 @@ class _CuentaPageState extends State<CuentaPage> {
                                     ? null
                                     : (v) => _auth.guardarPreferencias(p.conAviso(canal, cat, v)),
                               ),
-                          if (u.esAdministrador) ...[
+                          if (permisos.opera) ...[
                             const SizedBox(height: 6),
                             const Text('Abrir la app en',
                                 style: TextStyle(fontWeight: FontWeight.w700)),
@@ -474,7 +496,7 @@ class _Cabecera extends StatelessWidget {
                   ),
                   _Chip(
                     icono: Icons.badge_outlined,
-                    texto: usuario.rolLegible,
+                    texto: usuario.rolEtiqueta,
                     color: AppColors.indigoClaro,
                   ),
                 ],
@@ -722,6 +744,42 @@ class _EditarDatosSheetState extends State<_EditarDatosSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+
+/// Modo prueba (solo Administrador, ADR-0018): ver la app como Estudiante o Auditor. Cambia
+/// la navegación y las pantallas; el servidor sigue aplicando el rol real. Se guarda solo en
+/// este dispositivo.
+class _ModoPrueba extends StatelessWidget {
+  const _ModoPrueba({required this.auth});
+  final AuthController auth;
+
+  @override
+  Widget build(BuildContext context) {
+    final actual = auth.vistaComo ?? auth.usuario?.rol ?? RolUsuario.administrador;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _Titulo('Modo prueba'),
+        const Text(
+          'Mira la app como la ve cada rol. Solo cambia lo que se muestra: tus permisos reales '
+          'siguen siendo de administrador. Para probar de verdad lo que un rol NO puede hacer, '
+          'entra con su cuenta de prueba.',
+          style: TextStyle(color: AppColors.textoSuave, fontSize: 13),
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<String>(
+          showSelectedIcon: false,
+          segments: [
+            for (final rol in RolUsuario.todos)
+              ButtonSegment(value: rol, label: Text(RolUsuario.etiqueta(rol))),
+          ],
+          selected: {actual},
+          onSelectionChanged: (s) => auth.verComo(s.first),
+        ),
+      ],
     );
   }
 }

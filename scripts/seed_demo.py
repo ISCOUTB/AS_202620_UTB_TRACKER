@@ -29,7 +29,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import or_  # noqa: E402
 
+from app.core import config  # noqa: E402
 from app.core.database import Base, SessionLocal, engine  # noqa: E402
+from app.core.permisos import etiqueta  # noqa: E402
 from app.core.hashing import hash_password  # noqa: E402
 from app.models import Horario, Prestamo, PrestamoSalon, Recurso, Reporte, Salon, Usuario  # noqa: E402
 from app.models.salon_models import PresenciaSalon, ReporteSalon  # noqa: E402
@@ -37,11 +39,13 @@ from app.models.salon_models import PresenciaSalon, ReporteSalon  # noqa: E402
 CAMPUS = timezone(timedelta(hours=-5))  # Colombia no tiene horario de verano
 SEDE = "Campus Tecnológico"
 
-# (nombre, email, rol, clave) — el login de la app pide NOMBRE + clave
+# (nombre, email, rol, clave). SOLO DESARROLLO: estas claves no existen en producción (el
+# script se niega a correr con ENVIRONMENT=production). Un usuario por rol (ADR-0018):
+#   usuario_utb = Estudiante · auxiliar = Auditor · administrador = Administrador
 USUARIOS = [
     ("Admin Demo", "admin@utb.edu.co", "administrador", "Admin123!"),
-    ("Auxiliar Demo", "auxiliar@utb.edu.co", "auxiliar", "Auxiliar123!"),
-    ("Auxiliar Laboratorio", "auxiliar2@utb.edu.co", "auxiliar", "Auxiliar123!"),
+    ("Auditor Demo", "auxiliar@utb.edu.co", "auxiliar", "Auxiliar123!"),
+    ("Auditor Laboratorio", "auxiliar2@utb.edu.co", "auxiliar", "Auxiliar123!"),
     ("Estudiante Demo", "estudiante@utb.edu.co", "usuario_utb", "Estudiante123!"),
     ("Camila Rojas", "camila@utb.edu.co", "usuario_utb", "Estudiante123!"),
     ("Andres Torres", "andres@utb.edu.co", "usuario_utb", "Estudiante123!"),
@@ -200,6 +204,9 @@ def limpiar(db) -> None:
 
 
 def main() -> None:
+    if config.ENVIRONMENT == "production":
+        sys.exit("seed_demo.py es solo para desarrollo: en producción crearía cuentas con "
+                 "claves conocidas. Para un administrador real usa scripts/crear_admin.py.")
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
@@ -313,9 +320,9 @@ def main() -> None:
         db.commit()
 
         print(f"{len(SALONES)} salones y {len(r)} equipos en el {SEDE}.")
-        print("Datos de demostración listos. Entra con NOMBRE + clave:")
+        print("Datos de demostración listos. Entra con NOMBRE o CORREO + clave:")
         for nombre, email, rol, clave in USUARIOS:
-            print(f"  {rol:<14} {nombre:<22} {clave:<15} ({email})")
+            print(f"  {etiqueta(rol):<14} {nombre:<22} {clave:<15} ({email})")
     finally:
         db.close()
 

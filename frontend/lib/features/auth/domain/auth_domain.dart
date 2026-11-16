@@ -1,8 +1,11 @@
+import 'permisos.dart';
 import 'preferencias.dart';
 
+export 'permisos.dart';
 export 'preferencias.dart';
 
-/// Usuario del sistema (ubicuo: "Usuario" con rol administrador o usuario_utb).
+/// Usuario del sistema. `rol` es el valor guardado (usuario_utb | auxiliar | administrador);
+/// lo que puede hacer está en [permisos] (ADR-0018).
 class Usuario {
   const Usuario({
     required this.id,
@@ -15,7 +18,10 @@ class Usuario {
     this.dependencia,
     this.colorAvatar,
     this.preferencias = const Preferencias(),
-  });
+    String? rolEtiqueta,
+    Permisos? permisos,
+  })  : _rolEtiqueta = rolEtiqueta,
+        _permisos = permisos;
 
   final int id;
   final String nombre;
@@ -38,15 +44,15 @@ class Usuario {
   String get nombreVisible =>
       (nombreMostrar?.trim().isNotEmpty ?? false) ? nombreMostrar!.trim() : nombre;
 
-  /// Auxiliar de planta / laboratorio. El backend define "administrador" o "usuario_utb"
-  /// (comentario de `Usuario.rol`); se toleran variantes por si cambia el texto.
-  bool get esAdministrador {
-    final r = rol.trim().toLowerCase();
-    return r == 'administrador' || r == 'admin' || r == 'auxiliar';
-  }
+  final String? _rolEtiqueta;
+  final Permisos? _permisos;
 
-  String get rolLegible =>
-      esAdministrador ? 'Auxiliar de planta' : 'Usuario UTB';
+  /// "Estudiante", "Auditor" o "Administrador" (del servidor, o calculada si no la manda).
+  String get rolEtiqueta =>
+      (_rolEtiqueta?.isNotEmpty ?? false) ? _rolEtiqueta! : RolUsuario.etiqueta(rol);
+
+  /// Permisos REALES (los que aplica el servidor).
+  Permisos get permisos => _permisos ?? Permisos.deRol(rol);
 }
 
 class Sesion {

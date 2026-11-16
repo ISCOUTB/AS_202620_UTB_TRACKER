@@ -38,8 +38,11 @@ class EventoAuditoria {
 }
 
 abstract class AuditoriaRepository {
-  /// GET /auditoria?entidad=
-  Future<List<EventoAuditoria>> listar({String? entidad});
+  /// GET /auditoria?entidad=&accion=
+  Future<List<EventoAuditoria>> listar({String? entidad, String? accion});
+
+  /// GET /auditoria/exportar (CSV con los mismos filtros).
+  Future<String> exportarCsv({String? entidad, String? accion});
 }
 
 // ── Datos ───────────────────────────────────────────────────────────────
@@ -48,11 +51,20 @@ class AuditoriaRepositoryImpl implements AuditoriaRepository {
   AuditoriaRepositoryImpl(this._api);
   final ApiClient _api;
 
+  Map<String, dynamic> _filtros(String? entidad, String? accion) => {
+        if (entidad != null) 'entidad': entidad,
+        if (accion != null && accion.trim().isNotEmpty) 'accion': accion.trim(),
+      };
+
   @override
-  Future<List<EventoAuditoria>> listar({String? entidad}) async {
+  Future<String> exportarCsv({String? entidad, String? accion}) =>
+      _api.getTexto('/auditoria/exportar', parametros: _filtros(entidad, accion));
+
+  @override
+  Future<List<EventoAuditoria>> listar({String? entidad, String? accion}) async {
     final cuerpo = await _api.get(
       '/auditoria',
-      parametros: {'limit': 100, if (entidad != null) 'entidad': entidad},
+      parametros: {'limit': 100, ..._filtros(entidad, accion)},
     ) as List<dynamic>;
     return cuerpo.map((e) {
       final j = e as Map<String, dynamic>;
@@ -79,6 +91,18 @@ class AuditoriaController extends ChangeNotifier {
   Carga _carga = Carga.inicial;
   String? _error;
   String? _entidad;
+  String? _accion;
+
+  String? get accion => _accion;
+
+  /// Filtra por acción exacta o prefijo ("usuario.rol", "salon").
+  Future<void> fijarAccion(String? accion) {
+    _accion = (accion?.trim().isEmpty ?? true) ? null : accion!.trim();
+    return cargar();
+  }
+
+  /// CSV de lo filtrado (máx. 5000 filas en el servidor).
+  Future<String> exportarCsv() => _repo.exportarCsv(entidad: _entidad, accion: _accion);
 
   Carga get carga => _carga;
   String? get error => _error;
@@ -102,7 +126,7 @@ class AuditoriaController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      _eventos = await _repo.listar(entidad: _entidad);
+      _eventos = await _repo.listar(entidad: _entidad, accion: _accion);
       _carga = Carga.ok;
     } on ApiException catch (e) {
       _carga = Carga.error;

@@ -456,9 +456,15 @@ class TarjetaPromo extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Text(accion,
-                style: const TextStyle(
-                    color: AppColors.primarioClaro, fontSize: 12, fontWeight: FontWeight.w700)),
+            // Con texto grande la acción se corta en vez de empujar la tarjeta (360 dp).
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 92),
+              child: Text(accion,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: AppColors.primarioClaro, fontSize: 12, fontWeight: FontWeight.w700)),
+            ),
             const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.primarioClaro),
           ],
         ),

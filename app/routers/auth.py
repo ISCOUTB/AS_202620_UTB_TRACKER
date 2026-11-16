@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AdminUser, CurrentUser
+from app.core.deps import CurrentUser, GestionaUsuarios
 from app.schemas.auth import (
     CambiarCorreoRequest,
     ForgotPasswordRequest, RefreshTokenRequest, ResetPasswordRequest,
@@ -32,6 +32,7 @@ from app.schemas.perfil import (
 )
 from app.services import auth as auth_service
 from app.services import paginas_auth, perfil as perfil_service
+from app.services import usuarios as usuarios_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -111,7 +112,8 @@ def restablecer_pagina_endpoint(
 
 @router.get("/me", response_model=PerfilResponse)
 def me_endpoint(current_user: CurrentUser):
-    """Perfil completo del usuario autenticado (datos, verificación y preferencias)."""
+    """Perfil completo: datos, verificación, preferencias y, desde ADR-0018, `rol_etiqueta` y
+    `permisos` (la app decide qué mostrar por permisos, nunca comparando el texto del rol)."""
     return current_user
 
 
@@ -177,10 +179,10 @@ def cambiar_correo_endpoint(
 def delete_user_endpoint(
     user_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaUsuarios,
 ):
-    """Elimina (soft-delete) un usuario. Requiere rol admin/auxiliar."""
-    return auth_service.delete_user(db, user_id, actor_id=current_user.id)
+    """Desactiva (soft-delete) un usuario. Solo administrador (ADR-0018)."""
+    return auth_service.delete_user(db, user_id, current_user)
 
 
 @router.get("/user/{user_id}", response_model=UserResponse)
@@ -189,19 +191,20 @@ def get_user_endpoint(
     db: Annotated[Session, Depends(get_db)],
     current_user: CurrentUser,
 ):
-    return auth_service.get_user_by_id(db, user_id)
+    """Uno mismo, o auditor/administrador (para mostrar quién pidió o reportó)."""
+    return usuarios_service.ver_usuario(db, user_id, current_user)
 
 
 @router.get("/users", response_model=list[UserResponse])
 def get_users_endpoint(
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaUsuarios,
     search: Optional[str] = None,
     rol: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
 ):
-    """Lista todos los usuarios para el panel administrativo. Requiere rol admin/auxiliar."""
+    """Lista usuarios (legado; la app nueva usa GET /usuarios). Solo administrador."""
     return auth_service.get_all_users(
         db, skip=skip, limit=limit, search=search, rol=rol
     )
@@ -213,10 +216,10 @@ def update_user_role_endpoint(
     user_id: int,
     body: UsuarioRoleUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaUsuarios,
 ):
-    """Asigna o actualiza el rol de un usuario desde el panel administrativo. Requiere rol admin/auxiliar."""
-    return auth_service.update_user_role(db, user_id, body.rol, actor_id=current_user.id)
+    """Cambia el rol (legado; la app nueva usa PATCH /usuarios/{id}/rol). Solo administrador."""
+    return auth_service.update_user_role(db, user_id, body.rol, current_user)
 
 
 @router.post("/forgot-password", status_code=202)

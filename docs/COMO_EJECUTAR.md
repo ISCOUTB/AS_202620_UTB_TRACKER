@@ -108,15 +108,34 @@ los cambios se ven recargando la página (F5).
 
 ## 4. Cuentas de ejemplo (el login acepta el NOMBRE o el CORREO + clave)
 
-Todas vienen con el correo ya verificado, así que pueden solicitar salones de una vez.
+Solo existen en tu PC (el seed se niega a correr en producción) y todas vienen con el correo
+ya verificado. **Las claves están solo en `scripts/seed_demo.py`** (tabla `USUARIOS` al inicio)
+y el script las imprime al terminar; no se copian a la documentación (ADR-0018).
 
-| Rol | Nombre | Clave | Qué ve |
+| Rol (etiqueta) | Valor guardado | Nombre | Qué ve |
 |---|---|---|---|
-| administrador | `Admin Demo` | `Admin123!` | Panel de salones + gestión de usuarios y roles |
-| auxiliar | `Auxiliar Demo` | `Auxiliar123!` | Panel de salones (plano, presencia del profesor, reportes) |
-| auxiliar | `Auxiliar Laboratorio` | `Auxiliar123!` | Igual |
-| usuario_utb | `Estudiante Demo` | `Estudiante123!` | Consulta y solicita salones, recursos, préstamos |
-| usuario_utb | `Camila Rojas`, `Andres Torres`, `Valentina Diaz` | `Estudiante123!` | Igual |
+| Administrador | `administrador` | `Admin Demo` | Todo lo del Auditor + Usuarios, Estadísticas, Bitácora de auditoría y Modo prueba |
+| Auditor | `auxiliar` | `Auditor Demo`, `Auditor Laboratorio` | Inicio operativo · Salones (plano) · Solicitudes (bandeja) · Control (reportes) · Equipos · Perfil |
+| Estudiante | `usuario_utb` | `Estudiante Demo`, `Camila Rojas`, `Andres Torres`, `Valentina Diaz` | Inicio · Salones (tipo y equipamiento) · Solicitudes (las suyas) · Perfil |
+
+### Prueba guiada por rol
+
+1. Entra como **Estudiante Demo**: en Salones filtra "con video beam" y pide un salón libre.
+   En Solicitudes aparece "Pendiente" con el botón Cancelar.
+2. Cierra sesión y entra como **Auditor Demo**: en Solicitudes está el pedido con quién lo hizo
+   (y "Choca con…" si se cruza con una clase). Recházalo: la app exige escribir el motivo.
+3. Vuelve como **Estudiante Demo**: en Inicio y en Solicitudes ves "Rechazada · Motivo: …".
+   En `logs\correos\` está el correo "Tu solicitud del salón … fue rechazada".
+4. Como **Admin Demo**: Perfil → Usuarios y roles. No puedes cambiar tu propio rol; si cambias
+   el de otra persona, su sesión se cierra. Perfil → Modo prueba → "Estudiante": aparece la
+   franja "Viendo como Estudiante · Salir" y la barra de un estudiante. Es solo lo que se ve:
+   para comprobar que un estudiante **no** puede algo, entra con su cuenta.
+
+### Administrador real (servidor oficial)
+
+En el servidor, con el `.env` cargado: `python scripts/crear_admin.py correo@utb.edu.co`
+(promueve una cuenta ya registrada) o con `--crear` (la crea). La clave se escribe en la
+consola y no se ve ni queda guardada en ningún archivo.
 
 ## 5. Datos de ejemplo que crea `scripts/seed_demo.py`
 
@@ -181,6 +200,6 @@ cd frontend; flutter test                          # frontend
 | La app no conecta / error de red | ¿Backend corriendo? ¿Pasaste `--dart-define=API_BASE_URL=http://127.0.0.1:8000`? |
 | Celular real en la misma Wi-Fi | `--dart-define=API_BASE_URL=http://<IP-de-tu-PC>:8000` y permitir el puerto 8000 en el firewall. |
 | Salones siempre "libres" | Las clases de ejemplo ya terminaron: corre `scripts\seed_demo.py` otra vez. |
-| Un usuario nuevo registrado no ve el panel | El registro crea `usuario_utb`. Un administrador debe cambiar su rol, o usa las cuentas de arriba. |
+| Un usuario nuevo registrado no ve el panel | El registro siempre crea un Estudiante. Un administrador le cambia el rol en Perfil → Usuarios y roles, o usa las cuentas de arriba. |
 | Empezar de cero | Detén el backend, borra `utb_tracker.db` y corre `scripts\seed_demo.py`. |
 | Detener todo | `Get-Process dart,python -ErrorAction SilentlyContinue \| Stop-Process` |

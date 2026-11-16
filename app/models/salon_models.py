@@ -84,12 +84,21 @@ class PrestamoSalon(Base):
     fecha_inicio = Column(DateTime, nullable=False)
     fecha_fin = Column(DateTime, nullable=False)
     motivo = Column(String, nullable=True)
-    estado = Column(String, nullable=False, default="pendiente")
+    estado = Column(String, nullable=False, default="pendiente", index=True)
     # valores válidos: pendiente | aprobado | rechazado | en_uso | finalizado | cancelado
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    # Respuesta del auditor (ADR-0018): motivo del rechazo o nota al aprobar.
+    respuesta = Column(String(500), nullable=True)
+    atendido_por_id = Column(Integer, ForeignKey(FK_USUARIOS_ID), nullable=True)
+    atendido_en = Column(DateTime, nullable=True)
 
     salon = relationship("Salon", back_populates="prestamos_salon")
-    usuario = relationship("Usuario")
+    usuario = relationship("Usuario", foreign_keys=[usuario_id])
+    atendido_por = relationship("Usuario", foreign_keys=[atendido_por_id])
+
+    @property
+    def atendido_por_nombre(self):
+        return self.atendido_por.nombre if self.atendido_por else None
 
     @property
     def salon_nombre(self):

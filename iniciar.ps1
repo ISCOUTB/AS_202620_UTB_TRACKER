@@ -104,7 +104,8 @@ if ($Nube) {
     Write-Host 'Usas el servidor OFICIAL: las mismas cuentas que en el celular.'
 } else {
     Write-Host 'Usas el servidor LOCAL de este PC (cuentas de prueba, no las del celular).'
-    Write-Host 'Entra con  Usuario: Auxiliar Demo   Clave: Auxiliar123!'
+    Write-Host 'Cuentas de prueba (una por rol): mira la lista que imprime scripts\seed_demo.py'
+    Write-Host '  o la tabla USUARIOS al inicio de ese archivo. Ver docs\COMO_EJECUTAR.md, sección 4.'
     Write-Host "Los correos (verificación, recuperación) se guardan en $logs\correos"
 }
 Write-Host 'Para apagar todo: .\detener.ps1'

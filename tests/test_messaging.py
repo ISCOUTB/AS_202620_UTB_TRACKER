@@ -53,7 +53,7 @@ def test_outbox_se_inserta_en_misma_transaccion_que_prestamo(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert res.status_code == 201
     prestamo_id = res.json()["id"]
@@ -93,7 +93,7 @@ def test_rollback_no_deja_mensaje_en_outbox(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert res_404.status_code == 404
 
@@ -106,7 +106,7 @@ def test_rollback_no_deja_mensaje_en_outbox(
             "usuario_id": 88888,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert res_no_user.status_code == 404
 
@@ -130,7 +130,7 @@ def test_worker_procesa_mensaje_exitosamente(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
 
     notificador = NotificadorSimulado(fallos_antes_de_exito=0)
@@ -162,7 +162,7 @@ def test_consumidor_idempotente_ante_reentrega(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
 
     notificador = NotificadorSimulado(fallos_antes_de_exito=0)
@@ -392,7 +392,7 @@ def test_idempotencia_http_con_x_idempotency_key(
     res1 = client.post(
         "/prestamos",
         json=body,
-        headers={**auth_headers, "X-Idempotency-Key": idem_key},
+        headers={**admin_headers, "X-Idempotency-Key": idem_key},
     )
     assert res1.status_code == 201, f"Primer POST falló: {res1.json()}"
     prestamo_id_1 = res1.json()["id"]
@@ -401,7 +401,7 @@ def test_idempotencia_http_con_x_idempotency_key(
     res2 = client.post(
         "/prestamos",
         json=body,
-        headers={**auth_headers, "X-Idempotency-Key": idem_key},
+        headers={**admin_headers, "X-Idempotency-Key": idem_key},
     )
     assert res2.status_code == 201, f"Segundo POST falló: {res2.json()}"
     prestamo_id_2 = res2.json()["id"]
@@ -438,7 +438,7 @@ def test_desacoplamiento_temporal_sin_worker(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert res.status_code == 201
 
@@ -520,7 +520,7 @@ def test_rollback_real_forzando_fallo_en_commit(
                     "usuario_id": 1,
                     "fecha_devolucion_esperada": "2026-10-30T18:00:00",
                 },
-                headers=auth_headers,
+                headers=admin_headers,
             )
     finally:
         # Restaurar el override original
@@ -565,7 +565,7 @@ def test_trazabilidad_http_x_request_id_coincide_con_correlation_id(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert res.status_code == 201
     assert "X-Request-ID" in res.headers, "Encabezado X-Request-ID no presente en la respuesta"

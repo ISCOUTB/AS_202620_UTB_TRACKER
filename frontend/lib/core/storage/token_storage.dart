@@ -8,6 +8,7 @@ class TokenStorage {
   static const String _clave = 'utb_access_token';
   static const String _claveRefresh = 'utb_refresh_token';
   static const String _claveServidor = 'utb_servidor';
+  static const String _claveVistaComo = 'utb_vista_como';
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
   static Future<void> guardarTokens(String access, String? refresh) async {
@@ -28,6 +29,13 @@ class TokenStorage {
   }
 
   static Future<String?> leerServidor() => _storage.read(key: _claveServidor);
+
+  /// Modo prueba del administrador (ADR-0018): rol que está "viendo". Solo en el dispositivo.
+  static Future<String?> leerVistaComo() => _storage.read(key: _claveVistaComo);
+
+  static Future<void> guardarVistaComo(String? rol) => rol == null
+      ? _storage.delete(key: _claveVistaComo)
+      : _storage.write(key: _claveVistaComo, value: rol);
 
   static Future<void> guardarServidor(String? url) => url == null
       ? _storage.delete(key: _claveServidor)

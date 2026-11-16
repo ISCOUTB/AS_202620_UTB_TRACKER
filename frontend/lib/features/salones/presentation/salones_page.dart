@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/utilidades.dart';
 import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
+import '../../auth/domain/permisos.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/salon.dart';
 import '../../../shared/equipamiento_chips.dart';
@@ -67,7 +68,7 @@ class _SalonesPageState extends State<SalonesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: _auth.esAdministrador
+      floatingActionButton: _auth.permisos.puede(Permisos.salonesAdministrar)
           ? Padding(
               padding: const EdgeInsets.only(bottom: 90),
               child: FloatingActionButton(
@@ -195,7 +196,7 @@ class _SalonesPageState extends State<SalonesPage> {
                   orden: i,
                   child: _FilaSalon(
                     salon: s,
-                    puedeSolicitar: !_auth.esAdministrador && s.disponible,
+                    puedeSolicitar: _auth.permisos.puede(Permisos.salonesSolicitar) && !_auth.permisos.opera && s.disponible,
                     onSolicitar: () => _abrirSolicitud(s),
                   ),
                 ),

@@ -13,6 +13,7 @@ from app.core.security import PROPOSITO_CAMBIAR_CORREO, crear_token_proposito
 from app.models.auth_models import Usuario
 from app.schemas.perfil import PerfilUpdate, Preferencias
 from app.services import auditoria, correo, limites
+from app.services.usuarios import proteger_ultimo_admin
 from app.services.auth import (
     MSG_LIMITE_CORREO,
     MSG_TOKEN_INVALIDO,
@@ -97,6 +98,7 @@ def cerrar_sesiones(db: Session, user: Usuario) -> dict:
 def desactivar_cuenta(db: Session, user: Usuario, password: str) -> None:
     """La persona desactiva su propia cuenta (no se borra: queda para la auditoría)."""
     exigir_password(db, user, password)
+    proteger_ultimo_admin(db, user)  # nunca sin administrador activo (ADR-0018)
     user.activo = False
     user.sesion_version = (user.sesion_version or 0) + 1
     auditoria.registrar(db, "usuario.desactivar_propia", "usuario", user.id, actor_id=user.id)

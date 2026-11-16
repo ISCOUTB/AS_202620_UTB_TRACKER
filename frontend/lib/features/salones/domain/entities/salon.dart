@@ -148,6 +148,10 @@ class PrestamoSalon {
     required this.createdAt,
     this.salonNombre,
     this.usuarioNombre,
+    this.respuesta,
+    this.atendidoPorNombre,
+    this.atendidoEn,
+    this.conflicto,
   });
 
   final int id;
@@ -163,6 +167,25 @@ class PrestamoSalon {
   final String? salonNombre;
   final String? usuarioNombre;
 
+  /// ADR-0018: motivo del rechazo o nota al aprobar, quién la atendió y cuándo.
+  final String? respuesta;
+  final String? atendidoPorNombre;
+  final DateTime? atendidoEn;
+
+  /// Solo en la bandeja del auditor: con qué choca la franja (null = libre).
+  final String? conflicto;
+
   String get salonTexto => salonNombre ?? 'Salón';
   bool get pendiente => estado == 'pendiente';
+
+  /// Texto para mostrar (no depender solo del color, accesibilidad).
+  String get estadoTexto => switch (estado) {
+        'pendiente' => 'Pendiente',
+        'aprobado' => 'Aprobada',
+        'rechazado' => 'Rechazada',
+        'cancelado' => 'Cancelada',
+        'en_uso' => 'En uso',
+        'finalizado' => 'Finalizada',
+        _ => estado,
+      };
 }

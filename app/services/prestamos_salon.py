@@ -4,13 +4,19 @@ Capa de servicio para préstamos de salón.
 Gestiona solicitudes de préstamo de salones validando conflictos
 con horarios académicos y otros préstamos existentes.
 """
-from datetime import datetime, timezone
+from datetime import datetime, time as dtime, timedelta, timezone
+from typing import Optional
+
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.salon_models import Horario, PrestamoSalon, Salon
 from app.schemas.prestamos_salon import PrestamoSalonCreate
-from app.services import auditoria
+from app.services import auditoria, correo
+
+# Las fechas de préstamo se guardan en UTC "naive"; el campus está en UTC-5.
+_DESFASE_COLOMBIA = timedelta(hours=-5)
+_DIAS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
 
 MSG_PRESTAMO_NO_ENCONTRADO = "Préstamo de salón no encontrado"
 
@@ -30,8 +36,6 @@ def _detectar_conflicto_horario(db: Session, salon_id: int, fecha_inicio, fecha_
     la franja (fecha_inicio.date … fecha_fin.date inclusive) y valida las
     horas que correspondan a ese día.
     """
-    from datetime import time as dtime, timedelta
-
     dia_actual = fecha_inicio.date()
     dia_fin = fecha_fin.date()
 
@@ -112,15 +116,15 @@ def listar_prestamos_salon(
     skip: int = 0,
     limit: int = 50,
 ) -> tuple[list[PrestamoSalon], int]:
-    """Lista préstamos de salón con filtros opcionales y paginación."""
-    query = db.query(PrestamoSalon)
+    """Lista préstamos de salón con filtros opcionales y paginación (sin consultas por fila)."""
+    query = _con_relaciones(db.query(PrestamoSalon))
     if salon_id is not None:
         query = query.filter(PrestamoSalon.salon_id == salon_id)
     if estado:
         query = query.filter(PrestamoSalon.estado == estado)
     if usuario_id is not None:
         query = query.filter(PrestamoSalon.usuario_id == usuario_id)
-    total = query.count()
+    total = query.order_by(None).count()
     items = query.order_by(PrestamoSalon.created_at.desc()).offset(skip).limit(limit).all()
     return items, total
 
@@ -132,7 +136,8 @@ def obtener_prestamo_salon(
     Obtiene un préstamo de salón por ID.
     Si se pasa usuario_id, verifica que el préstamo le pertenezca (usuarios normales).
     """
-    prestamo = db.query(PrestamoSalon).filter(PrestamoSalon.id == prestamo_id).first()
+    prestamo = (_con_relaciones(db.query(PrestamoSalon))
+                .filter(PrestamoSalon.id == prestamo_id).first())
     if not prestamo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=MSG_PRESTAMO_NO_ENCONTRADO)
     if usuario_id is not None and prestamo.usuario_id != usuario_id:
@@ -144,9 +149,14 @@ def obtener_prestamo_salon(
 
 
 def actualizar_estado_prestamo_salon(
-    db: Session, prestamo_id: int, nuevo_estado: str, actor_id: int | None = None
+    db: Session, prestamo_id: int, nuevo_estado: str, actor_id: int | None = None,
+    respuesta: Optional[str] = None,
 ) -> PrestamoSalon:
-    """Actualiza el estado de un préstamo de salón (aprobar, rechazar, cancelar, etc.)."""
+    """Actualiza el estado de un préstamo de salón (aprobar, rechazar, cancelar, etc.).
+
+    Al aprobar o rechazar guarda quién y cuándo y la respuesta opcional, y avisa al
+    estudiante por correo (categoría "salones": respeta sus preferencias). ADR-0018.
+    """
     TRANSICIONES_VALIDAS = {
         "pendiente": ["aprobado", "rechazado", "cancelado"],
         "aprobado": ["en_uso", "cancelado"],
@@ -165,15 +175,136 @@ def actualizar_estado_prestamo_salon(
                    f"Estados permitidos: {estados_permitidos}",
         )
 
+    if nuevo_estado == "aprobado":
+        motivo = _conflictos(db, [prestamo]).get(prestamo.id)
+        if motivo:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"No se puede aprobar: la franja choca con {motivo}.",
+            )
+
     anterior = prestamo.estado
     prestamo.estado = nuevo_estado
+    respuesta = (respuesta or "").strip() or None
+    detalle = {"salon_id": prestamo.salon_id, "de": anterior, "a": nuevo_estado}
+    if nuevo_estado in ("aprobado", "rechazado"):
+        prestamo.respuesta = respuesta
+        prestamo.atendido_por_id = actor_id
+        prestamo.atendido_en = datetime.now(timezone.utc).replace(tzinfo=None)
+        if respuesta:
+            detalle["respuesta"] = respuesta
+        _avisar_estudiante(db, prestamo)
     auditoria.registrar(
         db, "salon.solicitud.estado", "prestamo_salon", prestamo.id, actor_id=actor_id,
-        detalle={"salon_id": prestamo.salon_id, "de": anterior, "a": nuevo_estado},
+        detalle=detalle,
     )
     db.commit()
     db.refresh(prestamo)
     return prestamo
+
+
+def responder_solicitud(
+    db: Session, prestamo_id: int, aprobar: bool, actor_id: int, respuesta: Optional[str]
+) -> PrestamoSalon:
+    """Aprobar o rechazar desde la bandeja del auditor (POST .../aprobar|rechazar)."""
+    return actualizar_estado_prestamo_salon(
+        db, prestamo_id, "aprobado" if aprobar else "rechazado", actor_id, respuesta
+    )
+
+
+def listar_mias(
+    db: Session, usuario_id: int, estado: Optional[str] = None, skip: int = 0, limit: int = 50,
+) -> tuple[list[PrestamoSalon], int]:
+    """Mis solicitudes (estudiante): siempre filtradas por el dueño."""
+    return listar_prestamos_salon(db, None, estado, usuario_id, skip, limit)
+
+
+def listar_gestion(
+    db: Session, estado: Optional[str] = "pendiente", salon_id: Optional[int] = None,
+    skip: int = 0, limit: int = 50,
+) -> tuple[list[PrestamoSalon], int]:
+    """Bandeja del auditor: solicitudes de cualquier estudiante, con el conflicto visible.
+
+    El conflicto de las pendientes se calcula con DOS consultas en total (solicitudes
+    aprobadas y clases de los salones de la página), no una por solicitud.
+    """
+    items, total = listar_prestamos_salon(db, salon_id, estado, None, skip, limit)
+    conflictos = _conflictos(db, [p for p in items if p.estado == "pendiente"])
+    for p in items:
+        p.conflicto = conflictos.get(p.id)
+    return items, total
+
+
+def _con_relaciones(query):
+    return query.options(
+        joinedload(PrestamoSalon.salon),
+        joinedload(PrestamoSalon.usuario),
+        joinedload(PrestamoSalon.atendido_por),
+    )
+
+
+def _choca_con_horario(h: Horario, inicio: datetime, fin: datetime) -> bool:
+    """¿La clase fija `h` (día de la semana + horas) se cruza con la franja [inicio, fin)?"""
+    dia = inicio.date()
+    while dia <= fin.date():
+        if dia.isoweekday() == h.dia_semana:
+            desde = inicio.time() if dia == inicio.date() else dtime(0, 0)
+            hasta = fin.time() if dia == fin.date() else dtime(23, 59)
+            if h.hora_inicio < hasta and h.hora_fin > desde:
+                return True
+        dia += timedelta(days=1)
+    return False
+
+
+def _conflictos(db: Session, solicitudes: list[PrestamoSalon]) -> dict[int, str]:
+    """{id: texto} de las solicitudes que chocan con otra aprobada/en uso o con una clase."""
+    if not solicitudes:
+        return {}
+    salones = {p.salon_id for p in solicitudes}
+    desde = min(p.fecha_inicio for p in solicitudes)
+    hasta = max(p.fecha_fin for p in solicitudes)
+    aprobados = db.query(PrestamoSalon).filter(
+        PrestamoSalon.salon_id.in_(salones),
+        PrestamoSalon.estado.in_(["aprobado", "en_uso"]),
+        PrestamoSalon.fecha_inicio < hasta,
+        PrestamoSalon.fecha_fin > desde,
+    ).all()
+    clases = db.query(Horario).filter(
+        Horario.salon_id.in_(salones), Horario.activo.is_(True)
+    ).all()
+    resultado: dict[int, str] = {}
+    for p in solicitudes:
+        otro = next((a for a in aprobados if a.id != p.id and a.salon_id == p.salon_id
+                     and a.fecha_inicio < p.fecha_fin and a.fecha_fin > p.fecha_inicio), None)
+        if otro:
+            resultado[p.id] = f"otra solicitud ya aprobada (#{otro.id})"
+            continue
+        clase = next((h for h in clases if h.salon_id == p.salon_id
+                      and _choca_con_horario(h, p.fecha_inicio, p.fecha_fin)), None)
+        if clase:
+            resultado[p.id] = (f"la clase {clase.materia or 'programada'} "
+                               f"({clase.hora_inicio:%H:%M}-{clase.hora_fin:%H:%M})")
+    return resultado
+
+
+def _franja(p: PrestamoSalon) -> str:
+    """'lun 07/01 10:00–11:00' en hora de Colombia."""
+    ini, fin = p.fecha_inicio + _DESFASE_COLOMBIA, p.fecha_fin + _DESFASE_COLOMBIA
+    return f"{_DIAS[ini.weekday()]} {ini:%d/%m %H:%M}–{fin:%H:%M}"
+
+
+def _avisar_estudiante(db: Session, p: PrestamoSalon) -> None:
+    """Correo al estudiante por el outbox: sale con el mismo commit que el cambio de estado."""
+    usuario = p.usuario
+    if usuario is None or not usuario.email:
+        return
+    correo.encolar(db, usuario.email, "solicitud_salon_respuesta", {
+        "nombre": usuario.nombre_mostrar or usuario.nombre,
+        "salon": p.salon_nombre or f"#{p.salon_id}",
+        "franja": _franja(p),
+        "estado": p.estado,
+        "respuesta": p.respuesta or "",
+    }, usuario_id=usuario.id)
 
 
 def cancelar_prestamo_propio(db: Session, prestamo_id: int, usuario_id: int) -> PrestamoSalon:

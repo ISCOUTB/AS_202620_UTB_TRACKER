@@ -44,7 +44,7 @@ def test_idempotencia_prestamo_con_misma_clave(client, admin_headers, auth_heade
         "usuario_id": 1,
         "fecha_devolucion_esperada": "2026-10-25T18:00:00",
     }
-    headers = {**auth_headers, "X-Idempotency-Key": idempotency_key}
+    headers = {**admin_headers, "X-Idempotency-Key": idempotency_key}
 
     # Primera petición: creación normal
     res1 = client.post("/prestamos", json=payload, headers=headers)
@@ -58,7 +58,7 @@ def test_idempotencia_prestamo_con_misma_clave(client, admin_headers, auth_heade
     assert res2.json()["recurso_id"] == recurso_id
 
     # Tercera petición con otra clave: debe ser rechazada con 409
-    headers_otra = {**auth_headers, "X-Idempotency-Key": "otra-clave-diferente"}
+    headers_otra = {**admin_headers, "X-Idempotency-Key": "otra-clave-diferente"}
     res3 = client.post("/prestamos", json=payload, headers=headers_otra)
     assert res3.status_code == 409
     assert "no esta disponible" in res3.json()["detail"]

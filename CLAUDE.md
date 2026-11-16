@@ -8,6 +8,12 @@ El dueño (Mateo) no programa: explicar en lenguaje simple y con pasos copiables
 
 ## Backend (`app/`) — 4 capas: routers → services → schemas → models
 
+- **Roles (ADR-0018):** `core/permisos.py` es la ÚNICA tabla rol → permisos; los routers usan
+  los alias de `core/deps.py` (`GestionaSolicitudes`, `GestionaUsuarios`…), nunca comparan
+  `rol`. Valores guardados `usuario_utb`/`auxiliar`/`administrador` = etiquetas
+  Estudiante/Auditor/Administrador (NO renombrar: APK instaladas). Todo endpoint nuevo necesita
+  fila en `docs/seguridad/matriz-permisos.md` o falla `tests/test_matriz_permisos.py`.
+  "Auditor" (rol) ≠ bitácora de auditoría (ADR-0010).
 - `core/`: `config.py` (variables de entorno y reglas de producción), `security.py` (JWT:
   `sub` = id, `sv` = versión de sesión, tokens de propósito con `jti`), `deps.py`
   (`CurrentUser`, `VerifiedUser`, `AdminUser`…), `politica.py` (contraseña ≥ 8, correo;
@@ -32,9 +38,12 @@ El dueño (Mateo) no programa: explicar en lenguaje simple y con pasos copiables
   (refresco del token ante 401), `di/injection.dart` (GetIt), `theme/app_theme.dart`
   (**solo `AppColors`**), `theme/escala.dart` (escala 1,10 y tamaño de texto),
   `storage/token_storage.dart`.
-- `features/`: `auth` (login, verificación, cambiar correo), `cuenta` (perfil), `home`
-  (shell/inicio), `salones` (usuario), `salones_admin` (panel y control del auxiliar),
-  `control`, `recursos`, `admin`, `auditoria`, `stats`, `prestamos`.
+- `features/`: `auth` (login, verificación, cambiar correo, `domain/permisos.dart` = espejo de
+  la tabla), `cuenta` (perfil + modo prueba), `home` (shell: pestañas por permisos; inicio),
+  `salones` (estudiante), `salones_admin` (panel del auditor), `solicitudes` (mis solicitudes y
+  bandeja), `control` (reportes), `recursos`, `admin` (usuarios, estadísticas), `auditoria`
+  (bitácora). Decidir SIEMPRE con `auth.permisos.puede(...)`; pantallas con `ConPermiso` y
+  `SinAcceso` (`shared/sin_acceso.dart`).
 - `shared/`: `utb_ui.dart` (identidad visual), `widgets.dart`, `equipamiento_chips.dart`,
   `servidor.dart` (insignia del servidor).
 - Sin paquetes nuevos de pub sin preguntar. Paleta y logo fijos (ADR-0011/0013).
@@ -45,7 +54,8 @@ El dueño (Mateo) no programa: explicar en lenguaje simple y con pasos copiables
   crear una nueva. Columnas nuevas con `server_default` (el servidor viejo sigue corriendo
   durante el despliegue). Probar en PostgreSQL además de SQLite.
 - `scripts/preparar_bd.py`: actualiza una base local sin borrar datos.
-- `scripts/seed_demo.py`: datos de ejemplo (repetible). Cuentas demo en `docs/COMO_EJECUTAR.md`.
+- `scripts/seed_demo.py`: datos de ejemplo (repetible, solo desarrollo). Una cuenta demo por
+  rol; sus claves SOLO en ese archivo. Admin real: `scripts/crear_admin.py` (clave por consola).
 
 ## Comandos (PowerShell, desde la raíz)
 

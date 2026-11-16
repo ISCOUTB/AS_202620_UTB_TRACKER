@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AdminUser, CurrentUser
+from app.core.deps import CreaReportes, GestionaEquipos, VeEquipos
 from app.schemas import schemas
 from app.services import resources as resources_service
 
@@ -28,7 +28,7 @@ router = APIRouter()
 def crear_recurso(
     recurso: schemas.RecursoCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaEquipos,
 ):
     """Crea un recurso nuevo. Requiere rol admin/auxiliar."""
     return resources_service.crear_recurso(db, recurso, actor_id=current_user.id)
@@ -37,7 +37,7 @@ def crear_recurso(
 @router.get("", response_model=list[schemas.RecursoOut])
 def listar_recursos(
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: VeEquipos,
     salon_id: Optional[int] = None,
     categoria: Optional[str] = None,
     estado: Optional[str] = None,
@@ -62,7 +62,7 @@ def listar_recursos(
 def obtener_recurso(
     recurso_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: VeEquipos,
 ):
     return resources_service.obtener_recurso(db, recurso_id)
 
@@ -79,7 +79,7 @@ def actualizar_recurso(
     recurso_id: int,
     recurso: schemas.RecursoUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaEquipos,
 ):
     """Actualiza un recurso existente. Requiere rol admin/auxiliar."""
     return resources_service.actualizar_recurso(db, recurso_id, recurso, actor_id=current_user.id)
@@ -89,7 +89,7 @@ def actualizar_recurso(
 def eliminar_recurso(
     recurso_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaEquipos,
 ):
     """Soft-delete de un recurso. Requiere rol admin/auxiliar."""
     return resources_service.eliminar_recurso(db, recurso_id, actor_id=current_user.id)
@@ -104,7 +104,7 @@ def reportar_recurso(
     recurso_id: int,
     reporte: schemas.ReporteCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: CreaReportes,
 ):
     """
     Reporta el estado de un recurso (daño, mantenimiento, etc.).
@@ -120,7 +120,7 @@ def reportar_recurso(
 def listar_reportes_recurso(
     recurso_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: VeEquipos,
 ):
     """Historial de reportes de un recurso."""
     return resources_service.listar_reportes_recurso(db, recurso_id)
