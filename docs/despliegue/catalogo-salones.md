@@ -59,7 +59,7 @@ Necesitas estar en la carpeta del proyecto, en el servidor, con su `.env`.
 
 En Linux (el servidor), usa `venv/bin/python` en lugar de `.\venv\Scripts\python`.
 
-El script **nunca corre solo**: ni en las migraciones ni al arrancar.
+Desde el 2026-11-16 la migración `f2a3b4c5d6e7` carga este catálogo en la nube al desplegar (solo crea los que faltan, nunca borra). El script sirve para cargar una lista corregida después.
 
 ## Salones "fuera del catálogo"
 
