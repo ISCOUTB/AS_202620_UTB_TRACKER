@@ -12,9 +12,9 @@
     "semantic_hash": ""
   },
   "app/main.py": {
-    "mtime": 1794857716.923609,
-    "seen": 1794869857.454866,
-    "ast_hash": "ff661591802acaacf72e9dc9b7e0d6f7",
+    "mtime": 1794872022.8339412,
+    "seen": 1794873337.4109461,
+    "ast_hash": "ce650989ab85cfcbfdd270a0299423ca",
     "semantic_hash": ""
   },
   "app/routers/__init__.py": {
@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "app/routers/health.py": {
-    "mtime": 1794633497.7796574,
-    "seen": 1794636129.1098258,
-    "ast_hash": "50b67792661952b79eadad6b408294f0",
+    "mtime": 1794871753.6602,
+    "seen": 1794873337.4110785,
+    "ast_hash": "8609e65f61835cc9d4ca2291f2ef246b",
     "semantic_hash": ""
   },
   "app/routers/loans.py": {
@@ -90,9 +90,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1794701898.46422,
-    "seen": 1794701923.6223361,
-    "ast_hash": "eddceb7dbd94f0296398f78ea3bdad14",
+    "mtime": 1794872364.7889886,
+    "seen": 1794873337.412496,
+    "ast_hash": "50dfd23b09c15b31b07ab5132365d172",
     "semantic_hash": ""
   },
   "docs/adr/0001-estilo-arquitectonico.md": {
@@ -114,27 +114,27 @@
     "semantic_hash": ""
   },
   "docs/arc42/arc42.md": {
-    "mtime": 1794859186.0847192,
-    "seen": 1794869857.4562972,
-    "ast_hash": "12443b4f829fc96450e5a2d54e733c03",
+    "mtime": 1794872337.9441257,
+    "seen": 1794873337.4126897,
+    "ast_hash": "f0e981fd9e009ccbc349665d85a1feba",
     "semantic_hash": ""
   },
   "docs/aspectos.md": {
-    "mtime": 1794859186.086017,
-    "seen": 1794869857.456301,
-    "ast_hash": "30ada34dc9c9f9f234d9958190384a35",
+    "mtime": 1794872305.2932544,
+    "seen": 1794873337.4126956,
+    "ast_hash": "75a95d3322a732976b5e14b9c033b395",
     "semantic_hash": ""
   },
   "docs/c4/C2.md": {
-    "mtime": 1792994566.3730035,
-    "seen": 1792994569.908378,
-    "ast_hash": "08e4f4993e3a7d1381e82ddafc094c38",
+    "mtime": 1794872305.2868257,
+    "seen": 1794873337.412701,
+    "ast_hash": "daf459daafb988805b0f9634f4e88bd6",
     "semantic_hash": ""
   },
   "docs/c4/c4_nivel1.md": {
-    "mtime": 1791065410.15237,
-    "seen": 1792822294.748686,
-    "ast_hash": "f269431c11af21c1dd3c1bf25d51f1b7",
+    "mtime": 1794872233.6084788,
+    "seen": 1794873337.4127066,
+    "ast_hash": "189ba0a778f654367915b4c60e13bd50",
     "semantic_hash": ""
   },
   "docs/contracts/evidencia_prueba_de_contrato.md": {
@@ -150,9 +150,9 @@
     "semantic_hash": ""
   },
   "docs/ia.md": {
-    "mtime": 1794859186.0910282,
-    "seen": 1794869857.4563627,
-    "ast_hash": "2978778ef0672631c9744864265e7fc6",
+    "mtime": 1794872305.3022227,
+    "seen": 1794873337.4127765,
+    "ast_hash": "a2d180213fa172c51abf0a0070fc8722",
     "semantic_hash": ""
   },
   "docs/matriz_estilos.md": {
@@ -288,9 +288,9 @@
     "semantic_hash": ""
   },
   "app/models/salon_models.py": {
-    "mtime": 1794857562.6217232,
-    "seen": 1794869857.4549522,
-    "ast_hash": "c7ca3a81370e238f0f6da675606450af",
+    "mtime": 1794871753.663246,
+    "seen": 1794873337.4110186,
+    "ast_hash": "52062cdd570e747326f943432f6ec62f",
     "semantic_hash": ""
   },
   "app/routers/auth.py": {
@@ -384,9 +384,9 @@
     "semantic_hash": ""
   },
   "app/services/resources.py": {
-    "mtime": 1794857716.833712,
-    "seen": 1794869857.4554296,
-    "ast_hash": "d7670554c304d1a0f81f6f037b10b78f",
+    "mtime": 1794872022.8349464,
+    "seen": 1794873337.4114048,
+    "ast_hash": "d05c071debc95d68b18333bd39a1b49c",
     "semantic_hash": ""
   },
   "app/services/salones.py": {
@@ -714,15 +714,15 @@
     "semantic_hash": ""
   },
   "docs/mensajeria/contrato-prestamo-creado.md": {
-    "mtime": 1793663109.3382878,
-    "seen": 1794615923.678331,
-    "ast_hash": "bb9d358117e1f8cfe07d2eaf268b3d6c",
+    "mtime": 1794872337.9410686,
+    "seen": 1794873337.4128041,
+    "ast_hash": "dec68b9c2b8eee656c0c5289c7b1bf31",
     "semantic_hash": ""
   },
   "docs/mensajeria/evidencia-ejecucion.md": {
-    "mtime": 1793663109.3387487,
-    "seen": 1794615923.6783373,
-    "ast_hash": "89bec7e88c8451906477e6a22d083066",
+    "mtime": 1794872337.9426155,
+    "seen": 1794873337.4128103,
+    "ast_hash": "367c41fd7fb4fd2d3327d856492d714d",
     "semantic_hash": ""
   },
   "docs/mensajeria/limites-del-experimento.md": {
@@ -846,9 +846,9 @@
     "semantic_hash": ""
   },
   "docs/COMO_EJECUTAR.md": {
-    "mtime": 1794797019.4861107,
-    "seen": 1794850383.5151505,
-    "ast_hash": "147368ee375ff7871160e9b3d54ab0fa",
+    "mtime": 1794872305.2972262,
+    "seen": 1794873337.4125025,
+    "ast_hash": "1f6ae86ba981d561a7c9d7491f859379",
     "semantic_hash": ""
   },
   "detener.ps1": {
@@ -906,21 +906,21 @@
     "semantic_hash": ""
   },
   "app/routers/maintenance.py": {
-    "mtime": 1794777808.6230907,
-    "seen": 1794850383.5139282,
-    "ast_hash": "f76ef0eb01de0e50a54ea1a164fe3783",
+    "mtime": 1794871753.657162,
+    "seen": 1794873337.4111063,
+    "ast_hash": "64c1a93e17f9622f219131664d651209",
     "semantic_hash": ""
   },
   "app/routers/stats.py": {
-    "mtime": 1794778413.314403,
-    "seen": 1794850383.5139697,
-    "ast_hash": "9548f9d1ef59350d5b34a9328dfb239d",
+    "mtime": 1794871629.776383,
+    "seen": 1794873337.4111388,
+    "ast_hash": "99074d1a2c6e66aeda5a251d35063305",
     "semantic_hash": ""
   },
   "app/services/maintenance.py": {
-    "mtime": 1794619019.314632,
-    "seen": 1794623945.6661053,
-    "ast_hash": "946dc5b70c16b0bb5df17cb32dbace0c",
+    "mtime": 1794871753.653181,
+    "seen": 1794873337.4113727,
+    "ast_hash": "9d4df0626ffb6772517cdad24cbb78bf",
     "semantic_hash": ""
   },
   "frontend/lib/core/notifications/fcm_registration.dart": {
@@ -1398,9 +1398,9 @@
     "semantic_hash": ""
   },
   "app/routers/fotos.py": {
-    "mtime": 1794804956.5177958,
-    "seen": 1794850383.5138998,
-    "ast_hash": "6c2844dd73b55879eaf3530ff654433f",
+    "mtime": 1794871629.7823164,
+    "seen": 1794873337.4110725,
+    "ast_hash": "39d23ffd89d719e79d54ba14612665f4",
     "semantic_hash": ""
   },
   "app/routers/usuarios.py": {
@@ -1434,9 +1434,9 @@
     "semantic_hash": ""
   },
   "app/services/estadisticas.py": {
-    "mtime": 1794778388.6425054,
-    "seen": 1794850383.5141053,
-    "ast_hash": "290253d6d02b1fce30bd91c4afb77a12",
+    "mtime": 1794871629.7790825,
+    "seen": 1794873337.4113197,
+    "ast_hash": "20078c5829398b552bc71440ee01c5bc",
     "semantic_hash": ""
   },
   "app/services/fotos.py": {
@@ -1740,9 +1740,9 @@
     "semantic_hash": ""
   },
   "app/services/estado_salon.py": {
-    "mtime": 1794857365.1546,
-    "seen": 1794869857.4553764,
-    "ast_hash": "23651aab043b13a6b3907a5521fe5251",
+    "mtime": 1794871753.6652853,
+    "seen": 1794873337.4113257,
+    "ast_hash": "989ce83b143f0cd254c09d6fa5f57b22",
     "semantic_hash": ""
   },
   "app/services/exportar.py": {
@@ -1776,9 +1776,9 @@
     "semantic_hash": ""
   },
   "tests/test_habilitacion_equipos.py": {
-    "mtime": 1794857958.1405816,
-    "seen": 1794869857.456067,
-    "ast_hash": "80d91f71537e21368b809d0d4f4ff636",
+    "mtime": 1794872037.6130884,
+    "seen": 1794873337.4123778,
+    "ast_hash": "c2e283245a3e25e8c78ee9c98a8cfc0e",
     "semantic_hash": ""
   },
   "docs/adr/0022-habilitacion-ocupacion-y-equipos-del-salon.md": {
@@ -1794,9 +1794,39 @@
     "semantic_hash": ""
   },
   "docs/revision-app.md": {
-    "mtime": 1794869300.2745664,
-    "seen": 1794869857.4563966,
-    "ast_hash": "0c9989da05d8149612cbc0716de65043",
+    "mtime": 1794872305.295722,
+    "seen": 1794873337.4128234,
+    "ast_hash": "5fb3386fa46a82e1f6b0bca8354e4ba9",
+    "semantic_hash": ""
+  },
+  "alembic/versions/e1f2a3b4c5d6_retirar_estado_prestado_de_equipos.py": {
+    "mtime": 1794872022.9033704,
+    "seen": 1794873337.4108224,
+    "ast_hash": "8bfd40acd2de9697786323815afd3d7f",
+    "semantic_hash": ""
+  },
+  "app/services/salud.py": {
+    "mtime": 1794871753.6581707,
+    "seen": 1794873337.4114254,
+    "ast_hash": "bdcbe53b6403ab4af9fad0c8e05952c5",
+    "semantic_hash": ""
+  },
+  "tests/test_erosion_capas.py": {
+    "mtime": 1794871656.9116614,
+    "seen": 1794873337.4123638,
+    "ast_hash": "34f236a6ea845a8b4ec0d0100f744f9d",
+    "semantic_hash": ""
+  },
+  "docs/README.md": {
+    "mtime": 1794872291.9174712,
+    "seen": 1794873337.4125082,
+    "ast_hash": "05095ab1707ed2df31ce139a8c31acd9",
+    "semantic_hash": ""
+  },
+  "docs/adr/0023-retiro-del-prestamo-de-equipos-y-control-de-erosion.md": {
+    "mtime": 1794872235.472935,
+    "seen": 1794873337.4126832,
+    "ast_hash": "9c32231eccbbd906d1df69f10b9948e1",
     "semantic_hash": ""
   }
 }
