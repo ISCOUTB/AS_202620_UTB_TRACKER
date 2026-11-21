@@ -232,6 +232,34 @@ def eliminar(db: Session, asignacion_id: int, actor: Usuario) -> None:
     db.commit()
 
 
+def _es_linea_ignorable(numero: int, campos: list[str]) -> bool:
+    if not campos or not "".join(campos).strip() or campos[0].lstrip().startswith("#"):
+        return True
+    if numero == 1 and campos[0].strip().lower() in ("correo", "email"):
+        return True
+    return False
+
+
+def _validar_campos_linea(
+    numero: int, campos: list[str], vistos: dict[str, int],
+) -> tuple[Optional[dict], Optional[dict]]:
+    if len(campos) < 2 or len(campos) > 3:
+        return None, {"linea": numero, "error": "Formato: correo,rol[,cargo]"}
+    try:
+        correo = _correo_valido(campos[0])
+        rol = _rol_valido(campos[1])
+        cargo = _cargo(campos[2] if len(campos) == 3 else None)
+    except ValueError as exc:
+        return None, {"linea": numero, "error": str(exc)}
+    if correo in vistos:
+        return None, {
+            "linea": numero,
+            "error": f"Correo repetido (ya está en la línea {vistos[correo]})",
+        }
+    vistos[correo] = numero
+    return {"linea": numero, "correo": correo, "rol": rol, "cargo": cargo}, None
+
+
 def analizar_lista(texto: str) -> tuple[list[dict], list[dict]]:
     """Lista pegada o CSV: `correo,rol[,cargo]` por línea (coma o punto y coma).
 
@@ -243,30 +271,17 @@ def analizar_lista(texto: str) -> tuple[list[dict], list[dict]]:
     separador = ";" if primera.count(";") > primera.count(",") else ","
     filas, errores, vistos = [], [], {}
     for numero, campos in enumerate(csv.reader(lineas, delimiter=separador), start=1):
-        if not campos or not "".join(campos).strip() or campos[0].lstrip().startswith("#"):
+        if _es_linea_ignorable(numero, campos):
             continue
-        if numero == 1 and campos[0].strip().lower() in ("correo", "email"):
-            continue  # encabezado
         if len(filas) + len(errores) >= MAX_LINEAS_IMPORTAR:
             errores.append({"linea": numero,
                             "error": f"Máximo {MAX_LINEAS_IMPORTAR} líneas por importación"})
             break
-        if len(campos) < 2 or len(campos) > 3:
-            errores.append({"linea": numero, "error": "Formato: correo,rol[,cargo]"})
-            continue
-        try:
-            correo = _correo_valido(campos[0])
-            rol = _rol_valido(campos[1])
-            cargo = _cargo(campos[2] if len(campos) == 3 else None)
-        except ValueError as exc:
-            errores.append({"linea": numero, "error": str(exc)})
-            continue
-        if correo in vistos:
-            errores.append({"linea": numero,
-                            "error": f"Correo repetido (ya está en la línea {vistos[correo]})"})
-            continue
-        vistos[correo] = numero
-        filas.append({"linea": numero, "correo": correo, "rol": rol, "cargo": cargo})
+        fila, err = _validar_campos_linea(numero, campos, vistos)
+        if err:
+            errores.append(err)
+        elif fila:
+            filas.append(fila)
     if not filas and not errores:
         errores.append({"linea": 0, "error": "La lista está vacía"})
     return filas, errores

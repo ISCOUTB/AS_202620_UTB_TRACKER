@@ -101,6 +101,56 @@ def _app1_solo_orientacion(orientacion: int) -> bytes:
     return b"\xff\xe1" + struct.pack(">H", len(cuerpo) + 2) + cuerpo
 
 
+_SENTINEL_EOI = -1
+
+
+def _escanear_datos_jpeg(datos: bytes, pos: int, n: int) -> tuple[bytes, int]:
+    """Recorre los datos comprimidos tras un SOS hasta el próximo marcador real."""
+    inicio = pos
+    while True:
+        pos = datos.find(b"\xff", pos)
+        if pos < 0 or pos + 1 >= n:
+            raise ImagenInvalida(ERR_JPEG_INCOMPLETA)
+        siguiente = datos[pos + 1]
+        if siguiente == 0x00 or 0xD0 <= siguiente <= 0xD7 or siguiente == 0xFF:
+            pos += 1 if siguiente == 0xFF else 2
+            continue
+        break
+    return datos[inicio:pos], pos
+
+
+def _leer_marcador_jpeg(
+    datos: bytes, pos: int, n: int, segmentos: int,
+) -> tuple[int, bytes, bytes, int]:
+    """Lee el siguiente marcador JPEG y devuelve (marcador, segmento, cuerpo, new_pos).
+
+    Devuelve ``_SENTINEL_EOI`` como marcador si se alcanza EOI.
+    """
+    if pos + 1 >= n or datos[pos] != 0xFF:
+        raise ImagenInvalida(ERR_JPEG_DANADA)
+    while pos < n and datos[pos] == 0xFF:  # relleno permitido entre marcadores
+        pos += 1
+    if pos >= n:
+        raise ImagenInvalida(ERR_JPEG_INCOMPLETA)
+    marcador = datos[pos]
+    pos += 1
+    if segmentos + 1 > _MAX_SEGMENTOS:
+        raise ImagenInvalida("La foto JPEG tiene una estructura que no se acepta")
+    if marcador == 0xD9:
+        return _SENTINEL_EOI, b"\xff\xd9", b"", pos
+    if marcador in _SIN_LONGITUD:
+        return marcador, bytes((0xFF, marcador)), b"", pos
+    if pos + 2 > n:
+        raise ImagenInvalida(ERR_JPEG_INCOMPLETA)
+    (largo,) = struct.unpack_from(">H", datos, pos)
+    if largo < 2 or pos + largo > n:
+        raise ImagenInvalida(ERR_JPEG_DANADA)
+    cuerpo = datos[pos + 2:pos + largo]
+    segmento = datos[pos - 2:pos + largo]
+    pos += largo
+    return marcador, segmento, cuerpo, pos
+
+
 def _limpiar_jpeg(datos: bytes) -> ImagenLimpia:
     salida = [b"\xff\xd8"]
     pos, n = 2, len(datos)
@@ -110,43 +160,17 @@ def _limpiar_jpeg(datos: bytes) -> ImagenLimpia:
     segmentos = 0
     while True:
         if en_datos:
-            inicio = pos
-            while True:
-                pos = datos.find(b"\xff", pos)
-                if pos < 0 or pos + 1 >= n:
-                    raise ImagenInvalida(ERR_JPEG_INCOMPLETA)
-                siguiente = datos[pos + 1]
-                if siguiente == 0x00 or 0xD0 <= siguiente <= 0xD7 or siguiente == 0xFF:
-                    pos += 1 if siguiente == 0xFF else 2
-                    continue
-                break
-            salida.append(datos[inicio:pos])
+            trozo, pos = _escanear_datos_jpeg(datos, pos, n)
+            salida.append(trozo)
             en_datos = False
-        if pos + 1 >= n or datos[pos] != 0xFF:
-            raise ImagenInvalida(ERR_JPEG_DANADA)
-        while pos < n and datos[pos] == 0xFF:  # relleno permitido entre marcadores
-            pos += 1
-        if pos >= n:
-            raise ImagenInvalida(ERR_JPEG_INCOMPLETA)
-        marcador = datos[pos]
-        pos += 1
+        marcador, segmento, cuerpo, pos = _leer_marcador_jpeg(datos, pos, n, segmentos)
         segmentos += 1
-        if segmentos > _MAX_SEGMENTOS:
-            raise ImagenInvalida("La foto JPEG tiene una estructura que no se acepta")
-        if marcador == 0xD9:  # EOI: fin; lo que siga se descarta
-            salida.append(b"\xff\xd9")
+        if marcador == _SENTINEL_EOI:
+            salida.append(segmento)
             break
         if marcador in _SIN_LONGITUD:
-            salida.append(bytes((0xFF, marcador)))
+            salida.append(segmento)
             continue
-        if pos + 2 > n:
-            raise ImagenInvalida(ERR_JPEG_INCOMPLETA)
-        (largo,) = struct.unpack_from(">H", datos, pos)
-        if largo < 2 or pos + largo > n:
-            raise ImagenInvalida(ERR_JPEG_DANADA)
-        cuerpo = datos[pos + 2:pos + largo]
-        segmento = datos[pos - 2:pos + largo]
-        pos += largo
         if marcador == 0xE1 and orientacion is None:
             orientacion = _orientacion_exif(cuerpo)
         if 0xE1 <= marcador <= 0xEF or marcador == 0xFE:
@@ -168,32 +192,42 @@ def _limpiar_jpeg(datos: bytes) -> ImagenLimpia:
 # --------------------------------------------------------------------------
 # PNG
 # --------------------------------------------------------------------------
+def _leer_bloque_png(
+    datos: bytes, pos: int, n: int,
+) -> tuple[bytes, bytes, bytes, int]:
+    """Lee un bloque PNG completo y valida su CRC.
+
+    Devuelve (tipo, contenido, raw_chunk, new_pos).
+    """
+    if pos + 12 > n:
+        raise ImagenInvalida("La foto PNG está incompleta")
+    largo, tipo = struct.unpack_from(">I4s", datos, pos)
+    fin = pos + 12 + largo
+    if fin > n:
+        raise ImagenInvalida("La foto PNG está incompleta")
+    contenido = datos[pos + 8:pos + 8 + largo]
+    (crc,) = struct.unpack_from(">I", datos, pos + 8 + largo)
+    if zlib.crc32(tipo + contenido) & 0xFFFFFFFF != crc:
+        raise ImagenInvalida("La foto PNG está dañada")
+    return tipo, contenido, datos[pos:fin], fin
+
+
 def _limpiar_png(datos: bytes) -> ImagenLimpia:
     salida = [FIRMA_PNG]
     pos, n = len(FIRMA_PNG), len(datos)
     ancho = alto = None
     bloques = 0
     while True:
-        if pos + 12 > n:
-            raise ImagenInvalida("La foto PNG está incompleta")
-        largo, tipo = struct.unpack_from(">I4s", datos, pos)
-        fin = pos + 12 + largo
-        if fin > n:
-            raise ImagenInvalida("La foto PNG está incompleta")
-        contenido = datos[pos + 8:pos + 8 + largo]
-        (crc,) = struct.unpack_from(">I", datos, pos + 8 + largo)
-        if zlib.crc32(tipo + contenido) & 0xFFFFFFFF != crc:
-            raise ImagenInvalida("La foto PNG está dañada")
+        tipo, contenido, raw_chunk, pos = _leer_bloque_png(datos, pos, n)
         if bloques == 0:
-            if tipo != b"IHDR" or largo != 13:
+            if tipo != b"IHDR" or len(contenido) != 13:
                 raise ImagenInvalida("La foto PNG está dañada")
             ancho, alto = struct.unpack_from(">II", contenido, 0)
         bloques += 1
         if bloques > _MAX_BLOQUES_PNG:
             raise ImagenInvalida("La foto PNG tiene una estructura que no se acepta")
         if tipo in _PNG_CONSERVAR:
-            salida.append(datos[pos:fin])
-        pos = fin
+            salida.append(raw_chunk)
         if tipo == b"IEND":
             break  # lo que siga se descarta
     if not ancho or not alto:

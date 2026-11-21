@@ -99,6 +99,55 @@ def obtener_salon_con_equipamiento(db: Session, salon_id: int) -> Salon:
     return equipamiento.adjuntar(db, [obtener_salon(db, salon_id)])[0]
 
 
+def _validar_cambios_catalogo(
+    db: Session, salon: Salon, update_data: dict, actor_rol: Optional[str],
+) -> None:
+    toca_catalogo = any(
+        c in update_data and update_data[c] != getattr(salon, c) for c in CAMPOS_CATALOGO
+    )
+    if not toca_catalogo:
+        return
+    if actor_rol is not None and not permisos.tiene(
+        actor_rol, permisos.Permiso.SALONES_CREAR_CATALOGO
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo un administrador puede renombrar un salón o cambiar su edificio o piso.",
+        )
+    raw_nombre = update_data.get("nombre", salon.nombre)
+    nombre = (
+        catalogo.normalizar_codigo(raw_nombre)
+        if catalogo.es_codigo_de_catalogo(raw_nombre)
+        else raw_nombre
+    )
+    catalogo.validar(
+        nombre,
+        update_data.get("edificio", salon.edificio),
+        update_data.get("piso", salon.piso),
+    )
+    if "nombre" in update_data:
+        update_data["nombre"] = nombre
+        if db.query(Salon.id).filter(Salon.nombre == nombre, Salon.id != salon.id).first():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ya existe un salón con ese nombre",
+            )
+
+
+def _aplicar_estado_legado(
+    db: Session, salon: Salon, estado: Optional[str], actor_id: Optional[int],
+) -> None:
+    if estado == "disponible" and not salon.habilitado:
+        estado_salon.cambiar_habilitacion(db, salon, True, None, None, None, actor_id, commit=False)
+    elif estado in _ESTADO_A_MOTIVO and (
+        salon.habilitado or salon.motivo_deshabilitado != _ESTADO_A_MOTIVO[estado]
+    ):
+        estado_salon.cambiar_habilitacion(
+            db, salon, False, _ESTADO_A_MOTIVO[estado],
+            salon.nota_deshabilitado, None, actor_id, commit=False,
+        )
+
+
 def obtener_salon(db: Session, salon_id: int) -> Salon:
     """Busca un salón por ID. Lanza 404 si no existe o está inactivo."""
     salon = db.query(Salon).filter(
@@ -125,37 +174,13 @@ def actualizar_salon(
     for campo in ("tipo", "nombre", "ubicacion", "capacidad", "estado"):
         if campo in update_data and update_data[campo] is None:
             update_data.pop(campo)
-    toca_catalogo = any(
-        c in update_data and update_data[c] != getattr(salon, c) for c in CAMPOS_CATALOGO
-    )
-    if toca_catalogo:
-        if actor_rol is not None and not permisos.tiene(
-            actor_rol, permisos.Permiso.SALONES_CREAR_CATALOGO
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Solo un administrador puede renombrar un salón o cambiar su edificio o piso.",
-            )
-        nombre = catalogo.normalizar_codigo(update_data.get("nombre", salon.nombre))             if catalogo.es_codigo_de_catalogo(update_data.get("nombre", salon.nombre))             else update_data.get("nombre", salon.nombre)
-        catalogo.validar(nombre, update_data.get("edificio", salon.edificio),
-                         update_data.get("piso", salon.piso))
-        if "nombre" in update_data:
-            update_data["nombre"] = nombre
-            if db.query(Salon.id).filter(Salon.nombre == nombre, Salon.id != salon.id).first():
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-                                    detail="Ya existe un salón con ese nombre")
+    _validar_cambios_catalogo(db, salon, update_data, actor_rol)
     if "capacidad" in update_data and update_data["capacidad"] is not None:
         update_data["capacidad_estimada"] = False
     # Un cliente viejo cambia `estado` a mano: se traduce a habilitar/deshabilitar (con su
     # historial y auditoría). "ocupado" se ignora: ahora se calcula.
     estado = update_data.pop("estado", None)
-    if estado == "disponible" and not salon.habilitado:
-        estado_salon.cambiar_habilitacion(db, salon, True, None, None, None, actor_id, commit=False)
-    elif estado in _ESTADO_A_MOTIVO and (
-        salon.habilitado or salon.motivo_deshabilitado != _ESTADO_A_MOTIVO[estado]
-    ):
-        estado_salon.cambiar_habilitacion(db, salon, False, _ESTADO_A_MOTIVO[estado],
-                                          salon.nota_deshabilitado, None, actor_id, commit=False)
+    _aplicar_estado_legado(db, salon, estado, actor_id)
     cambios = {
         campo: {"de": getattr(salon, campo), "a": valor}
         for campo, valor in update_data.items() if getattr(salon, campo) != valor

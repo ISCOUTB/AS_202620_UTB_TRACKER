@@ -58,6 +58,42 @@ def _reportes_equipo_abiertos(db: Session, salon_id: Optional[int]) -> list[Repo
             .order_by(ReporteSalon.created_at.desc()).all())
 
 
+def _vincular_reporte(
+    db: Session, reporte_salon_id: Optional[int], recurso: Recurso,
+) -> Optional[ReporteSalon]:
+    if reporte_salon_id is None:
+        return None
+    reporte = db.query(ReporteSalon).filter(ReporteSalon.id == reporte_salon_id).first()
+    if reporte is None or reporte.salon_id != recurso.salon_id or reporte.tipo != "equipo":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Ese reporte no es de tipo equipo de este salón.",
+        )
+    reporte.recurso_id = recurso.id
+    return reporte
+
+
+def _registrar_cambio_estado_equipo(
+    db: Session, recurso: Recurso, anterior: str, estado: str,
+    nota: Optional[str], reporte: Optional[ReporteSalon], actor_id: Optional[int],
+) -> None:
+    recurso.estado = estado
+    nombre = ETIQUETAS_CATEGORIA.get(recurso.categoria, recurso.categoria)
+    texto = (f"Equipo {nombre} {recurso.serial}: "
+             f"{ETIQUETAS_ESTADO.get(anterior, anterior)} → {ETIQUETAS_ESTADO[estado]}")
+    if nota:
+        texto += f" ({nota})"
+    if reporte is not None:
+        texto += f" · reporte #{reporte.id}"
+    estado_salon.registrar_historial(db, recurso.salon_id, "equipo.estado", texto, actor_id)
+    auditoria.registrar(
+        db, "recurso.estado", "recurso", recurso.id, actor_id=actor_id,
+        detalle={"serial": recurso.serial, "salon_id": recurso.salon_id, "de": anterior,
+                 "a": estado, "nota": nota,
+                 "reporte_salon_id": reporte.id if reporte else None},
+    )
+
+
 def cambiar_estado(
     db: Session, recurso_id: int, estado: str, nota: Optional[str],
     reporte_salon_id: Optional[int], actor_id: Optional[int],
@@ -69,33 +105,11 @@ def cambiar_estado(
                    "(los equipos no se prestan).",
         )
     recurso = _obtener(db, recurso_id)
-    reporte = None
-    if reporte_salon_id is not None:
-        reporte = db.query(ReporteSalon).filter(ReporteSalon.id == reporte_salon_id).first()
-        if reporte is None or reporte.salon_id != recurso.salon_id or reporte.tipo != "equipo":
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Ese reporte no es de tipo equipo de este salón.",
-            )
-        reporte.recurso_id = recurso.id
+    reporte = _vincular_reporte(db, reporte_salon_id, recurso)
     anterior = recurso.estado
     nota = " ".join((nota or "").split()) or None
     if anterior != estado or reporte is not None:
-        recurso.estado = estado
-        nombre = ETIQUETAS_CATEGORIA.get(recurso.categoria, recurso.categoria)
-        texto = (f"Equipo {nombre} {recurso.serial}: "
-                 f"{ETIQUETAS_ESTADO.get(anterior, anterior)} → {ETIQUETAS_ESTADO[estado]}")
-        if nota:
-            texto += f" ({nota})"
-        if reporte is not None:
-            texto += f" · reporte #{reporte.id}"
-        estado_salon.registrar_historial(db, recurso.salon_id, "equipo.estado", texto, actor_id)
-        auditoria.registrar(
-            db, "recurso.estado", "recurso", recurso.id, actor_id=actor_id,
-            detalle={"serial": recurso.serial, "salon_id": recurso.salon_id, "de": anterior,
-                     "a": estado, "nota": nota,
-                     "reporte_salon_id": reporte.id if reporte else None},
-        )
+        _registrar_cambio_estado_equipo(db, recurso, anterior, estado, nota, reporte, actor_id)
     db.commit()
     db.refresh(recurso)
     abiertos = _reportes_equipo_abiertos(db, recurso.salon_id)

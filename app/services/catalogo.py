@@ -169,6 +169,39 @@ def _con_historial(db: Session, ids: list[int]) -> set[int]:
     return con_solicitudes | con_clases
 
 
+def _evaluar_salon_fuera_catalogo(
+    s: Salon, catalogo: set[str], usado: bool,
+) -> Optional[tuple[str, str]]:
+    """Devuelve (problema, propuesta) o None si el salón está en el catálogo sin problemas."""
+    if not es_codigo_de_catalogo(s.nombre):
+        problema = "No sigue el formato A1-101 (espacio especial o dato viejo)."
+        propuesta = (
+            "Dejarlo como espacio especial o renombrarlo; tiene historial, no borrar."
+            if usado
+            else "Dejarlo como espacio especial o desactivarlo si no existe."
+        )
+        return problema, propuesta
+
+    errores = errores_codigo(s.nombre, s.edificio, s.piso)
+    if errores:
+        problema = " ".join(errores)
+        m = PATRON_CODIGO.match(normalizar_codigo(s.nombre))
+        propuesta = (
+            f"Corregir edificio a {edificio_de(int(m.group(1)))} y piso a {m.group(2)}."
+            if m
+            else "Renombrar con el formato A1-101."
+        )
+        return problema, propuesta
+
+    if normalizar_codigo(s.nombre) not in catalogo:
+        return (
+            "Bien formado, pero no está en el catálogo provisional.",
+            "Confirmar con Planta Física; si existe, agregarlo al catálogo.",
+        )
+
+    return None
+
+
 def fuera_del_catalogo(db: Session, catalogo: Optional[set[str]] = None) -> list[dict]:
     """Reporte (solo lectura) con una PROPUESTA por salón. El administrador decide; nada se borra.
 
@@ -183,22 +216,10 @@ def fuera_del_catalogo(db: Session, catalogo: Optional[set[str]] = None) -> list
     reporte = []
     for s in sorted(salones, key=lambda x: clave_orden(x.nombre)):
         usado = s.id in historial
-        if not es_codigo_de_catalogo(s.nombre):
-            problema = "No sigue el formato A1-101 (espacio especial o dato viejo)."
-            propuesta = ("Dejarlo como espacio especial o renombrarlo; tiene historial, no borrar."
-                         if usado else "Dejarlo como espacio especial o desactivarlo si no existe.")
-        else:
-            errores = errores_codigo(s.nombre, s.edificio, s.piso)
-            if errores:
-                problema = " ".join(errores)
-                m = PATRON_CODIGO.match(normalizar_codigo(s.nombre))
-                propuesta = (f"Corregir edificio a {edificio_de(int(m.group(1)))} y piso a "
-                             f"{m.group(2)}." if m else "Renombrar con el formato A1-101.")
-            elif normalizar_codigo(s.nombre) not in catalogo:
-                problema = "Bien formado, pero no está en el catálogo provisional."
-                propuesta = "Confirmar con Planta Física; si existe, agregarlo al catálogo."
-            else:
-                continue
+        resultado = _evaluar_salon_fuera_catalogo(s, catalogo, usado)
+        if resultado is None:
+            continue
+        problema, propuesta = resultado
         reporte.append({
             "id": s.id, "nombre": s.nombre, "edificio": s.edificio, "piso": s.piso,
             "tiene_historial": usado, "problema": problema, "propuesta": propuesta,

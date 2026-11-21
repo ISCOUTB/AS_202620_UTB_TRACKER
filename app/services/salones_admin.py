@@ -56,6 +56,59 @@ def _conteos(db: Session, modelo, estado: str, ids: list[int]) -> dict[int, int]
     return {salon_id: int(n) for salon_id, n in filas}
 
 
+def _info_clase(clase: Optional[Horario]) -> Optional[dict]:
+    if not clase:
+        return None
+    return {
+        "horario_id": clase.id,
+        "materia": clase.materia,
+        "profesor": clase.profesor,
+        "hora_inicio": clase.hora_inicio,
+        "hora_fin": clase.hora_fin,
+    }
+
+
+def _info_prestamo(prestamo: Optional[PrestamoSalon]) -> Optional[dict]:
+    if not prestamo:
+        return None
+    nombre_u = prestamo.usuario.nombre if prestamo.usuario else f"Usuario #{prestamo.usuario_id}"
+    return {
+        "prestamo_id": prestamo.id,
+        "usuario_id": prestamo.usuario_id,
+        "usuario_nombre": nombre_u,
+        "estado": prestamo.estado,
+        "fecha_inicio": prestamo.fecha_inicio,
+        "fecha_fin": prestamo.fecha_fin,
+        "motivo": prestamo.motivo,
+    }
+
+
+def _armar_ocupacion_salon(
+    salon: Salon,
+    clase: Optional[Horario],
+    prestamo: Optional[PrestamoSalon],
+    presencias: dict[int, PresenciaSalon],
+    pendientes: dict[int, int],
+    abiertos: dict[int, int],
+) -> dict:
+    if clase:
+        ocupante = "clase"
+    elif prestamo:
+        ocupante = "prestamo"
+    else:
+        ocupante = "libre"
+    registro = presencias.get(clase.id) if clase else None
+    return {
+        "salon": salon,
+        "ocupante": ocupante,
+        "clase_actual": _info_clase(clase),
+        "prestamo_actual": _info_prestamo(prestamo),
+        "profesor_presente": registro.profesor_presente if registro else None,
+        "solicitudes_pendientes": pendientes.get(salon.id, 0),
+        "reportes_abiertos": abiertos.get(salon.id, 0),
+    }
+
+
 def _ocupaciones(db: Session, salones: list[Salon], local: datetime) -> list[dict]:
     """Foto en vivo de muchos salones con un número FIJO de consultas (sin N+1)."""
     ids = [s.id for s in salones]
@@ -70,50 +123,17 @@ def _ocupaciones(db: Session, salones: list[Salon], local: datetime) -> list[dic
     pendientes = _conteos(db, PrestamoSalon, "pendiente", ids)
     abiertos = _conteos(db, ReporteSalon, "abierto", ids)
 
-    resultado = []
-    for salon in salones:
-        clase = clases.get(salon.id)
-        prestamo = solicitudes.get(salon.id)
-        if clase:
-            ocupante = "clase"
-        elif prestamo:
-            ocupante = "prestamo"
-        else:
-            ocupante = "libre"
-        registro = presencias.get(clase.id) if clase else None
-
-        if clase:
-            clase_actual = {
-                "horario_id": clase.id, "materia": clase.materia, "profesor": clase.profesor,
-                "hora_inicio": clase.hora_inicio, "hora_fin": clase.hora_fin,
-            }
-        else:
-            clase_actual = None
-
-        if prestamo:
-            nombre_u = prestamo.usuario.nombre if prestamo.usuario else f"Usuario #{prestamo.usuario_id}"
-            prestamo_actual = {
-                "prestamo_id": prestamo.id,
-                "usuario_id": prestamo.usuario_id,
-                "usuario_nombre": nombre_u,
-                "estado": prestamo.estado,
-                "fecha_inicio": prestamo.fecha_inicio,
-                "fecha_fin": prestamo.fecha_fin,
-                "motivo": prestamo.motivo,
-            }
-        else:
-            prestamo_actual = None
-
-        resultado.append({
-            "salon": salon,
-            "ocupante": ocupante,
-            "clase_actual": clase_actual,
-            "prestamo_actual": prestamo_actual,
-            "profesor_presente": registro.profesor_presente if registro else None,
-            "solicitudes_pendientes": pendientes.get(salon.id, 0),
-            "reportes_abiertos": abiertos.get(salon.id, 0),
-        })
-    return resultado
+    return [
+        _armar_ocupacion_salon(
+            salon,
+            clases.get(salon.id),
+            solicitudes.get(salon.id),
+            presencias,
+            pendientes,
+            abiertos,
+        )
+        for salon in salones
+    ]
 
 
 def listar_ocupacion(db: Session, momento: Optional[datetime] = None) -> list[dict]:
