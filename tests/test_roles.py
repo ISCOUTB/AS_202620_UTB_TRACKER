@@ -211,16 +211,6 @@ def test_estudiante_solo_ve_y_cancela_sus_solicitudes_y_el_auditor_ve_todas(clie
     assert {s["usuario_nombre"] for s in bandeja.json()} == {yo.nombre, otro.nombre}
 
 
-def test_sin_correo_verificado_no_puede_solicitar(client, db_session):
-    _crear(db_session, "Sin Verificar", "nuevo@utb.edu.co", "usuario_utb", verificado=False)
-    salon = _salon(db_session)
-    r = client.post("/prestamos-salon", headers=_h(db_session, "nuevo@utb.edu.co"), json={
-        "salon_id": salon.id, "fecha_inicio": "2030-01-07T10:00:00",
-        "fecha_fin": "2030-01-07T11:00:00"})
-    assert r.status_code == 403
-    assert "Verifica tu correo" in r.json()["detail"]
-
-
 def test_rechazar_exige_motivo_y_avisa_al_estudiante(client, db_session):
     auditor = _auditor(db_session)
     salon = _salon(db_session)

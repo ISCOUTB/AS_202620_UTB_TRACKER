@@ -59,7 +59,7 @@ if (-not $Nube) {
     # 4. API y worker, cada uno en su ventana. Comparten la MISMA base (utb_tracker.db).
     Paso "Encendiendo la API en $local"
     Start-Process powershell -WorkingDirectory $raiz -ArgumentList '-NoExit', '-Command',
-        "`$Host.UI.RawUI.WindowTitle='UTB Tracker - API (no cerrar)'; `$env:URL_PUBLICA='$local'; `$env:VERIFICACION_OBLIGATORIA='true'; & '$py' -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+        "`$Host.UI.RawUI.WindowTitle='UTB Tracker - API (no cerrar)'; `$env:URL_PUBLICA='$local'; & '$py' -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
     Paso 'Encendiendo el worker de correos y notificaciones'
     Start-Process powershell -WorkingDirectory $raiz -ArgumentList '-NoExit', '-Command',
         "`$Host.UI.RawUI.WindowTitle='UTB Tracker - WORKER (no cerrar)'; `$env:URL_PUBLICA='$local'; & '$py' -m app.messaging"

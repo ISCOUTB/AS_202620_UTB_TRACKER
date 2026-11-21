@@ -4,8 +4,6 @@ Configuración centralizada del proyecto UTB Tracker.
 Lee variables de entorno con compatibilidad hacia atrás para nombres
 legacy (JWT_ALGORITHM, JWT_EXPIRE_MINUTES) y los nombres actuales.
 """
-import hashlib
-import hmac
 import logging
 import os
 
@@ -29,18 +27,7 @@ FORGET_PWD_SECRET_KEY = os.getenv(
     "FORGET_PWD_SECRET_KEY", "change-me-in-production-reset"
 )
 
-# Firma los tokens de verificación y de cambio de correo (distinta de SECRET_KEY y de la de
-# recuperación: un token de un propósito nunca sirve para otro). ADR-0014.
-# Si no está definida se DERIVA de SECRET_KEY (HMAC con una etiqueta fija): sigue siendo secreta
-# y distinta de ella, y un servidor que aún no la tiene en su .env arranca igual (ADR-0014).
-EMAIL_TOKEN_SECRET_KEY = os.getenv("EMAIL_TOKEN_SECRET_KEY", "").strip() or (
-    "derivada:" + hmac.new(
-        SECRET_KEY.encode(), b"utb-tracker:tokens-de-correo", hashlib.sha256
-    ).hexdigest()
-)
-VERIFICACION_EXPIRA_HORAS = int(os.getenv("VERIFICACION_EXPIRA_HORAS", "24"))
 RECUPERACION_EXPIRA_MINUTOS = int(os.getenv("RECUPERACION_EXPIRA_MINUTOS", "30"))
-CAMBIO_CORREO_EXPIRA_HORAS = int(os.getenv("CAMBIO_CORREO_EXPIRA_HORAS", "24"))
 
 LOGIN_RATE_LIMIT = int(os.getenv("LOGIN_RATE_LIMIT", "5"))
 LOGIN_RATE_WINDOW_SECONDS = int(os.getenv("LOGIN_RATE_WINDOW_SECONDS", "300"))
@@ -54,7 +41,7 @@ USE_REAL_MAIL = os.getenv("USE_REAL_MAIL", "false").strip().lower() in (
     "1", "true", "yes", "on"
 )
 
-# Base de los enlaces que van en los correos (dónde se abre /auth/verificar-correo).
+# Base de los enlaces que van en los correos (dónde se abre /auth/restablecer).
 # Sin la variable, en producción o con correo real se usa la dirección del servidor oficial
 # (un enlace a 127.0.0.1 no le sirve a quien lo recibe en su correo).
 SERVIDOR_OFICIAL = "https://129-80-171-141.nip.io"
@@ -64,15 +51,6 @@ URL_PUBLICA = os.getenv(
 ).strip().rstrip("/")
 # Modo desarrollo del correo: carpeta donde se guardan los correos que NO se envían.
 CORREOS_DIR = os.getenv("CORREOS_DIR", "logs/correos")
-
-# ¿Las cuentas nuevas deben confirmar su correo antes de solicitar salones? Por defecto, solo si
-# hay correo real: sin él el enlace nunca llegaría y la persona quedaría bloqueada, así que la
-# cuenta nace verificada (como las que existían antes de ADR-0014). iniciar.ps1, Docker Compose
-# y las pruebas la activan con el correo de desarrollo (logs/correos).
-_verif_env = os.getenv("VERIFICACION_OBLIGATORIA", "").strip().lower()
-VERIFICACION_OBLIGATORIA = (
-    _verif_env in ("1", "true", "yes", "on") if _verif_env else USE_REAL_MAIL
-)
 
 # Dominios de correo admitidos en REGISTROS y CAMBIOS DE CORREO nuevos (ADR-0019). Coincidencia
 # EXACTA con lo que va tras la última "@": "estudiantes.utb.edu.co" NO entra si no está en la
@@ -141,11 +119,6 @@ if ENVIRONMENT == "production":
     if DOMINIOS_PERMITIDOS != (DOMINIO_INSTITUCIONAL,):
         logger.warning("DOMINIOS_PERMITIDOS amplía los correos admitidos a: %s",
                        ", ".join(DOMINIOS_PERMITIDOS))
-    if not VERIFICACION_OBLIGATORIA:
-        logger.warning(
-            "VERIFICACION_OBLIGATORIA=false: las cuentas nuevas no confirman su correo. "
-            "Configura el correo real (docs/despliegue/worker.md) para activarla."
-        )
 
 # ---------------------------------------------------------------------------
 # CORS origins — separados por coma en la variable de entorno CORS_ORIGINS.

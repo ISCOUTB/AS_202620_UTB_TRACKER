@@ -90,7 +90,6 @@ class UserResponse(BaseModel):
     email: str
     fecha_registro: datetime
     rol: str
-    email_verificado: bool = True
     # ADR-0018: etiqueta para mostrar (el valor de `rol` no cambia).
     rol_etiqueta: str = ""
     activo: bool = True
@@ -109,8 +108,6 @@ class UserMeResponse(BaseModel):
     nombre: str
     email: str
     rol: str
-    # Campo nuevo con valor por defecto: no rompe el contrato (ADR-0014).
-    email_verificado: bool = True
 
 
 class UsuarioDelete(BaseModel):

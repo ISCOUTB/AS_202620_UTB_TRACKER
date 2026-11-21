@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'catalogo_roles_falso.dart';
 import 'package:utb_tracker_app/core/di/injection.dart';
 import 'package:utb_tracker_app/core/network/api_client.dart';
 import 'package:utb_tracker_app/core/theme/app_theme.dart';
@@ -64,7 +65,7 @@ final _usuario = {
   'nombre': _nombreLargo,
   'email': 'maria.fernanda.rodriguez.villalobos@utb.edu.co',
   'rol': 'auxiliar',
-  'email_verificado': false,
+  'permisos': permisosDe('auxiliar').valores.toList(),
   'telefono': '+57 300 123 4567',
   'dependencia': 'Coordinación de laboratorios de ingeniería',
 };
@@ -138,7 +139,6 @@ void main() {
         await sl<AuthController>().iniciarSesion('x', 'ClaveSegura1');
         await _pintar(tester, const Scaffold(body: CuentaPage()), sistema);
         expect(tester.takeException(), isNull);
-        expect(find.text('Sin verificar'), findsOneWidget);
         await tester.pumpWidget(const SizedBox());
       });
 

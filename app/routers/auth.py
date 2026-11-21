@@ -7,11 +7,12 @@ Delega toda la lógica de negocio y hashing seguro (bcrypt) a app.services.auth.
 """
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
+from app.core import permisos as permisos_core
 from app.core.database import get_db
 from app.core.deps import CurrentUser, GestionaUsuarios
 from app.schemas.auth import (
@@ -31,6 +32,7 @@ from app.schemas.perfil import (
     PasswordRequest,
     PerfilResponse,
     PerfilUpdate,
+    RolCatalogo,
     SesionRenovada,
 )
 from app.services import auth as auth_service
@@ -75,35 +77,8 @@ def register_endpoint(
     user: UsuarioCreate,
     db: Annotated[Session, Depends(get_db)],
 ):
-    """Crea la cuenta SIN verificar y envía el correo de verificación."""
+    """Crea la cuenta (solo correos institucionales). Siempre nace como Estudiante (ADR-0024)."""
     return auth_service.create_user(db, user)
-
-
-@router.get("/verificar-correo", response_class=HTMLResponse, include_in_schema=True)
-def verificar_correo_endpoint(
-    db: Annotated[Session, Depends(get_db)],
-    token: Annotated[str, Query(min_length=10, max_length=2048)],
-):
-    """Abre el enlace del correo: verifica la cuenta o confirma el cambio de correo."""
-    try:
-        resultado = auth_service.abrir_enlace_correo(db, token)
-    except HTTPException as exc:
-        return _html(paginas_auth.enlace_invalido(str(exc.detail)), status_code=400)
-    tipo, user = resultado
-    if tipo == "cambio":
-        return _html(paginas_auth.correo_cambiado(user.email))
-    return _html(paginas_auth.correo_verificado(user.nombre))
-
-
-@router.post("/reenviar-verificacion", status_code=202,
-             responses={409: {"description": "Ya verificado"}, 429: {"description": "Límite"}})
-def reenviar_verificacion_endpoint(
-    request: Request,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
-):
-    auth_service.reenviar_verificacion(db, current_user, ip=_ip(request))
-    return {"message": "Te enviamos de nuevo el correo de verificación."}
 
 
 @router.get("/restablecer", response_class=HTMLResponse)
@@ -114,9 +89,16 @@ def restablecer_pagina_endpoint(
     return _html(paginas_auth.formulario_restablecer(token))
 
 
+@router.get("/roles", response_model=list[RolCatalogo])
+def roles_endpoint(current_user: CurrentUser):
+    """Catálogo de roles con etiqueta, descripción y permisos (la matriz única, ADR-0025). La app
+    lo usa para el modo prueba y para listar roles: no tiene copia propia de la tabla."""
+    return permisos_core.catalogo()
+
+
 @router.get("/me", response_model=PerfilResponse)
 def me_endpoint(current_user: CurrentUser, db: Annotated[Session, Depends(get_db)]):
-    """Perfil completo: datos, verificación, preferencias y, desde ADR-0018, `rol_etiqueta` y
+    """Perfil completo: datos, preferencias y, desde ADR-0018, `rol_etiqueta` y
     `permisos` (la app decide qué mostrar por permisos, nunca comparando el texto del rol).
     Desde ADR-0019: `correo_institucional`, `rol_origen`, `rol_origen_texto` y `cargo`."""
     return perfil_service.respuesta(db, current_user)
@@ -212,20 +194,20 @@ def desactivar_cuenta_endpoint(
     return {"message": "Tu cuenta quedó desactivada."}
 
 
-@router.post("/me/cambiar-correo", status_code=202,
+@router.post("/me/cambiar-correo", response_model=PerfilResponse,
              responses={403: {"description": "Contraseña actual incorrecta"},
                         409: {"description": "Correo en uso"}, 429: {"description": "Límite"}})
 def cambiar_correo_endpoint(
     body: CambiarCorreoRequest,
     request: Request,
-    db: Annotated[Session, Depends(get_db)],
     current_user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
 ):
-    """Pide cambiar el correo: no cambia hasta abrir el enlace enviado al correo NUEVO."""
-    perfil_service.solicitar_cambio_correo(
+    """Cambia el correo al instante (solo institucional) confirmando con la contraseña."""
+    user = perfil_service.cambiar_correo(
         db, current_user, body.correo_nuevo, body.password, ip=_ip(request)
     )
-    return {"message": "Te enviamos un enlace al nuevo correo. Hasta que lo abras, sigue valiendo el anterior."}
+    return perfil_service.respuesta(db, user)
 
 
 @router.delete("/delete/{user_id}")

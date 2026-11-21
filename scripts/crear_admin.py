@@ -80,7 +80,7 @@ def main() -> int:
         else:
             anterior = user.rol
             user.rol = Rol.ADMINISTRADOR.value
-            user.rol_manual = True  # la lista de asignaciones no lo pisa (ADR-0019)
+            user.rol_manual = True  # rol puesto por un administrador (ADR-0024)
             user.activo = True
             user.sesion_version = (user.sesion_version or 0) + 1
             auditoria.registrar(db, "usuario.rol", "usuario", user.id, detalle={

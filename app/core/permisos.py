@@ -3,6 +3,9 @@ Modelo de roles y permisos de UTB Tracker (ADR-0018). FUENTE ÚNICA: los routers
 permiso con `require_permiso(...)` y la app recibe la lista en `GET /auth/me`; ninguna otra
 parte del código compara textos de rol.
 
+Qué permisos tiene cada rol NO está aquí: vive en `matriz_permisos.json` (ADR-0025), el único
+lugar donde se edita. Este módulo define los nombres de los permisos y carga/valida el archivo.
+
 Los valores GUARDADOS del rol no cambian (APK instaladas los leen): solo se agregan
 etiquetas para mostrar.
 
@@ -11,7 +14,9 @@ etiquetas para mostrar.
     auxiliar         Auditor        (administra salones; NO es la bitácora de auditoría)
     administrador    Administrador  (el equipo: todo + usuarios, bitácora, estadísticas)
 """
+import json
 from enum import Enum
+from pathlib import Path
 
 
 class Rol(str, Enum):
@@ -22,17 +27,11 @@ class Rol(str, Enum):
 
 ROLES_VALIDOS = tuple(r.value for r in Rol)
 
-ETIQUETAS = {
-    Rol.ESTUDIANTE.value: "Estudiante",
-    Rol.AUDITOR.value: "Auditor",
-    Rol.ADMINISTRADOR.value: "Administrador",
-}
-
 
 class Permiso(str, Enum):
     # Todos los roles
     SALONES_VER = "salones.ver"                    # salones, tipo, equipamiento, disponibilidad
-    SALONES_SOLICITAR = "salones.solicitar"        # pedir un salón (además exige correo verificado)
+    SALONES_SOLICITAR = "salones.solicitar"        # pedir un salón
     SOLICITUDES_PROPIAS = "solicitudes.propias"    # ver y cancelar MIS solicitudes
     REPORTES_CREAR = "reportes.crear"              # reportar un problema de un salón o equipo
     EQUIPOS_VER = "equipos.ver"                    # consultar equipos (fijos en cada salón)
@@ -52,24 +51,37 @@ class Permiso(str, Enum):
     MODO_PRUEBA = "modo_prueba"                      # ver la app como otro rol (solo interfaz)
 
 
-_TODOS = {
-    Permiso.SALONES_VER, Permiso.SALONES_SOLICITAR, Permiso.SOLICITUDES_PROPIAS,
-    Permiso.REPORTES_CREAR, Permiso.EQUIPOS_VER, Permiso.HORARIOS_VER,
-}
-_OPERACION = {
-    Permiso.SOLICITUDES_GESTIONAR, Permiso.SALONES_ADMINISTRAR, Permiso.REPORTES_GESTIONAR,
-    Permiso.EQUIPOS_GESTIONAR, Permiso.HORARIOS_GESTIONAR, Permiso.USUARIOS_VER,
-}
-_ADMINISTRACION = {
-    Permiso.USUARIOS_GESTIONAR, Permiso.AUDITORIA_VER, Permiso.ESTADISTICAS_VER,
-    Permiso.MODO_PRUEBA, Permiso.SALONES_CREAR_CATALOGO,
-}
+def _cargar_matriz() -> dict[str, dict]:
+    """Lee app/core/matriz_permisos.json (FUENTE ÚNICA, ADR-0025) y la valida: cada rol del
+    enum existe, y cada permiso del archivo existe en `Permiso` (y al revés, uno nuevo en el
+    código debe figurar en algún rol o se nota en la prueba). Falla al arrancar si no cuadra."""
+    datos = json.loads(MATRIZ_JSON.read_text(encoding="utf-8"))
+    roles = {r["valor"]: r for r in datos["roles"]}
+    if set(roles) != set(ROLES_VALIDOS):
+        raise RuntimeError(f"matriz_permisos.json: roles {sorted(roles)} != {sorted(ROLES_VALIDOS)}")
+    validos = {p.value for p in Permiso}
+    for rol in roles.values():
+        desconocidos = set(rol["permisos"]) - validos
+        if desconocidos:
+            raise RuntimeError(f"matriz_permisos.json: permisos desconocidos {sorted(desconocidos)}")
+    return roles
+
+
+MATRIZ_JSON = Path(__file__).with_name("matriz_permisos.json")
+_MATRIZ = _cargar_matriz()
 
 PERMISOS_POR_ROL: dict[str, frozenset[Permiso]] = {
-    Rol.ESTUDIANTE.value: frozenset(_TODOS),
-    Rol.AUDITOR.value: frozenset(_TODOS | _OPERACION),
-    Rol.ADMINISTRADOR.value: frozenset(_TODOS | _OPERACION | _ADMINISTRACION),
+    valor: frozenset(Permiso(p) for p in rol["permisos"]) for valor, rol in _MATRIZ.items()
 }
+ETIQUETAS = {valor: rol["etiqueta"] for valor, rol in _MATRIZ.items()}
+DESCRIPCIONES = {valor: rol["descripcion"] for valor, rol in _MATRIZ.items()}
+
+
+def catalogo() -> list[dict]:
+    """Roles con etiqueta, descripción y permisos: lo que recibe la app en GET /auth/roles."""
+    return [{"valor": valor, "etiqueta": ETIQUETAS[valor], "descripcion": DESCRIPCIONES[valor],
+             "permisos": sorted(p.value for p in PERMISOS_POR_ROL[valor])}
+            for valor in ROLES_VALIDOS]
 
 
 def normalizar_rol(rol: str | None) -> str:

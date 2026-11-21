@@ -1,8 +1,8 @@
 """
 Servicio de autenticación — capa de lógica de negocio (S9, ADR-0014).
 
-Registro con correo por verificar, login por nombre o correo, sesión con tokens por id,
-verificación de correo y recuperación de contraseña con tokens de un solo uso, límites de
+Registro solo con correo institucional (ADR-0024: sin verificación de correo), login por nombre
+o correo, sesión con tokens por id y recuperación de contraseña con tokens de un solo uso, límites de
 frecuencia en base de datos y auditoría de cada acción sensible (ADR-0010).
 """
 import logging
@@ -19,9 +19,7 @@ from app.core.deps import sesion_vigente, usuario_de_sujeto
 from app.core.hashing import hash_password, verify_password
 from app.core.politica import error_password, normalizar_correo, normalizar_nombre
 from app.core.security import (
-    PROPOSITO_CAMBIAR_CORREO,
     PROPOSITO_RECUPERAR,
-    PROPOSITO_VERIFICAR,
     create_access_token,
     create_refresh_token,
     crear_token_proposito,
@@ -94,22 +92,13 @@ def _enlace(ruta: str, token: str) -> str:
     return f"{config.URL_PUBLICA}{ruta}?token={token}"
 
 
-def _encolar_verificacion(db: Session, user: Usuario) -> None:
-    token = crear_token_proposito(user.id, PROPOSITO_VERIFICAR)
-    correo.encolar(db, user.email, "verificacion", {
-        "nombre": user.nombre,
-        "enlace": _enlace("/auth/verificar-correo", token),
-        "horas": config.VERIFICACION_EXPIRA_HORAS,
-    }, usuario_id=user.id)
-
-
 # --------------------------------------------------------------------------
-# Registro y verificación
+# Registro
 # --------------------------------------------------------------------------
 def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
     """
-    Registra un nuevo usuario SIN verificar y deja en el outbox el correo de verificación
-    (misma transacción). La contraseña se almacena como hash bcrypt (QS-04 / ADR-0004).
+    Registra un nuevo usuario. Siempre nace con el rol base (Estudiante, ADR-0024).
+    La contraseña se almacena como hash bcrypt (QS-04 / ADR-0004).
     Valida duplicados por nombre y por correo, sin distinguir mayúsculas (ADR-0014).
     """
     if _buscar_por_nombre(db, schema.nombre):
@@ -123,8 +112,8 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
             detail="Ya hay una cuenta con ese correo. Inicia sesión o recupera tu contraseña.",
         )
 
-    # El registro SIEMPRE nace con el rol base: el cliente no elige rol (ADR-0019). Un rol de la
-    # lista de asignaciones solo se aplica cuando la persona COMPRUEBA su correo (verificar).
+    # El registro SIEMPRE nace con el rol base: el cliente no elige rol y ningún correo da un rol
+    # (ADR-0024). Un rol con permisos solo lo pone un administrador a una cuenta existente.
     rol = asignaciones.ROL_BASE
 
     try:
@@ -134,8 +123,6 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
             rol=rol,
             rol_manual=False,
             password=hash_password(schema.password),  # hash bcrypt — S9 req. 9.8
-            # Sin correo real en producción la cuenta nace verificada (config.VERIFICACION_OBLIGATORIA).
-            email_verificado=not config.VERIFICACION_OBLIGATORIA,
         )
         db.add(new_user)
         db.flush()
@@ -143,9 +130,6 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
             db, "usuario.registro", "usuario", new_user.id, actor_id=new_user.id,
             detalle={"rol": rol},
         )
-        if config.VERIFICACION_OBLIGATORIA:
-            _encolar_verificacion(db, new_user)
-            limites.anotar(db, f"reenvio:{new_user.id}")
         db.commit()
         db.refresh(new_user)
         return new_user
@@ -163,43 +147,6 @@ def create_user(db: Session, schema: UsuarioCreate) -> Usuario:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error interno al crear usuario",
         ) from exc
-
-
-def verificar_correo(db: Session, token: str) -> Usuario:
-    """Marca el correo como verificado (token de un solo uso) y envía la bienvenida."""
-    _, user = consumir_token(db, token, PROPOSITO_VERIFICAR)
-    if not user.email_verificado or not user.email_verificado_en:
-        user.email_verificado = True
-        user.email_verificado_en = _ahora()
-        auditoria.registrar(db, "usuario.verificar_correo", "usuario", user.id, actor_id=user.id)
-        correo.encolar(db, user.email, "bienvenida", {"nombre": user.nombre}, usuario_id=user.id)
-    asignaciones.recalcular(db, user, "correo_verificado", actor_id=user.id)
-    db.commit()
-    return user
-
-
-def abrir_enlace_correo(db: Session, token: str) -> tuple[str, Usuario]:
-    """El enlace de los correos sirve para verificar la cuenta o para confirmar un cambio de
-    correo (Fase 2): el claim `proposito` del token decide cuál."""
-    if leer_token_proposito(token, PROPOSITO_CAMBIAR_CORREO):
-        from app.services import perfil  # import tardío: perfil usa este módulo
-
-        return "cambio", perfil.confirmar_cambio_correo(db, token)
-    return "verificacion", verificar_correo(db, token)
-
-
-def reenviar_verificacion(db: Session, user: Usuario, ip: str) -> None:
-    """Reenvía el correo de verificación (máx. CORREO_RATE_LIMIT por ventana, por cuenta e IP)."""
-    if user.email_verificado:
-        raise HTTPException(status_code=409, detail="Tu correo ya está verificado.")
-    for clave in (f"reenvio:{user.id}", f"reenvio-ip:{ip}"):
-        limites.exigir(db, clave, config.CORREO_RATE_LIMIT,
-                       config.CORREO_RATE_WINDOW_SECONDS, MSG_LIMITE_CORREO)
-    _encolar_verificacion(db, user)
-    limites.anotar(db, f"reenvio:{user.id}")
-    limites.anotar(db, f"reenvio-ip:{ip}")
-    auditoria.registrar(db, "usuario.reenviar_verificacion", "usuario", user.id, actor_id=user.id)
-    db.commit()
 
 
 # --------------------------------------------------------------------------
@@ -247,9 +194,6 @@ def login(db: Session, schema: UsuarioLogin, ip: str = "desconocida") -> dict:
         }, usuario_id=user.id)
     limites.limpiar(db, clave)
     limites.limpiar(db, f"login-fallido:{user.id}")
-    # Si la lista de asignaciones cambió, el rol se pone al día aquí (los tokens que se emiten
-    # abajo ya llevan la versión de sesión nueva).
-    asignaciones.recalcular(db, user, "inicio_sesion", actor_id=user.id)
     auditoria.registrar(db, "auth.login", "usuario", user.id, actor_id=user.id,
                         detalle={"tras_fallidos": fallidos} if fallidos else None)
     db.commit()
@@ -317,12 +261,7 @@ def aplicar_nueva_password(db: Session, user: Usuario, nueva: str) -> None:
 def reset_password(db: Session, token: str, new_password: str) -> None:
     _, user = consumir_token(db, token, PROPOSITO_RECUPERAR)
     aplicar_nueva_password(db, user, new_password)
-    # Quien recibió el enlace demostró poseer el correo.
-    if not user.email_verificado or not user.email_verificado_en:
-        user.email_verificado = True
-        user.email_verificado_en = _ahora()
     auditoria.registrar(db, "auth.recuperar_password", "usuario", user.id, actor_id=user.id)
-    asignaciones.recalcular(db, user, "correo_comprobado", actor_id=user.id)
     db.commit()
 
 

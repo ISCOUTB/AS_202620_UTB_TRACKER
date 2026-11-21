@@ -4,6 +4,8 @@
 
 Aceptado (2026-11-16). Completa ADR-0014 (correo verificado) y ADR-0018 (roles y permisos).
 
+> **Nota (2026-11-21, ADR-0024):** la regla de rol automático por correo verificado se reemplazó: ningún correo da un rol y solo un administrador lo asigna a una cuenta que ya existe. Siguen vigentes los puntos del dominio institucional (exacto) y de la foto.
+
 ## Contexto
 
 - Cualquiera podía registrarse con cualquier correo, también con uno de Gmail. La app es de la

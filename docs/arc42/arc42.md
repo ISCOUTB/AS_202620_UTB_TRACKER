@@ -235,8 +235,9 @@ cada rol contra `docs/seguridad/matriz-permisos.md`), `tests/test_roles.py`,
 
 *Responsabilidad:* admitir solo correos institucionales en registros y cambios de correo
 (`DOMINIOS_PERMITIDOS`, por defecto `utb.edu.co`, coincidencia exacta) sin bloquear cuentas
-antiguas; decidir el rol con UNA función a partir de la lista `asignaciones_rol` que mantiene
-el administrador, solo con el correo comprobado (un rol manual gana); guardar la foto de perfil
+antiguas; decidir el rol con UNA función (`rol_resuelto`) que devuelve el rol guardado: todo registro nace
+Estudiante y solo un administrador lo sube, a una cuenta existente, desde Usuarios o con la carga
+masiva (ADR-0024: sin verificación de correo ni lista automática); guardar la foto de perfil
 como miniatura limpia (sin EXIF/GPS) en una tabla aparte.
 *Interfaz:* `GET /auth/me` (`correo_institucional`, `rol_origen`, `rol_origen_texto`, `cargo`,
 `tiene_foto`, `foto_version`), `GET|POST /usuarios/asignaciones`,
@@ -633,6 +634,8 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0019](../adr/0019-correo-institucional-y-rol-por-asignacion.md) — Solo correos institucionales (dominio exacto, sin bloquear cuentas antiguas) y rol por una lista de asignación que solo aplica con el correo comprobado; el rol manual gana
 - [ADR-0020](../adr/0020-foto-de-perfil.md) — Foto de perfil como miniatura limpia (firma real, sin EXIF/GPS, sin librerías nuevas en el backend) en la tabla aparte `fotos_perfil`
 - [ADR-0023](../adr/0023-retiro-del-prestamo-de-equipos-y-control-de-erosion.md) — "prestado" deja de usarse (422 y migración de datos auditada), `/prestamos/*` queda como legado obsoleto y las capas se verifican solas con `tests/test_erosion_capas.py` (S09)
+- [ADR-0024](../adr/0024-sin-verificacion-de-correo-y-roles-asignados-por-administrador.md) — Se quita la verificación de correo (el dominio `@utb.edu.co` ya es de la UTB), todo registro nace Estudiante, el rol lo asigna solo un administrador a cuentas existentes (carga masiva con vista previa), las cuentas de otro dominio se desactivan y se rompe a propósito la compatibilidad con las APK viejas
+- [ADR-0025](../adr/0025-matriz-de-permisos-en-un-archivo-de-datos.md) — La matriz rol → permisos vive solo en `app/core/matriz_permisos.json`; el backend la valida al arrancar, la app la recibe en `GET /auth/roles` y `GET /auth/me` (sin copia propia) y la documentación se valida contra ella
 - [ADR-0022](../adr/0022-habilitacion-ocupacion-y-equipos-del-salon.md) — Habilitación manual del salón (motivo obligatorio) separada de la ocupación calculada; `estado` calculado con los valores de siempre; salón deshabilitado no se solicita y sus solicitudes se señalan y avisan sin cancelarse solas; historial del salón; equipos fijos con estado (nunca "prestado"), plantillas con vista previa; panel sin N+1
 - [ADR-0021](../adr/0021-catalogo-de-salones-utb.md) — Catálogo de salones UTB: regla del código en un solo lugar, lista provisional en un archivo de datos (59 salones, corregida con una tesis de la biblioteca UTB), carga idempotente que nunca borra y solo el Administrador crea, renombra y desactiva
 

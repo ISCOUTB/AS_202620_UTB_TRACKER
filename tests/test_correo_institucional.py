@@ -45,7 +45,7 @@ def test_sin_configuracion_solo_utb_edu_co():
 @pytest.mark.parametrize("correo", [
     "mmillan@utb.edu.co",
     "ana.perez@utb.edu.co",
-    "ana_perez+salones@utb.edu.co",
+    "ana_perez-salones@utb.edu.co",
     "t00012345@utb.edu.co",
 ])
 def test_correos_institucionales_validos(monkeypatch, correo):
@@ -174,4 +174,5 @@ def test_cuenta_antigua_puede_pasarse_a_institucional(client, db_session):
                         ).json()["access_token"]
     r = client.post("/auth/me/cambiar-correo", headers={"Authorization": f"Bearer {token}"},
                     json={"correo_nuevo": "antigua@utb.edu.co", "password": CLAVE})
-    assert r.status_code == 202, r.text
+    assert r.status_code == 200, r.text
+    assert r.json()["email"] == "antigua@utb.edu.co"

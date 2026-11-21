@@ -71,23 +71,10 @@ def sesion_vigente(user: Usuario, sujeto: Sujeto) -> bool:
     return sujeto.version_sesion >= (getattr(user, "sesion_version", 0) or 0)
 
 
-def require_verified(
-    current_user: Annotated[Usuario, Depends(get_current_user)],
-) -> Usuario:
-    """Acciones que exigen correo verificado (p. ej. solicitar un salón). ADR-0014."""
-    if not current_user.email_verificado:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Verifica tu correo para hacer esto. Revisa tu bandeja o pide que te lo reenviemos.",
-        )
-    return current_user
-
-
-def require_permiso(permiso: Permiso, *, verificado: bool = False):
+def require_permiso(permiso: Permiso):
     """
     Fábrica de dependencias: exige un permiso de `app/core/permisos.py` (ADR-0018).
-    Uso: `Depends(require_permiso(Permiso.SALONES_ADMINISTRAR))`. Con `verificado=True`
-    además exige correo verificado (ADR-0014). 401 sin sesión, 403 sin permiso.
+    Uso: `Depends(require_permiso(Permiso.SALONES_ADMINISTRAR))`. 401 sin sesión, 403 sin permiso.
     """
     def verificar_permiso(
         current_user: Annotated[Usuario, Depends(get_current_user)],
@@ -97,17 +84,15 @@ def require_permiso(permiso: Permiso, *, verificado: bool = False):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes permiso para hacer esto.",
             )
-        if verificado:
-            require_verified(current_user)
         return current_user
 
     verificar_permiso.permiso = permiso  # la prueba de matriz lo lee
     return verificar_permiso
 
 
-def con_permiso(permiso: Permiso, *, verificado: bool = False):
+def con_permiso(permiso: Permiso):
     """Alias de tipo: `current_user: Con(Permiso.EQUIPOS_GESTIONAR)`."""
-    return Annotated[Usuario, Depends(require_permiso(permiso, verificado=verificado))]
+    return Annotated[Usuario, Depends(require_permiso(permiso))]
 
 
 # Alias para retrocompatibilidad
@@ -115,11 +100,10 @@ Con = con_permiso
 
 # Alias de tipo para patrones comunes de inyección
 CurrentUser = Annotated[Usuario, Depends(get_current_user)]
-VerifiedUser = Annotated[Usuario, Depends(require_verified)]
 
 # Un alias por permiso (nombre = lo que la persona puede hacer). Los routers solo usan estos.
 VeSalones = con_permiso(Permiso.SALONES_VER)
-SolicitaSalon = con_permiso(Permiso.SALONES_SOLICITAR, verificado=True)
+SolicitaSalon = con_permiso(Permiso.SALONES_SOLICITAR)
 TieneSolicitudes = con_permiso(Permiso.SOLICITUDES_PROPIAS)
 CreaReportes = con_permiso(Permiso.REPORTES_CREAR)
 VeEquipos = con_permiso(Permiso.EQUIPOS_VER)

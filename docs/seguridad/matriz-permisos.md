@@ -1,6 +1,8 @@
 # Matriz de permisos — UTB Tracker (ADR-0018)
 
-Fuente única en el código: [`app/core/permisos.py`](../../app/core/permisos.py). Los routers
+Fuente única: [`app/core/matriz_permisos.json`](../../app/core/matriz_permisos.json) (ADR-0025), que
+carga [`app/core/permisos.py`](../../app/core/permisos.py). La app no tiene copia: recibe los roles
+en `GET /auth/roles`. La tabla "Permisos por rol" de abajo la valida `tests/test_matriz_unica.py`. Los routers
 piden un permiso (`require_permiso`, alias en `app/core/deps.py`) y la app recibe la lista en
 `GET /auth/me` (`permisos`). **Esta tabla la verifica `tests/test_matriz_permisos.py`**:
 si se agrega un endpoint sin fila aquí, o la fila no coincide con el código, la prueba falla.
@@ -21,7 +23,7 @@ si se agrega un endpoint sin fila aquí, o la fila no coincide con el código, l
 | Permiso | Estudiante | Auditor | Administrador |
 |---|:-:|:-:|:-:|
 | `salones.ver` | ✅ | ✅ | ✅ |
-| `salones.solicitar` (además exige correo verificado) | ✅ | ✅ | ✅ |
+| `salones.solicitar` | ✅ | ✅ | ✅ |
 | `solicitudes.propias` | ✅ | ✅ | ✅ |
 | `reportes.crear` | ✅ | ✅ | ✅ |
 | `equipos.ver` | ✅ | ✅ | ✅ |
@@ -40,8 +42,8 @@ si se agrega un endpoint sin fila aquí, o la fila no coincide con el código, l
 
 Decisiones: el estudiante **sí puede reportar** un problema de un salón o equipo (quien está en
 el salón lo ve primero); el auditor y el administrador también pueden solicitar salones (no
-estorba y conserva el comportamiento anterior). `salones.solicitar` exige además correo
-verificado (ADR-0014).
+estorba y conserva el comportamiento anterior). Desde ADR-0024 ya no hay verificación de correo:
+`salones.solicitar` solo pide sesión y permiso.
 
 ## Endpoints
 
@@ -55,15 +57,14 @@ los huecos corregidos.
 | GET | `/salud` | público | público | |
 | POST | `/auth/login` | público | público | |
 | POST | `/auth/register` | público | público | Siempre crea Estudiante, aunque el cuerpo traiga otro rol; solo correos institucionales (ADR-0019) |
-| GET | `/auth/verificar-correo` | público | público | Enlace del correo |
-| POST | `/auth/reenviar-verificacion` | sesión | sesión | |
 | GET | `/auth/restablecer` | público | público | Página del enlace de recuperación |
 | GET | `/auth/me` | sesión | sesión | Devuelve `rol_etiqueta` y `permisos` |
 | PATCH | `/auth/me` | sesión | sesión | No permite cambiar el rol |
 | POST | `/auth/me/cambiar-password` | sesión | sesión | |
 | POST | `/auth/me/cerrar-sesiones` | sesión | sesión | |
 | POST | `/auth/me/desactivar` | sesión | sesión | El último administrador no puede desactivarse (409) |
-| POST | `/auth/me/cambiar-correo` | sesión | sesión | ADR-0019: solo correos institucionales |
+| GET | `/auth/roles` | sesión | sesión | ADR-0025: catálogo de roles y permisos (la matriz única) |
+| POST | `/auth/me/cambiar-correo` | sesión | sesión | ADR-0024: solo institucionales; cambia al instante con la contraseña |
 | PUT | `/auth/me/foto` | — | sesión | ADR-0020: solo la propia; JPEG/PNG por firma, tamaño y frecuencia limitados |
 | DELETE | `/auth/me/foto` | — | sesión | ADR-0020: borra el contenido |
 | GET | `/auth/me/foto` | — | sesión | ADR-0020 |
@@ -120,7 +121,7 @@ los huecos corregidos.
 | GET | `/horarios/{horario_id}` | sesión | horarios.ver | |
 | PUT | `/horarios/{horario_id}` | auxiliar o admin | horarios.gestionar | |
 | DELETE | `/horarios/{horario_id}` | auxiliar o admin | horarios.gestionar | |
-| POST | `/prestamos-salon` | sesión + verificado | salones.solicitar | Exige correo verificado |
+| POST | `/prestamos-salon` | sesión | salones.solicitar | ADR-0024: ya no exige correo verificado |
 | GET | `/prestamos-salon/mias` | — | solicitudes.propias | Nuevo: mis solicitudes |
 | GET | `/prestamos-salon/gestion` | — | solicitudes.gestionar | Nuevo: bandeja con conflicto visible |
 | GET | `/prestamos-salon` | sesión | solicitudes.propias | El estudiante solo recibe las suyas |
@@ -140,13 +141,8 @@ los huecos corregidos.
 | GET | `/usuarios` | — | usuarios.gestionar | Nuevo: búsqueda, rol, última actividad |
 | PATCH | `/usuarios/{usuario_id}/rol` | — | usuarios.gestionar | Nuevo: 409 sobre sí mismo o último administrador |
 | PATCH | `/usuarios/{usuario_id}/estado` | — | usuarios.gestionar | Nuevo: ídem |
-| POST | `/usuarios/{usuario_id}/rol/automatico` | — | usuarios.gestionar | ADR-0019: quita el rol manual y aplica la lista |
 | GET | `/usuarios/{usuario_id}/foto` | — | propio o usuarios.ver | ADR-0020: nunca pública |
-| GET | `/usuarios/asignaciones` | — | usuarios.gestionar | ADR-0019: lista de asignación de roles por correo |
-| POST | `/usuarios/asignaciones` | — | usuarios.gestionar | ADR-0019: 409 si ya existe o dejaría sin administrador |
-| POST | `/usuarios/asignaciones/importar` | — | usuarios.gestionar | ADR-0019: todo o nada, errores por línea |
-| PATCH | `/usuarios/asignaciones/{asignacion_id}` | — | usuarios.gestionar | ADR-0019 |
-| DELETE | `/usuarios/asignaciones/{asignacion_id}` | — | usuarios.gestionar | ADR-0019: protege al último administrador |
+| POST | `/usuarios/asignaciones/importar` | — | usuarios.gestionar | ADR-0024: carga masiva SOLO a cuentas existentes; todo o nada |
 
 ## Compatibilidad con las APK instaladas
 

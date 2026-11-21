@@ -12,7 +12,6 @@ class Usuario {
     required this.nombre,
     required this.email,
     required this.rol,
-    this.emailVerificado = true,
     this.nombreMostrar,
     this.telefono,
     this.dependencia,
@@ -35,7 +34,6 @@ class Usuario {
   final String rol;
 
   /// Sin verificar puede entrar y consultar, pero no solicitar salones (ADR-0014).
-  final bool emailVerificado;
 
   /// Perfil personalizable (ADR-0016).
   final String? nombreMostrar;
@@ -53,18 +51,17 @@ class Usuario {
   final String? _rolEtiqueta;
   final Permisos? _permisos;
 
-  /// "Estudiante", "Auditor" o "Administrador" (del servidor, o calculada si no la manda).
+  /// Etiqueta del rol (la manda el servidor).
   String get rolEtiqueta =>
-      (_rolEtiqueta?.isNotEmpty ?? false) ? _rolEtiqueta! : RolUsuario.etiqueta(rol);
+      (_rolEtiqueta?.isNotEmpty ?? false) ? _rolEtiqueta! : 'Sin rol';
 
   /// Permisos REALES (los que aplica el servidor).
-  Permisos get permisos => _permisos ?? Permisos.deRol(rol);
+  Permisos get permisos => _permisos ?? Permisos.ninguno;
 
   /// False en cuentas antiguas con correo no institucional: el perfil avisa (ADR-0019).
   final bool correoInstitucional;
 
-  /// De dónde sale el rol (solo lectura): "base", "correo" (lista de asignaciones) o
-  /// "manual" (lo puso un administrador). [rolOrigenTexto] lo explica en español.
+  /// De dónde sale el rol (solo lectura): "base", "manual" (lo puso un administrador). [rolOrigenTexto] lo explica en español.
   final String rolOrigen;
   final String? rolOrigenTexto;
 
@@ -81,7 +78,6 @@ class Usuario {
         nombre: nombre,
         email: email,
         rol: rol,
-        emailVerificado: emailVerificado,
         nombreMostrar: nombreMostrar,
         telefono: telefono,
         dependencia: dependencia,
@@ -141,6 +137,4 @@ abstract class AuthRepository {
   /// GET /salud (health check profundo, S8)
   Future<bool> servidorSaludable();
 
-  /// POST /auth/reenviar-verificacion
-  Future<void> reenviarVerificacion();
 }

@@ -18,6 +18,7 @@ import 'package:utb_tracker_app/features/auth/data/auth_data.dart';
 import 'package:utb_tracker_app/features/auth/domain/auth_domain.dart';
 import 'package:utb_tracker_app/features/auth/presentation/auth_controller.dart';
 import 'package:utb_tracker_app/features/home/presentation/shell_page.dart';
+import 'catalogo_roles_falso.dart';
 import 'package:utb_tracker_app/features/salones/domain/entities/salon.dart';
 import 'package:utb_tracker_app/features/solicitudes/data/solicitudes_data.dart';
 import 'package:utb_tracker_app/features/solicitudes/presentation/solicitudes_controller.dart';
@@ -33,9 +34,8 @@ Map<String, dynamic> _usuario(int id, String nombre, String rol) => {
       'nombre': nombre,
       'email': '${nombre.split(' ').first.toLowerCase()}@utb.edu.co',
       'rol': rol,
-      'rol_etiqueta': RolUsuario.etiqueta(rol),
-      'permisos': Permisos.deRol(rol).valores.toList(),
-      'email_verificado': true,
+      'rol_etiqueta': etiquetaDe(rol),
+      'permisos': permisosDe(rol).valores.toList(),
     };
 
 final _estudiante = _usuario(1, 'Estudiante Demo', RolUsuario.estudiante);
@@ -76,6 +76,7 @@ Future<http.Response> _servidor(http.Request req) async {
     return _json({'access_token': 'a', 'refresh_token': 'r', 'token_type': 'bearer', 'user': _sesionDe});
   }
   if (ruta == '/auth/me') return _json(_sesionDe);
+  if (ruta == '/auth/roles') return _json(catalogoRolesFalso);
   if (ruta == '/prestamos-salon/mias') {
     return _json([
       _solicitud(1, 'pendiente'),
@@ -167,11 +168,11 @@ class _RepoFalso implements SolicitudesRepository {
 }
 
 void main() {
-  group('Permisos (espejo de app/core/permisos.py)', () {
+  group('Permisos (vienen del servidor, ADR-0025)', () {
     test('cada rol tiene exactamente los permisos del servidor', () {
-      final est = Permisos.deRol(RolUsuario.estudiante);
-      final aud = Permisos.deRol(RolUsuario.auditor);
-      final adm = Permisos.deRol(RolUsuario.administrador);
+      final est = permisosDe(RolUsuario.estudiante);
+      final aud = permisosDe(RolUsuario.auditor);
+      final adm = permisosDe(RolUsuario.administrador);
       expect(est.valores.length, 6);
       expect(aud.valores.length, 12);
       expect(adm.valores.length, 17); // + salones.crear_catalogo (ADR-0021)
@@ -181,25 +182,25 @@ void main() {
       expect(aud.puede(Permisos.usuariosGestionar), isFalse);
       expect(aud.puede(Permisos.auditoriaVer), isFalse);
       expect(adm.puede(Permisos.modoPrueba), isTrue);
-      expect(Permisos.deRol('desconocido').valores, isEmpty);
+      expect(permisosDe('desconocido').valores, isEmpty);
     });
 
-    test('usa la lista del servidor y, si no viene, la calcula del rol', () {
+    test('usa la lista del servidor y, si no viene, no hay permisos (sin copia propia)', () {
       final conLista = UsuarioModel.desdeJson({..._estudiante, 'permisos': ['salones.ver']});
       expect(conLista.permisos.valores, {'salones.ver'});
       final sinLista = UsuarioModel.desdeJson(
           {'id': 9, 'nombre': 'Viejo', 'email': 'v@utb.edu.co', 'rol': 'auxiliar'});
-      expect(sinLista.permisos.puede(Permisos.solicitudesGestionar), isTrue);
-      expect(sinLista.rolEtiqueta, 'Auditor');
+      expect(sinLista.permisos.valores, isEmpty);
+      expect(sinLista.rolEtiqueta, 'Sin rol');
     });
 
     test('la barra inferior sale de los permisos', () {
-      expect(pestanasPara(Permisos.deRol(RolUsuario.estudiante)),
+      expect(pestanasPara(permisosDe(RolUsuario.estudiante)),
           [Pestana.inicio, Pestana.salones, Pestana.solicitudes, Pestana.perfil]);
       final operacion = [Pestana.inicio, Pestana.salones, Pestana.solicitudes, Pestana.control,
         Pestana.equipos, Pestana.perfil];
-      expect(pestanasPara(Permisos.deRol(RolUsuario.auditor)), operacion);
-      expect(pestanasPara(Permisos.deRol(RolUsuario.administrador)), operacion);
+      expect(pestanasPara(permisosDe(RolUsuario.auditor)), operacion);
+      expect(pestanasPara(permisosDe(RolUsuario.administrador)), operacion);
     });
   });
 

@@ -74,29 +74,6 @@ def _texto(lineas: list[str]) -> str:
 # --------------------------------------------------------------------------
 # Plantillas
 # --------------------------------------------------------------------------
-def verificacion(d: dict) -> tuple[str, str, str]:
-    asunto = "Confirma tu correo en UTB Tracker"
-    horas = d.get("horas", 24)
-    texto = _texto([
-        f"Hola, {d.get('nombre', '')}:",
-        "",
-        "Para activar tu cuenta de UTB Tracker confirma que este correo es tuyo abriendo:",
-        d["enlace"],
-        "",
-        f"El enlace vence en {horas} horas y sirve una sola vez.",
-        "Si no creaste esta cuenta, ignora este correo.",
-    ])
-    html = _layout("Confirma tu correo", (
-        f"<p>Hola, <b>{_e(d.get('nombre'))}</b>:</p>"
-        "<p>Para activar tu cuenta confirma que este correo es tuyo. Mientras no lo hagas puedes "
-        "entrar y consultar, pero no solicitar salones.</p>"
-        + _boton("Confirmar mi correo", d["enlace"])
-        + f"<p style='font-size:12px;color:#666'>Vence en {_e(horas)} horas y sirve una sola vez. "
-        "Si no creaste esta cuenta, ignora este correo.</p>"
-    ))
-    return asunto, texto, html
-
-
 def bienvenida(d: dict) -> tuple[str, str, str]:
     asunto = "¡Bienvenido a UTB Tracker!"
     texto = _texto([
@@ -135,25 +112,6 @@ def recuperacion(d: dict) -> tuple[str, str, str]:
         + _codigo(d["codigo"])
         + f"<p style='font-size:12px;color:#666'>Vence en {_e(minutos)} minutos y sirve una sola "
         "vez. Si no fuiste tú, ignora este correo: tu contraseña no cambia.</p>"
-    ))
-    return asunto, texto, html
-
-
-def cambio_correo_nuevo(d: dict) -> tuple[str, str, str]:
-    asunto = "Confirma tu nuevo correo en UTB Tracker"
-    texto = _texto([
-        f"Hola, {d.get('nombre', '')}:",
-        "",
-        f"Pediste usar {d.get('correo_nuevo', '')} en tu cuenta de UTB Tracker. Confírmalo aquí:",
-        d["enlace"],
-        "",
-        "Hasta que lo confirmes, tu cuenta sigue usando el correo anterior.",
-    ])
-    html = _layout("Confirma tu nuevo correo", (
-        f"<p>Hola, <b>{_e(d.get('nombre'))}</b>:</p>"
-        f"<p>Pediste usar <b>{_e(d.get('correo_nuevo'))}</b> en tu cuenta. Hasta que lo confirmes, "
-        "tu cuenta sigue usando el correo anterior.</p>"
-        + _boton("Confirmar el nuevo correo", d["enlace"])
     ))
     return asunto, texto, html
 
@@ -263,10 +221,8 @@ def salon_deshabilitado(d: dict) -> tuple[str, str, str]:
 
 
 PLANTILLAS: dict[str, tuple[Callable[[dict], tuple[str, str, str]], str]] = {
-    "verificacion": (verificacion, SEGURIDAD),
     "bienvenida": (bienvenida, CUENTA),
     "recuperacion": (recuperacion, SEGURIDAD),
-    "cambio_correo_nuevo": (cambio_correo_nuevo, SEGURIDAD),
     "cambio_correo_aviso": (cambio_correo_aviso, SEGURIDAD),
     "cambio_password": (cambio_password, SEGURIDAD),
     "inicio_sesion_sospechoso": (inicio_sesion_sospechoso, SEGURIDAD),
