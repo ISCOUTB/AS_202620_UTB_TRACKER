@@ -38,6 +38,12 @@ class TipoNoPermitido(ValueError):
     """No es JPEG ni PNG (por su contenido real)."""
 
 
+MIME_JPEG = "image/jpeg"
+MIME_PNG = "image/png"
+ERR_JPEG_INCOMPLETA = "La foto JPEG está incompleta"
+ERR_JPEG_DANADA = "La foto JPEG está dañada"
+
+
 @dataclass
 class ImagenLimpia:
     contenido: bytes
@@ -48,17 +54,17 @@ class ImagenLimpia:
 
 def tipo_por_firma(datos: bytes) -> str | None:
     if datos.startswith(FIRMA_JPEG):
-        return "image/jpeg"
+        return MIME_JPEG
     if datos.startswith(FIRMA_PNG):
-        return "image/png"
+        return MIME_PNG
     return None
 
 
 def limpiar(datos: bytes) -> ImagenLimpia:
     tipo = tipo_por_firma(datos)
-    if tipo == "image/jpeg":
+    if tipo == MIME_JPEG:
         return _limpiar_jpeg(datos)
-    if tipo == "image/png":
+    if tipo == MIME_PNG:
         return _limpiar_png(datos)
     raise TipoNoPermitido("Solo se aceptan fotos JPEG o PNG")
 
@@ -108,7 +114,7 @@ def _limpiar_jpeg(datos: bytes) -> ImagenLimpia:
             while True:
                 pos = datos.find(b"\xff", pos)
                 if pos < 0 or pos + 1 >= n:
-                    raise ImagenInvalida("La foto JPEG está incompleta")
+                    raise ImagenInvalida(ERR_JPEG_INCOMPLETA)
                 siguiente = datos[pos + 1]
                 if siguiente == 0x00 or 0xD0 <= siguiente <= 0xD7 or siguiente == 0xFF:
                     pos += 1 if siguiente == 0xFF else 2
@@ -117,11 +123,11 @@ def _limpiar_jpeg(datos: bytes) -> ImagenLimpia:
             salida.append(datos[inicio:pos])
             en_datos = False
         if pos + 1 >= n or datos[pos] != 0xFF:
-            raise ImagenInvalida("La foto JPEG está dañada")
+            raise ImagenInvalida(ERR_JPEG_DANADA)
         while pos < n and datos[pos] == 0xFF:  # relleno permitido entre marcadores
             pos += 1
         if pos >= n:
-            raise ImagenInvalida("La foto JPEG está incompleta")
+            raise ImagenInvalida(ERR_JPEG_INCOMPLETA)
         marcador = datos[pos]
         pos += 1
         segmentos += 1
@@ -134,10 +140,10 @@ def _limpiar_jpeg(datos: bytes) -> ImagenLimpia:
             salida.append(bytes((0xFF, marcador)))
             continue
         if pos + 2 > n:
-            raise ImagenInvalida("La foto JPEG está incompleta")
+            raise ImagenInvalida(ERR_JPEG_INCOMPLETA)
         (largo,) = struct.unpack_from(">H", datos, pos)
         if largo < 2 or pos + largo > n:
-            raise ImagenInvalida("La foto JPEG está dañada")
+            raise ImagenInvalida(ERR_JPEG_DANADA)
         cuerpo = datos[pos + 2:pos + largo]
         segmento = datos[pos - 2:pos + largo]
         pos += largo
@@ -147,7 +153,7 @@ def _limpiar_jpeg(datos: bytes) -> ImagenLimpia:
             continue  # metadatos y comentarios: fuera
         if marcador in _SOF:
             if len(cuerpo) < 5:
-                raise ImagenInvalida("La foto JPEG está dañada")
+                raise ImagenInvalida(ERR_JPEG_DANADA)
             alto, ancho = struct.unpack_from(">HH", cuerpo, 1)
         if marcador == 0xDA:
             en_datos = True
@@ -156,7 +162,7 @@ def _limpiar_jpeg(datos: bytes) -> ImagenLimpia:
         raise ImagenInvalida("La foto JPEG no indica su tamaño")
     if orientacion and orientacion != 1:
         salida.insert(1, _app1_solo_orientacion(orientacion))
-    return ImagenLimpia(b"".join(salida), "image/jpeg", ancho, alto)
+    return ImagenLimpia(b"".join(salida), MIME_JPEG, ancho, alto)
 
 
 # --------------------------------------------------------------------------

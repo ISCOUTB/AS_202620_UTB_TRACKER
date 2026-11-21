@@ -74,25 +74,41 @@ def _ocupaciones(db: Session, salones: list[Salon], local: datetime) -> list[dic
     for salon in salones:
         clase = clases.get(salon.id)
         prestamo = solicitudes.get(salon.id)
-        ocupante = "clase" if clase else "prestamo" if prestamo else "libre"
+        if clase:
+            ocupante = "clase"
+        elif prestamo:
+            ocupante = "prestamo"
+        else:
+            ocupante = "libre"
         registro = presencias.get(clase.id) if clase else None
-        resultado.append({
-            "salon": salon,
-            "ocupante": ocupante,
-            "clase_actual": {
+
+        if clase:
+            clase_actual = {
                 "horario_id": clase.id, "materia": clase.materia, "profesor": clase.profesor,
                 "hora_inicio": clase.hora_inicio, "hora_fin": clase.hora_fin,
-            } if clase else None,
-            "prestamo_actual": {
+            }
+        else:
+            clase_actual = None
+
+        if prestamo:
+            nombre_u = prestamo.usuario.nombre if prestamo.usuario else f"Usuario #{prestamo.usuario_id}"
+            prestamo_actual = {
                 "prestamo_id": prestamo.id,
                 "usuario_id": prestamo.usuario_id,
-                "usuario_nombre": (prestamo.usuario.nombre if prestamo.usuario
-                                   else f"Usuario #{prestamo.usuario_id}"),
+                "usuario_nombre": nombre_u,
                 "estado": prestamo.estado,
                 "fecha_inicio": prestamo.fecha_inicio,
                 "fecha_fin": prestamo.fecha_fin,
                 "motivo": prestamo.motivo,
-            } if prestamo else None,
+            }
+        else:
+            prestamo_actual = None
+
+        resultado.append({
+            "salon": salon,
+            "ocupante": ocupante,
+            "clase_actual": clase_actual,
+            "prestamo_actual": prestamo_actual,
             "profesor_presente": registro.profesor_presente if registro else None,
             "solicitudes_pendientes": pendientes.get(salon.id, 0),
             "reportes_abiertos": abiertos.get(salon.id, 0),

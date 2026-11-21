@@ -130,10 +130,11 @@ app.include_router(resources.router, prefix="/recursos", tags=["recursos"])
 # evidencia de los experimentos de idempotencia y bloqueo (S11) y figura como obsoleto.
 app.include_router(loans.router, prefix="/prestamos", tags=["prestamos (legado)"], deprecated=True)
 # Va antes que `salones`: /salones/ocupacion no debe caer en /salones/{salon_id}.
+PREFIX_SALONES = "/salones"
 app.include_router(catalogo.router, prefix="/salones/catalogo", tags=["salones-catalogo"])
-app.include_router(estado_salon.router, prefix="/salones", tags=["salones-habilitacion"])
-app.include_router(salones_admin.router, prefix="/salones", tags=["salones-admin"])
-app.include_router(salones.router, prefix="/salones", tags=["salones"])
+app.include_router(estado_salon.router, prefix=PREFIX_SALONES, tags=["salones-habilitacion"])
+app.include_router(salones_admin.router, prefix=PREFIX_SALONES, tags=["salones-admin"])
+app.include_router(salones.router, prefix=PREFIX_SALONES, tags=["salones"])
 app.include_router(horarios.router, prefix="/horarios", tags=["horarios"])
 app.include_router(prestamos_salon.router, prefix="/prestamos-salon", tags=["prestamos-salon"])
 app.include_router(maintenance.router, prefix="/mantenimientos", tags=["mantenimientos"])

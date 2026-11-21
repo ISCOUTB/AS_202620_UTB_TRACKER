@@ -30,7 +30,9 @@ def upgrade() -> None:
     existentes = {n for (n,) in con.execute(sa.text("SELECT nombre FROM salones"))}
     creados = 0
     for r in datos["rangos"]:
-        for n in range(r["desde"], r["hasta"] + 1):
+        desde = int(r["desde"])
+        hasta = int(r["hasta"])
+        for n in range(desde, min(hasta + 1, desde + 100)):
             codigo = f"A{r['edificio']}-{r['piso']}{n:02d}"
             if codigo in existentes:
                 continue
@@ -52,4 +54,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # No se revierte la carga automática de catálogo para preservar los salones creados.
     pass
