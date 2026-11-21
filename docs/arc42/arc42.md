@@ -771,7 +771,18 @@ en `docs/auditoria_s8_s9_s11.md`.
 | **R-20** | Vulnerabilidades en cadena de suministro de paquetes backend (T-22) | Medio — Seguridad / Integridad. CVEs en starlette 0.50.0 y pyjwt 2.12.1 | **Abierto / En proceso:** Mitigado parcialmente con `pip-audit` en CI (`ci.yml:51-55`); pendiente actualización de versiones a starlette >= 1.0.1 y pyjwt >= 2.14.0. |
 | **R-21** | Margen mínimo de QS-02 bajo 300 peticiones concurrentes con 1 worker (máx 2976 ms vs 3000 ms) | Medio — Rendimiento / QS-02. Latencia al límite del umbral ante picos de demanda. Causa no aislada (hipótesis no verificada: 1 worker de Uvicorn y pool de 30 conexiones en `app/core/database.py:21-24`) | **Abierto / Deuda técnica:** Mitigación propuesta mediante caché en memoria acotada por TTL ([`docs/datos/diseno-cache.md`](../datos/diseno-cache.md)) y despliegue multi-worker de Uvicorn. Evidencia en [`docs/calidad/medicion-qs03.md`](../calidad/medicion-qs03.md). |
 
+## 11. Revisión entre pares
+
+| Hallazgo | Evaluador | Impacto | Acción | Estado |
+|---|---|---|---|---|
+| Falta de tabla de mitigaciones en sección 8 | Profesor García | Alto (S13) | Añadir tabla de mitigaciones en `docs/arc42/arc42.md` | Mitigado |
+| Ausencia de enlace a modelo de amenazas y privacidad | Profesor García | Medio (S13) | Añadir enlaces a `docs/seguridad/modelo-amenazas.md` y `docs/seguridad/privacidad.md` | Mitigado |
+| Pendiente de hallazgos de pares | Equipo | N/A | Revisar y documentar hallazgos restantes | En progreso |
+
+---
+
 <PENDIENTE: hallazgos de la revisión entre pares>
+
 
 
 

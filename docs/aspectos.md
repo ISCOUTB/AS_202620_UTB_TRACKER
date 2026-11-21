@@ -38,6 +38,12 @@ columnas quedan en `—` porque todavía no existen ADRs, código ni pruebas.
 
 - **Nombre:** Estabilidad con muchos usuarios simultáneos
 - **Para quién:** Todo el campus, especialmente en inicio de semestre.
+- **Qué problema resuelve:** Si el sistema se satura cuando muchos piden equipos a la vez, el registro queda incompleto.
+
+**Enlace a medición:** Esta característica está validada en el informe de carga **QS‑03**: [docs/calidad/medicion-qs03.md](../calidad/medicion-qs03.md) donde se muestra que 300 usuarios concurrentes alcanzan un p95 de 2523 ms (bajo el umbral de 3000 ms).
+
+- **Nombre:** Estabilidad con muchos usuarios simultáneos
+- **Para quién:** Todo el campus, especialmente en inicio de semestre.
 - **Qué problema resuelve:** Si el sistema se satura cuando muchos piden equipos a la vez, el
   registro queda incompleto.
 
