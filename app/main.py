@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.core.config import CORS_ORIGINS
 from app.routers import auth
@@ -40,6 +40,12 @@ app = FastAPI(
     description="API REST para gestión de salones, préstamos de equipos electrónicos y horarios — UTB.",
     version="1.0.0",
 )
+
+
+@app.get("/", include_in_schema=False)
+def raiz():
+    """Redirige la raíz al explorador interactivo Swagger UI."""
+    return RedirectResponse(url="/docs")
 
 # ---------------------------------------------------------------------------
 # CORS Middleware — permite peticiones desde el frontend Flutter

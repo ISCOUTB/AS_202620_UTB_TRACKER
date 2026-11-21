@@ -17,6 +17,8 @@ reales del código y las pruebas que lo verifican.
 | [arc42/arc42.md](arc42/arc42.md) | Documento principal: las 12 secciones de arc42 (objetivos, restricciones, contexto, solución, bloques, ejecución, despliegue, conceptos, decisiones, calidad, riesgos y glosario) |
 | [c4/c4_nivel1.md](c4/c4_nivel1.md) | C4 nivel 1: contexto (personas por rol y sistemas externos) |
 | [c4/C2.md](c4/C2.md) | C4 nivel 2: contenedores (app Flutter, API FastAPI, worker, PostgreSQL) |
+| [c4/c4_nivel3.md](c4/c4_nivel3.md) | C4 nivel 3: componentes (arquitectura interna de la API Backend) |
+| [guia_evaluacion_final.md](guia_evaluacion_final.md) | Guía de 3 páginas para la entrega y sustentación final del proyecto |
 | [ficha_problema.md](ficha_problema.md), [matriz_estilos.md](matriz_estilos.md) | Problema de negocio y comparación de estilos arquitectónicos |
 
 ## 2. Decisiones (ADR)
