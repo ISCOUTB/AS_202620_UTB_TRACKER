@@ -122,7 +122,7 @@ def equipos_de(salon: Salon) -> list[tuple[str, str, str]]:
 
 def _ajenos(db) -> set[tuple[int, str]]:
     """(salón, categoría) que YA tienen un equipo que no es DEMO-: ahí no se agrega otro igual
-    (p. ej. un video beam que ya estaba), salvo computadores y "otro" (se cuentan aparte)."""
+    (p. ej. los 30 computadores que ya cargó scripts/poblar_a1_piso4.py), salvo "otro"."""
     return {(sid, cat) for sid, cat in db.query(Recurso.salon_id, Recurso.categoria)
             .filter(~Recurso.serial.like(f"{PREFIJO}%"), Recurso.salon_id.isnot(None))}
 
@@ -138,7 +138,7 @@ def agregar(db, simular: bool, detalle: bool = False, confirmar: bool = True) ->
         for cat, serial, desc in equipos_de(salon):
             if serial in existentes:
                 continue
-            if cat in ("video_beam", "aire_ac", "tv", "audio") and (salon.id, cat) in ajenos:
+            if cat in ("computador", "video_beam", "aire_ac", "tv", "audio") and (salon.id, cat) in ajenos:
                 continue  # ya tiene uno de ese tipo: no se duplica
             resumen.append((cat, serial, desc))
             estado, nota = NOVEDADES.get(serial, ("disponible", None))

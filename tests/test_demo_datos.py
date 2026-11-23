@@ -114,3 +114,14 @@ def test_quitar_deja_el_salon_como_estaba(db_session):
     equipos.quitar(db_session)
     assert db_session.query(Salon).filter(Salon.habilitado.is_(False)).count() == 0
     assert db_session.query(PrestamoSalon).count() == 0
+
+
+def test_no_duplica_computadores_que_ya_existen_en_la_sala(db_session):
+    _crear_catalogo(db_session)
+    sala = db_session.query(Salon).filter(Salon.nombre == "A1-402").one()
+    for i in range(30):  # los que carga scripts/poblar_a1_piso4.py
+        db_session.add(Recurso(categoria="computador", serial=f"A1-402-PC-{i:02d}", salon_id=sala.id))
+    db_session.commit()
+    equipos.agregar(db_session, simular=False)
+    assert db_session.query(Recurso).filter(Recurso.salon_id == sala.id,
+                                            Recurso.categoria == "computador").count() == 30
