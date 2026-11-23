@@ -17,7 +17,7 @@ En la terminal de VS Code, desde la raíz del repo:
 | Comando | Servidor | Cuentas |
 |---|---|---|
 | `.\iniciar.ps1` | Local, en tu PC (`http://127.0.0.1:8000`, base `utb_tracker.db`) | De prueba (sección 4) y las que crees en tu PC |
-| `.\iniciar.ps1 -Nube` y el APK | **Oficial**, `https://api.iscoutb.dev` | Las reales, iguales en el PC y el celular |
+| `.\iniciar.ps1 -Nube` y el APK | **Oficial**, `https://api-tractar.iscoutb.dev` | Las reales, iguales en el PC y el celular |
 
 La app siempre muestra arriba a qué servidor habla ("Local (este PC) · conectado" u "Oficial
 (nube) · conectado"). Tócalo para ver la dirección completa; en esta compilación también puedes
@@ -101,7 +101,7 @@ las clases ya hayan terminado y quieras verlas en curso otra vez:
 
 ## 6. Instalar la app en un celular Android (APK)
 
-El APK ya compilado apunta al **servidor en la nube** (`https://api.iscoutb.dev`), así que en
+El APK ya compilado apunta al **servidor en la nube** (`https://api-tractar.iscoutb.dev`), así que en
 el celular funciona con datos móviles o cualquier Wi-Fi, sin tener el PC encendido.
 
 Para generarlo de nuevo (tarda de 10 a 30 minutos la primera vez):

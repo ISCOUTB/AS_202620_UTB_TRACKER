@@ -20,7 +20,7 @@ class ApiConfig {
       bool.fromEnvironment('PERMITIR_CAMBIAR_SERVIDOR');
 
   /// Servidor UTB Tracker en la nube (dominio HTTPS con certificado).
-  static const String servidorProduccion = 'https://api.iscoutb.dev';
+  static const String servidorProduccion = 'https://api-tractar.iscoutb.dev';
 
   /// Servidores que se ofrecen al cambiar (además de escribir uno a mano).
   static const Map<String, String> sugeridos = {

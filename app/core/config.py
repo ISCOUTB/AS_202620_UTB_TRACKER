@@ -44,7 +44,7 @@ USE_REAL_MAIL = os.getenv("USE_REAL_MAIL", "false").strip().lower() in (
 # Base de los enlaces que van en los correos (dónde se abre /auth/restablecer).
 # Sin la variable, en producción o con correo real se usa la dirección del servidor oficial
 # (un enlace a 127.0.0.1 no le sirve a quien lo recibe en su correo).
-SERVIDOR_OFICIAL = "https://api.iscoutb.dev"
+SERVIDOR_OFICIAL = "https://api-tractar.iscoutb.dev"
 URL_PUBLICA = os.getenv(
     "URL_PUBLICA",
     SERVIDOR_OFICIAL if ENVIRONMENT == "production" or USE_REAL_MAIL else "http://127.0.0.1:8000",

@@ -223,7 +223,7 @@ def test_produccion_arranca_solo_con_las_claves_anteriores(tmp_path):
         **env, "PYTHONPATH": str(Path(__file__).resolve().parent.parent)},
         capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
-    assert r.stdout.split() == ["https://api.iscoutb.dev", "False"]
+    assert r.stdout.split() == ["https://api-tractar.iscoutb.dev", "False"]
 
 
 # --------------------------------------------------------------------------

@@ -6,7 +6,7 @@
 #   .\iniciar.ps1 -SinCompilar        # no recompila la app (más rápido si no cambiaste el frontend)
 #   .\iniciar.ps1 -Nube               # solo la app, contra el servidor OFICIAL en la nube
 #
-# Servidor oficial: https://api.iscoutb.dev (el del APK). El local usa utb_tracker.db.
+# Servidor oficial: https://api-tractar.iscoutb.dev (el del APK). El local usa utb_tracker.db.
 # Los correos en local NO se envían: se guardan en logs\correos\ (ábrelos para ver los enlaces).
 # Para apagar todo: .\detener.ps1
 param(
@@ -21,7 +21,7 @@ $raiz = $PSScriptRoot
 $py = Join-Path $raiz 'venv\Scripts\python.exe'
 $web = Join-Path $raiz 'frontend\build\web'
 $logs = Join-Path $raiz 'logs'
-$nube = 'https://api.iscoutb.dev'
+$nube = 'https://api-tractar.iscoutb.dev'
 $local = 'http://127.0.0.1:8000'
 $api = if ($Nube) { $nube } else { $local }
 # La compilación recuerda a qué servidor apunta; si cambia, se recompila.

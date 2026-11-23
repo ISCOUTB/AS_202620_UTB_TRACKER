@@ -62,7 +62,7 @@ El sistema evolucionó a lo largo de 16 semanas respondiendo a escenarios de cal
 
 ### 3.3 Guía de Demostración para la Sustentación (Orientada a Escenarios de Calidad)
 * **Demostración 1 (Disponibilidad y Conexión en Vivo · QS-01):**  
-  Navegar a `https://api.iscoutb.dev/salud` para evidenciar estado `ok` y conexión viva a PostgreSQL.
+  Navegar a `https://api-tractar.iscoutb.dev/salud` para evidenciar estado `ok` y conexión viva a PostgreSQL.
 * **Demostración 2 (Seguridad y Control de Acceso Granular · QS-04):**  
   Intentar acceder a `/salones/admin` o `/auditoria` con token de rol Estudiante en Swagger (`/docs`) y verificar rechazo `403 Forbidden` con mensaje descriptivo.
 * **Demostración 3 (Confiabilidad y Prevención de Doble Reserva · QS-06):**  

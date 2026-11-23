@@ -13,9 +13,9 @@ Backend con FastAPI y app móvil con Flutter. **Índice de toda la documentació
 
 | Componente | URL / Acceso | Descripción |
 |---|---|---|
-| **API Backend (Producción)** | [https://api.iscoutb.dev](https://api.iscoutb.dev) | Servidor VPS en producción gestionado por systemd y Nginx |
-| **Documentación Interactiva (Swagger)** | [https://api.iscoutb.dev/docs](https://api.iscoutb.dev/docs) | Catálogo OpenAPI interactivo |
-| **Endpoint de Salud (Smoke Test)** | [https://api.iscoutb.dev/salud](https://api.iscoutb.dev/salud) | Monitor de estado del servicio y conexión a BD |
+| **API Backend (Producción)** | [https://api-tractar.iscoutb.dev](https://api-tractar.iscoutb.dev) | Servidor VPS en producción gestionado por systemd y Nginx |
+| **Documentación Interactiva (Swagger)** | [https://api-tractar.iscoutb.dev/docs](https://api-tractar.iscoutb.dev/docs) | Catálogo OpenAPI interactivo |
+| **Endpoint de Salud (Smoke Test)** | [https://api-tractar.iscoutb.dev/salud](https://api-tractar.iscoutb.dev/salud) | Monitor de estado del servicio y conexión a BD |
 | **Cliente Android (Release APK)** | [Releases GitHub · v1.0.4](https://github.com/ISCOUTB/AS_202620_UTB_TRACKER/releases) | Binario `app-release.apk` con R8 habilitado y firmado |
 
 ## Arquitectura del proyecto
@@ -144,11 +144,11 @@ sea una cebolla pura.
 
 ## API pública
 
-- Swagger: <https://api.iscoutb.dev/docs#/>
-- Salud profunda: <https://api.iscoutb.dev/salud>
+- Swagger: <https://api-tractar.iscoutb.dev/docs#/>
+- Salud profunda: <https://api-tractar.iscoutb.dev/salud>
 
 El dominio raíz `iscoutb.dev` corresponde al sitio web. La API utiliza el
-subdominio `api.iscoutb.dev`, que debe resolver al VPS de producción
+subdominio `api-tractar.iscoutb.dev`, que debe resolver al VPS de producción
 `129.80.171.141` y tener un certificado TLS válido configurado en Nginx.
 
 ### Requisitos DNS y Nginx para producción
@@ -162,15 +162,15 @@ Valor: 129.80.171.141
 TTL: 300
 ```
 
-En el VPS, configura Nginx para responder por `api.iscoutb.dev` y emite el
+En el VPS, configura Nginx para responder por `api-tractar.iscoutb.dev` y emite el
 certificado TLS antes de ejecutar el despliegue de GitHub Actions. Por
 ejemplo, con Certbot:
 
 ```bash
-sudo certbot --nginx -d api.iscoutb.dev
+sudo certbot --nginx -d api-tractar.iscoutb.dev
 ```
 
-El workflow valida `https://api.iscoutb.dev/salud` después de reiniciar la
+El workflow valida `https://api-tractar.iscoutb.dev/salud` después de reiniciar la
 aplicación. Si el DNS todavía apunta a otro servidor, el despliegue se
 detendrá correctamente en ese smoke test.
 

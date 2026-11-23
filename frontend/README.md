@@ -22,7 +22,7 @@ Backend en otra terminal (desde la raíz del repo): `./run.sh`
 
 | Cliente | Dirección que usa la app |
 |---|---|
-| Servidor Producción (nube) | `https://api.iscoutb.dev` |
+| Servidor Producción (nube) | `https://api-tractar.iscoutb.dev` |
 | Simulador iOS local | `http://127.0.0.1:8000` |
 | Emulador Android local | `http://10.0.2.2:8000` |
 | Celular real en LAN local | `flutter run --dart-define=API_BASE_URL=http://<IP-de-tu-PC>:8000` |

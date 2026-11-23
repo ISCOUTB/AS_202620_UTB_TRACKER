@@ -80,7 +80,7 @@ en el scratchpad (puerto 5499, `-A trust`) y usar `TEST_DATABASE_URL`/`DATABASE_
 
 ## Despliegue
 
-- Servidor oficial `https://api.iscoutb.dev` (APK y `iniciar.ps1 -Nube`). Solo
+- Servidor oficial `https://api-tractar.iscoutb.dev` (APK y `iniciar.ps1 -Nube`). Solo
   lecturas (`/salud`, `/docs`, `/openapi.json`); no crear cuentas ni enviar correos allí.
 - Unir a `main` dispara `.github/workflows/ci.yml`: pytest en PostgreSQL → SSH → `alembic
   upgrade head` → reinicia servicios. Estado: API pública de GitHub Actions.

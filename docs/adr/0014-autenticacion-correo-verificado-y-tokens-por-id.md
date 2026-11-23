@@ -60,7 +60,7 @@ como `sub`, así que cambiar el correo rompería las sesiones abiertas.
    (`ApiClient`); si el refresh también es rechazado, cierra la sesión con "Tu sesión venció".
    La app muestra siempre a qué servidor habla (`InsigniaServidor`) y en compilaciones de
    desarrollo deja cambiarlo. `iniciar.ps1` levanta API + worker + app apuntándose entre sí;
-   `-Nube` usa el servidor **oficial** `https://api.iscoutb.dev`.
+   `-Nube` usa el servidor **oficial** `https://api-tractar.iscoutb.dev`.
 10. **Base local que se actualiza sola:** `scripts/preparar_bd.py` detecta hasta qué migración
     llega una base creada con `create_all`, la marca y aplica las que faltan.
 11. **Despliegue sin romper el servidor actual** (el `.env` del servidor no se puede editar

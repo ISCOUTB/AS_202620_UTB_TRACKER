@@ -59,7 +59,7 @@ Después de migrar y reiniciar el servicio, el deploy exige:
 
 ```bash
 curl --fail --silent --show-error --max-time 15 \
-  https://api.iscoutb.dev/salud
+  https://api-tractar.iscoutb.dev/salud
 ```
 
 Este health check ejecuta `SELECT 1` contra PostgreSQL. Para acreditar el

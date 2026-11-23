@@ -1,6 +1,6 @@
 # Correo real y worker en el servidor oficial (ADR-0015)
 
-El servidor oficial es `https://api.iscoutb.dev` (lo usan el APK y `.\iniciar.ps1 -Nube`).
+El servidor oficial es `https://api-tractar.iscoutb.dev` (lo usan el APK y `.\iniciar.ps1 -Nube`).
 Los correos (recuperación de contraseña, avisos de seguridad) los envía el **worker**: un
 proceso aparte que lee la tabla `mensajes_outbox`. Si el worker no corre, los correos quedan
 guardados en la base y **no salen**. Hoy el despliegue del CI solo reinicia la API.
@@ -13,7 +13,7 @@ Antes de unir esta rama a `main`, agrega al `.env` del servidor (fuera del repos
 ENVIRONMENT=production
 # Cada secreto, distinto y largo:  python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 FORGET_PWD_SECRET_KEY=<secreto 1>
-URL_PUBLICA=https://api.iscoutb.dev
+URL_PUBLICA=https://api-tractar.iscoutb.dev
 USE_REAL_MAIL=true
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
