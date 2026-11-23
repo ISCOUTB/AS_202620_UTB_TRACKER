@@ -6,17 +6,19 @@ y eliminación lógica (soft-delete) sobre equipos tecnológicos de la universid
 """
 from typing import Optional
 
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from sqlalchemy.orm import Session, joinedload
 
 from app.models import recurso_models
-from app.models.auth_models import Usuario
 from app.schemas import schemas
+from app.services import auditoria, estado_salon
 from app.services import maintenance as maintenance_service
 from app.messaging.publisher import publicar_evento
 
 
-def crear_recurso(db: Session, datos: schemas.RecursoCreate) -> recurso_models.Recurso:
+def crear_recurso(
+    db: Session, datos: schemas.RecursoCreate, actor_id: Optional[int] = None
+) -> recurso_models.Recurso:
     """Crea un recurso nuevo. Rechaza con 409 si el serial ya existe."""
     existente = db.query(recurso_models.Recurso).filter(
         recurso_models.Recurso.serial == datos.serial
@@ -26,6 +28,14 @@ def crear_recurso(db: Session, datos: schemas.RecursoCreate) -> recurso_models.R
 
     nuevo = recurso_models.Recurso(**datos.model_dump(), estado="disponible")
     db.add(nuevo)
+    db.flush()
+    auditoria.registrar(
+        db, "recurso.crear", "recurso", nuevo.id, actor_id=actor_id,
+        detalle={"serial": nuevo.serial, "categoria": nuevo.categoria, "salon_id": nuevo.salon_id},
+    )
+    estado_salon.registrar_historial(
+        db, nuevo.salon_id, "equipo.agregado",
+        f"Equipo agregado: {nuevo.categoria} {nuevo.serial}", actor_id)
     db.commit()
     db.refresh(nuevo)
     return nuevo
@@ -56,7 +66,8 @@ def listar_recursos(
             | recurso_models.Recurso.descripcion.ilike(f"%{busqueda}%")
         )
     total = query.count()
-    items = query.offset(skip).limit(limit).all()
+    # joinedload: el nombre y edificio del salón de cada equipo sin una consulta por fila.
+    items = query.options(joinedload(recurso_models.Recurso.salon)).offset(skip).limit(limit).all()
     return items, total
 
 
@@ -72,11 +83,18 @@ def obtener_recurso(db: Session, recurso_id: int) -> recurso_models.Recurso:
 
 
 def actualizar_recurso(
-    db: Session, recurso_id: int, datos: schemas.RecursoUpdate
+    db: Session, recurso_id: int, datos: schemas.RecursoUpdate, actor_id: Optional[int] = None
 ) -> recurso_models.Recurso:
     """Actualiza un recurso existente. Solo modifica campos proporcionados."""
     recurso = obtener_recurso(db, recurso_id)
     update_data = datos.model_dump(exclude_unset=True)
+    # ADR-0023: los equipos no se prestan; "prestado" ya no se pone a mano.
+    if getattr(update_data.get("estado"), "value", update_data.get("estado")) == "prestado":
+        raise HTTPException(
+            status_code=422,
+            detail="Estado no válido: los equipos no se prestan (usa operativo, dañado o "
+                   "en mantenimiento).",
+        )
 
     # Si cambia el serial, verificar que no exista otro con el mismo
     if "serial" in update_data:
@@ -87,17 +105,33 @@ def actualizar_recurso(
         if existente:
             raise HTTPException(status_code=409, detail="Ya existe un recurso con ese serial")
 
+    cambios = {
+        campo: {"de": getattr(recurso, campo), "a": getattr(valor, "value", valor)}
+        for campo, valor in update_data.items()
+        if getattr(recurso, campo) != getattr(valor, "value", valor)
+    }
     for campo, valor in update_data.items():
         setattr(recurso, campo, valor)
+    if cambios:
+        auditoria.registrar(
+            db, "recurso.actualizar", "recurso", recurso.id, actor_id=actor_id, detalle=cambios
+        )
     db.commit()
     db.refresh(recurso)
     return recurso
 
 
-def eliminar_recurso(db: Session, recurso_id: int) -> dict:
+def eliminar_recurso(db: Session, recurso_id: int, actor_id: Optional[int] = None) -> dict:
     """Soft-delete: marca el recurso como inactivo."""
     recurso = obtener_recurso(db, recurso_id)
     recurso.activo = False
+    auditoria.registrar(
+        db, "recurso.eliminar", "recurso", recurso.id, actor_id=actor_id,
+        detalle={"serial": recurso.serial},
+    )
+    estado_salon.registrar_historial(
+        db, recurso.salon_id, "equipo.retirado",
+        f"Equipo retirado: {recurso.categoria} {recurso.serial}", actor_id)
     db.commit()
     return {"message": "Recurso eliminado correctamente"}
 
@@ -151,6 +185,10 @@ def reportar_recurso(
             "estado_reportado": reporte.estado_reportado,
         })
 
+    auditoria.registrar(
+        db, "recurso.reporte", "recurso", recurso_id, actor_id=usuario_id,
+        detalle={"reporte_id": reporte.id, "estado_reportado": reporte.estado_reportado},
+    )
     db.commit()
     db.refresh(reporte)
     return reporte

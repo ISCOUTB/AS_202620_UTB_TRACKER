@@ -29,7 +29,9 @@ class SalonesController extends ChangeNotifier {
     final q = _busqueda.toLowerCase();
     if (q.isEmpty) return _todos;
     return _todos.where((s) {
-      final texto = '${s.nombre} ${s.ubicacion} ${s.edificio ?? ""} ${s.estado}'.toLowerCase();
+      final texto = '${s.nombre} ${s.ubicacion} ${s.edificio ?? ""} ${s.estado} '
+              '${s.tipo.etiqueta} ${s.descripcion ?? ""}'
+          .toLowerCase();
       return texto.contains(q);
     }).toList();
   }
@@ -60,7 +62,7 @@ class SalonesController extends ChangeNotifier {
     } on ApiException catch (e) {
       return (const <PrestamoSalon>[], e.mensaje);
     } catch (_) {
-      return (const <PrestamoSalon>[], 'No se pudieron cargar los préstamos');
+      return (const <PrestamoSalon>[], 'No se pudieron cargar las solicitudes');
     }
   }
 
@@ -94,6 +96,8 @@ class SalonesController extends ChangeNotifier {
     String? edificio,
     int? piso,
     required int capacidad,
+    TipoSalon tipo = TipoSalon.aula,
+    String? descripcion,
   }) async {
     try {
       final nuevo = await _repo.crearSalon(
@@ -102,6 +106,8 @@ class SalonesController extends ChangeNotifier {
         edificio: edificio?.trim(),
         piso: piso,
         capacidad: capacidad,
+        tipo: tipo,
+        descripcion: descripcion,
       );
       _todos = [..._todos, nuevo];
       notifyListeners();
@@ -110,6 +116,20 @@ class SalonesController extends ChangeNotifier {
       return e.mensaje;
     } catch (_) {
       return 'No se pudo crear el salón';
+    }
+  }
+
+  /// Cambia tipo y descripción (auxiliar). Devuelve el mensaje de error o null.
+  Future<String?> actualizarTipoYDescripcion(int id, TipoSalon tipo, String descripcion) async {
+    try {
+      final s = await _repo.actualizarTipoYDescripcion(id, tipo, descripcion);
+      _todos = [for (final x in _todos) x.id == id ? s : x];
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.mensaje;
+    } catch (_) {
+      return 'No se pudo guardar el salón';
     }
   }
 
@@ -185,7 +205,7 @@ class SalonesController extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.mensaje;
     } catch (_) {
-      return 'Error al solicitar préstamo de salón';
+      return 'No se pudo enviar la solicitud del salón';
     }
   }
 
@@ -198,7 +218,7 @@ class SalonesController extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.mensaje;
     } catch (_) {
-      return 'No se pudo cancelar el préstamo';
+      return 'No se pudo cancelar la solicitud';
     }
   }
 }

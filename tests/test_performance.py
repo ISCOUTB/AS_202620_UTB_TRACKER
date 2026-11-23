@@ -26,7 +26,6 @@ def test_rendimiento_latencia_p95_salud(client):
     latencias.sort()
     p50 = latencias[int(len(latencias) * 0.50)]
     p95 = latencias[int(len(latencias) * 0.95)]
-    p99 = latencias[int(len(latencias) * 0.99)]
 
     # Verificación de que la latencia media y p95 es adecuada (menos de 500 ms en local)
     assert p95 < 500, f"Latencia p95 demasiado alta: {p95:.2f} ms"
@@ -73,7 +72,7 @@ def test_concurrencia_prestamos_mismo_recurso_postgresql(
             "/prestamos",
             json=payload,
             headers={
-                **auth_headers,
+                **admin_headers,
                 "X-Idempotency-Key": f"concurrency-test-{indice}",
             },
         ).status_code

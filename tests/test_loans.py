@@ -25,10 +25,10 @@ def test_prestamo_exitoso_cambia_estado_del_recurso(client, admin_headers, auth_
         "recurso_id": recurso_id,
         "usuario_id": 1,
         "fecha_devolucion_esperada": "2026-09-15T18:00:00",
-    }, headers=auth_headers)
+    }, headers=admin_headers)
     assert response.status_code == 201
 
-    recurso = client.get(f"/recursos/{recurso_id}", headers=auth_headers).json()
+    recurso = client.get(f"/recursos/{recurso_id}", headers=admin_headers).json()
     assert recurso["estado"] == "prestado"
 
 
@@ -40,24 +40,24 @@ def test_no_permite_prestar_recurso_no_disponible(client, admin_headers, auth_he
         "recurso_id": recurso_id,
         "usuario_id": 1,
         "fecha_devolucion_esperada": "2026-09-15T18:00:00",
-    }, headers=auth_headers)
+    }, headers=admin_headers)
 
     # segundo intento sobre el mismo recurso: debe rechazarse
     response = client.post("/prestamos", json={
         "recurso_id": recurso_id,
         "usuario_id": 2,
         "fecha_devolucion_esperada": "2026-09-16T18:00:00",
-    }, headers=auth_headers)
+    }, headers=admin_headers)
     assert response.status_code == 409
     assert "no esta disponible" in response.json()["detail"]
 
 
-def test_prestamo_de_recurso_inexistente_da_404(client, auth_headers):
+def test_prestamo_de_recurso_inexistente_da_404(client, admin_headers):
     response = client.post("/prestamos", json={
         "recurso_id": 9999,
         "usuario_id": 1,
         "fecha_devolucion_esperada": "2026-09-15T18:00:00",
-    }, headers=auth_headers)
+    }, headers=admin_headers)
     assert response.status_code == 404
 
 
@@ -70,13 +70,13 @@ def test_devolver_prestamo(client, admin_headers, auth_headers):
         "recurso_id": recurso_id,
         "usuario_id": 1,
         "fecha_devolucion_esperada": "2026-09-15T18:00:00",
-    }, headers=auth_headers)
+    }, headers=admin_headers)
     prestamo_id = res.json()["id"]
 
     # Devolver
     response = client.patch(
         f"/prestamos/{prestamo_id}/devolver",
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert response.status_code == 200
     data = response.json()
@@ -84,7 +84,7 @@ def test_devolver_prestamo(client, admin_headers, auth_headers):
     assert data["fecha_devolucion_real"] is not None
 
     # Recurso debe estar disponible de nuevo
-    recurso = client.get(f"/recursos/{recurso_id}", headers=auth_headers).json()
+    recurso = client.get(f"/recursos/{recurso_id}", headers=admin_headers).json()
     assert recurso["estado"] == "disponible"
 
 
@@ -95,12 +95,21 @@ def test_devolver_prestamo_ya_devuelto_rechaza(client, admin_headers, auth_heade
         "recurso_id": recurso_id,
         "usuario_id": 1,
         "fecha_devolucion_esperada": "2026-09-15T18:00:00",
-    }, headers=auth_headers)
+    }, headers=admin_headers)
     prestamo_id = res.json()["id"]
 
     # Primera devolución OK
-    client.patch(f"/prestamos/{prestamo_id}/devolver", headers=auth_headers)
+    client.patch(f"/prestamos/{prestamo_id}/devolver", headers=admin_headers)
 
     # Segunda devolución debe fallar
-    response = client.patch(f"/prestamos/{prestamo_id}/devolver", headers=auth_headers)
+    response = client.patch(f"/prestamos/{prestamo_id}/devolver", headers=admin_headers)
     assert response.status_code == 409
+
+
+def test_el_estudiante_no_presta_equipos(client, admin_headers, auth_headers):
+    """ADR-0010/0018: los equipos son fijos en el salón; el préstamo legado es solo del personal."""
+    recurso_id = _crear_recurso(client, admin_headers, serial="VB-FIJO-1")
+    r = client.post("/prestamos", json={"recurso_id": recurso_id, "usuario_id": 1,
+                                        "fecha_devolucion_esperada": "2030-01-07T12:00:00"},
+                    headers=auth_headers)
+    assert r.status_code == 403

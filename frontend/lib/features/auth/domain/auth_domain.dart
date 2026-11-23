@@ -1,36 +1,114 @@
-/// Usuario del sistema (ubicuo: "Usuario" con rol administrador o usuario_utb).
+import 'permisos.dart';
+import 'preferencias.dart';
+
+export 'permisos.dart';
+export 'preferencias.dart';
+
+/// Usuario del sistema. `rol` es el valor guardado (usuario_utb | auxiliar | administrador);
+/// lo que puede hacer está en [permisos] (ADR-0018).
 class Usuario {
   const Usuario({
     required this.id,
     required this.nombre,
     required this.email,
     required this.rol,
-  });
+    this.emailVerificado = true,
+    this.nombreMostrar,
+    this.telefono,
+    this.dependencia,
+    this.colorAvatar,
+    this.preferencias = const Preferencias(),
+    String? rolEtiqueta,
+    Permisos? permisos,
+    this.correoInstitucional = true,
+    this.rolOrigen = 'base',
+    this.rolOrigenTexto,
+    this.cargo,
+    this.tieneFoto = false,
+    this.fotoVersion = 0,
+  })  : _rolEtiqueta = rolEtiqueta,
+        _permisos = permisos;
 
   final int id;
   final String nombre;
   final String email;
   final String rol;
 
-  /// Auxiliar de planta / laboratorio. El backend define "administrador" o "usuario_utb"
-  /// (comentario de `Usuario.rol`); se toleran variantes por si cambia el texto.
-  bool get esAdministrador {
-    final r = rol.trim().toLowerCase();
-    return r == 'administrador' || r == 'admin' || r == 'auxiliar';
-  }
+  /// Sin verificar puede entrar y consultar, pero no solicitar salones (ADR-0014).
+  final bool emailVerificado;
 
-  String get rolLegible =>
-      esAdministrador ? 'Auxiliar de planta' : 'Usuario UTB';
+  /// Perfil personalizable (ADR-0016).
+  final String? nombreMostrar;
+  final String? telefono;
+  final String? dependencia;
+
+  /// "#RRGGBB" elegido para el avatar, o null (color de la marca).
+  final String? colorAvatar;
+  final Preferencias preferencias;
+
+  /// Lo que se muestra como nombre: el nombre para mostrar si existe, si no el de usuario.
+  String get nombreVisible =>
+      (nombreMostrar?.trim().isNotEmpty ?? false) ? nombreMostrar!.trim() : nombre;
+
+  final String? _rolEtiqueta;
+  final Permisos? _permisos;
+
+  /// "Estudiante", "Auditor" o "Administrador" (del servidor, o calculada si no la manda).
+  String get rolEtiqueta =>
+      (_rolEtiqueta?.isNotEmpty ?? false) ? _rolEtiqueta! : RolUsuario.etiqueta(rol);
+
+  /// Permisos REALES (los que aplica el servidor).
+  Permisos get permisos => _permisos ?? Permisos.deRol(rol);
+
+  /// False en cuentas antiguas con correo no institucional: el perfil avisa (ADR-0019).
+  final bool correoInstitucional;
+
+  /// De dónde sale el rol (solo lectura): "base", "correo" (lista de asignaciones) o
+  /// "manual" (lo puso un administrador). [rolOrigenTexto] lo explica en español.
+  final String rolOrigen;
+  final String? rolOrigenTexto;
+
+  /// Cargo o dependencia que viene de la asignación (no editable en el perfil).
+  final String? cargo;
+
+  /// Foto de perfil (ADR-0020). [fotoVersion] cambia con cada subida: sirve de clave de caché.
+  final bool tieneFoto;
+  final int fotoVersion;
+
+  /// Copia con la foto actualizada sin volver a pedir el perfil.
+  Usuario conFoto({required bool tiene, required int version}) => Usuario(
+        id: id,
+        nombre: nombre,
+        email: email,
+        rol: rol,
+        emailVerificado: emailVerificado,
+        nombreMostrar: nombreMostrar,
+        telefono: telefono,
+        dependencia: dependencia,
+        colorAvatar: colorAvatar,
+        preferencias: preferencias,
+        rolEtiqueta: _rolEtiqueta,
+        permisos: _permisos,
+        correoInstitucional: correoInstitucional,
+        rolOrigen: rolOrigen,
+        rolOrigenTexto: rolOrigenTexto,
+        cargo: cargo,
+        tieneFoto: tiene,
+        fotoVersion: version,
+      );
 }
 
 class Sesion {
-  const Sesion({required this.token, required this.usuario});
+  const Sesion({required this.token, required this.usuario, this.refreshToken});
   final String token;
+
+  /// Permite renovar el access token sin volver a pedir la contraseña (ADR-0014).
+  final String? refreshToken;
   final Usuario usuario;
 }
 
 abstract class AuthRepository {
-  /// POST /auth/login. Si [conocido] viene (p. ej. justo después de registrarse) no hace falta
+  /// POST /auth/login con nombre de usuario O correo. Si [conocido] viene (p. ej. justo después de registrarse) no hace falta
   /// averiguar quién es el usuario.
   Future<Sesion> iniciarSesion(
     String nombre,
@@ -42,7 +120,6 @@ abstract class AuthRepository {
   Future<Usuario> registrar({
     required String nombre,
     required String email,
-    required String rol,
     required String password,
   });
 
@@ -63,4 +140,7 @@ abstract class AuthRepository {
 
   /// GET /salud (health check profundo, S8)
   Future<bool> servidorSaludable();
+
+  /// POST /auth/reenviar-verificacion
+  Future<void> reenviarVerificacion();
 }

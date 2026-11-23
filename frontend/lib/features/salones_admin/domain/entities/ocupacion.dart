@@ -129,7 +129,7 @@ class OcupacionSalon {
         return '${clase?.titulo ?? 'Clase'} · ${clase?.rango ?? ''}';
       case SituacionSalon.prestado:
         final p = prestamo;
-        return p?.motivo?.isNotEmpty == true ? p!.motivo! : 'Préstamo de salón';
+        return p?.motivo?.isNotEmpty == true ? p!.motivo! : 'Solicitud de salón';
       case SituacionSalon.mantenimiento:
       case SituacionSalon.fueraDeServicio:
         return salon.detalleUbicacion;
@@ -171,6 +171,8 @@ class ReporteSalon {
     required this.abierto,
     required this.creadoEn,
     this.resueltoEn,
+    this.salonNombre,
+    this.usuarioNombre,
   });
 
   final int id;
@@ -181,4 +183,8 @@ class ReporteSalon {
   final bool abierto;
   final DateTime creadoEn;
   final DateTime? resueltoEn;
+
+  /// Código real del salón y nombre de quien reportó (listado de todos los salones).
+  final String? salonNombre;
+  final String? usuarioNombre;
 }

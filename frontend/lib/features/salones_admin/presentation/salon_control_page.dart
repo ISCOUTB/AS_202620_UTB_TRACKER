@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/di/injection.dart';
+import '../../../core/error/api_exception.dart';
 import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/utilidades.dart';
 import '../../../shared/uber_widgets.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/domain/auth_domain.dart';
+import '../../../shared/equipamiento_chips.dart';
 import '../../salones/domain/entities/salon.dart';
+import '../../salones/presentation/tipo_salon_campos.dart';
 import '../domain/entities/ocupacion.dart';
 import '../domain/repositories/salones_admin_repository.dart';
+import '../domain/disponibilidad.dart';
+import 'disponibilidad_secciones.dart';
 import 'reporte_salon_sheet.dart';
 import 'salon_control_controller.dart';
 import 'salones_admin_estilos.dart';
@@ -26,6 +31,8 @@ class SalonControlPage extends StatefulWidget {
 
 class _SalonControlPageState extends State<SalonControlPage> {
   late final SalonControlController _c;
+  late final DisponibilidadController _d =
+      DisponibilidadController(sl<DisponibilidadRepository>(), widget.salonId)..cargar();
 
   @override
   void initState() {
@@ -40,6 +47,7 @@ class _SalonControlPageState extends State<SalonControlPage> {
   @override
   void dispose() {
     _c.dispose();
+    _d.dispose();
     super.dispose();
   }
 
@@ -69,6 +77,99 @@ class _SalonControlPageState extends State<SalonControlPage> {
     return r ?? false;
   }
 
+  Future<void> _recargarTodo() async {
+    await Future.wait([_c.cargar(silencioso: true), _d.cargar()]);
+  }
+
+  // ── Habilitación y equipos (ADR-0022) ──────────────────────────────────────
+
+  Future<void> _deshabilitar(OcupacionSalon o) async {
+    final datos = await pedirDeshabilitacion(context,
+        titulo: 'Deshabilitar ${o.salon.nombre}',
+        detalle: 'Dejará de aparecer disponible y no se podrá solicitar.');
+    if (datos == null || !mounted) return;
+    await _habilitacion(o, datos);
+  }
+
+  Future<void> _habilitacion(OcupacionSalon o, DatosHabilitacion datos) async {
+    try {
+      final afectadas = await _d.repo.cambiarHabilitacion(o.salon.id, datos);
+      if (!mounted) return;
+      mostrarMensaje(
+        context,
+        datos.habilitado
+            ? '${o.salon.nombre} habilitado'
+            : afectadas == 0
+                ? '${o.salon.nombre} deshabilitado'
+                : '${o.salon.nombre} deshabilitado · $afectadas solicitudes afectadas: revísalas',
+      );
+      await _recargarTodo();
+    } on ApiException catch (e) {
+      if (mounted) mostrarMensaje(context, e.mensaje);
+    }
+  }
+
+  Future<void> _cambiarEstadoEquipo(EquipoSalon e, EstadoEquipo estado, OcupacionSalon o) async {
+    final (r, error) = await _d.cambiarEstado(e, estado);
+    if (!mounted) return;
+    if (error != null) return mostrarMensaje(context, error);
+    mostrarMensaje(context, '${nombreCategoria(e.categoria)} ${e.serial}: ${estado.etiqueta}');
+    _c.cargar(silencioso: true); // el equipamiento (operativos) cambia
+    if (r != null && r.sugerirReporte) await _sugerirReporte(e, r, o);
+  }
+
+  /// Al marcar un equipo dañado se SUGIERE (no se abre solo) un reporte o vincular uno abierto.
+  Future<void> _sugerirReporte(EquipoSalon e, ResultadoEstadoEquipo r, OcupacionSalon o) async {
+    final eleccion = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.superficie,
+        title: const Text('¿Registrar el daño?'),
+        content: Text(r.reportesAbiertos.isEmpty
+            ? '¿Quieres abrir un reporte de tipo equipo para ${nombreCategoria(e.categoria)} ${e.serial}?'
+            : 'Hay reportes de equipo abiertos en este salón. Puedes vincular uno o abrir otro.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Ahora no')),
+          for (final rep in r.reportesAbiertos.take(3))
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, rep.id),
+              child: Text('Vincular #${rep.id}', overflow: TextOverflow.ellipsis),
+            ),
+          TextButton(onPressed: () => Navigator.pop(ctx, -1), child: const Text('Abrir reporte')),
+        ],
+      ),
+    );
+    if (!mounted || eleccion == null) return;
+    if (eleccion == -1) return _reportar(o);
+    final (_, error) = await _d.cambiarEstado(e, EstadoEquipo.danado, reporteSalonId: eleccion);
+    if (mounted) mostrarMensaje(context, error ?? 'Reporte vinculado al equipo');
+  }
+
+  Future<void> _retirar(EquipoSalon e) async {
+    final ok = await _confirmar(
+      'Retirar equipo',
+      '${nombreCategoria(e.categoria)} ${e.serial} saldrá del salón. No se borra: queda en el '
+          'historial.',
+      'Retirar',
+    );
+    if (ok) await _ejecutar(() => _d.retirar(e), 'Equipo retirado');
+  }
+
+  Future<void> _agregar(OcupacionSalon o) async {
+    final nuevo = await pedirEquipoNuevo(context, o.salon.nombre);
+    if (nuevo == null || !mounted) return;
+    await _ejecutar(() => _d.agregar(nuevo.$1, nuevo.$2), 'Equipo agregado');
+    _c.cargar(silencioso: true);
+  }
+
+  Future<void> _plantilla(OcupacionSalon o) async {
+    final mensaje = await aplicarPlantilla(context, _d.repo,
+        salonIds: [o.salon.id], titulo: 'Plantilla para ${o.salon.nombre}');
+    if (mensaje == null || !mounted) return;
+    mostrarMensaje(context, mensaje);
+    await _recargarTodo();
+  }
+
   Future<void> _reportar(OcupacionSalon o) async {
     final enviado = await mostrarReporteSalonSheet(
       context,
@@ -81,7 +182,7 @@ class _SalonControlPageState extends State<SalonControlPage> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _c,
+      listenable: Listenable.merge([_c, _d]),
       builder: (context, _) {
         final o = _c.ocupacion;
         return Scaffold(
@@ -94,7 +195,7 @@ class _SalonControlPageState extends State<SalonControlPage> {
               IconButton(
                 tooltip: 'Actualizar',
                 icon: const Icon(Icons.refresh_rounded),
-                onPressed: () => _c.cargar(silencioso: true),
+                onPressed: _recargarTodo,
               ),
             ],
           ),
@@ -125,12 +226,19 @@ class _SalonControlPageState extends State<SalonControlPage> {
     return RefreshIndicator(
       color: Colors.black,
       backgroundColor: AppColors.texto,
-      onRefresh: () => _c.cargar(silencioso: true),
+      onRefresh: _recargarTodo,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
           _Encabezado(ocupacion: o),
+          const SizedBox(height: 16),
+          // HABILITACIÓN manual, separada de la ocupación de abajo (ADR-0022).
+          SeccionHabilitacion(
+            salon: o.salon,
+            onDeshabilitar: () => _deshabilitar(o),
+            onHabilitar: () => _habilitacion(o, const DatosHabilitacion(habilitado: true)),
+          ),
           const SizedBox(height: 22),
           const _Titulo('Quién tiene el salón'),
           const SizedBox(height: 10),
@@ -145,6 +253,42 @@ class _SalonControlPageState extends State<SalonControlPage> {
               ),
             ),
           ],
+          // Tipo, descripción y equipamiento calculado (ADR-0017).
+          const SizedBox(height: 26),
+          Row(
+            children: [
+              const Expanded(child: _Titulo('Equipamiento')),
+              TextButton.icon(
+                onPressed: () async {
+                  await mostrarEditarTipoSalon(context, o.salon);
+                  if (mounted) _c.cargar(silencioso: true);
+                },
+                icon: const Icon(Icons.edit_rounded, size: 18),
+                label: const Text('Editar'),
+              ),
+            ],
+          ),
+          Text(
+            o.salon.tipoSugerido == null
+                ? o.salon.tipo.etiqueta
+                : '${o.salon.tipo.etiqueta} · sugerido: ${o.salon.tipoSugerido!.etiqueta}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          if (o.salon.descripcion != null) ...[
+            const SizedBox(height: 4),
+            Text(o.salon.descripcion!, style: const TextStyle(color: AppColors.textoSuave)),
+          ],
+          const SizedBox(height: 10),
+          EquipamientoChips(equipamiento: o.salon.equipamiento),
+          const SizedBox(height: 18),
+          _Titulo('Equipos del salón', cantidad: _d.equipos.length),
+          SeccionEquipos(
+            controller: _d,
+            onCambiarEstado: (e, estado) => _cambiarEstadoEquipo(e, estado, o),
+            onRetirar: _retirar,
+            onAgregar: () => _agregar(o),
+            onPlantilla: () => _plantilla(o),
+          ),
           if (_c.pendientes.isNotEmpty) ...[
             const SizedBox(height: 26),
             _Titulo('Solicitudes por decidir', cantidad: _c.pendientes.length),
@@ -185,7 +329,7 @@ class _SalonControlPageState extends State<SalonControlPage> {
           ],
           if (_c.vigentes.isNotEmpty) ...[
             const SizedBox(height: 26),
-            _Titulo('Préstamos programados', cantidad: _c.vigentes.length),
+            _Titulo('Reservas programadas', cantidad: _c.vigentes.length),
             const SizedBox(height: 10),
             for (final s in _c.vigentes)
               _TarjetaSolicitud(
@@ -207,14 +351,14 @@ class _SalonControlPageState extends State<SalonControlPage> {
                           estilo: EstiloBoton.peligro,
                           onPressed: () async {
                             final ok = await _confirmar(
-                              'Cancelar préstamo',
-                              'Se cancelará el préstamo de ${_c.nombreDe(s.usuarioId)}.',
-                              'Cancelar préstamo',
+                              'Cancelar reserva',
+                              'Se cancelará la reserva de ${_c.nombreDe(s.usuarioId)}.',
+                              'Cancelar reserva',
                             );
                             if (ok) {
                               await _ejecutar(
                                 () => _c.decidirSolicitud(s.id, 'cancelado'),
-                                'Préstamo cancelado',
+                                'Reserva cancelada',
                               );
                             }
                           },
@@ -253,6 +397,10 @@ class _SalonControlPageState extends State<SalonControlPage> {
                   r.abierto ? 'Reporte resuelto' : 'Reporte reabierto',
                 ),
               ),
+          const SizedBox(height: 26),
+          const _Titulo('Historial'),
+          const SizedBox(height: 10),
+          SeccionHistorial(historial: _d.historial),
         ],
       ),
     );
@@ -268,19 +416,24 @@ class _Titulo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(texto, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+        Flexible(
+          child: Text(texto,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+        ),
         if (cantidad != null && cantidad! > 0) ...[
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.texto,
+              color: AppColors.primario,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               '$cantidad',
               style: const TextStyle(
-                color: Colors.black,
+                color: AppColors.sobrePrimario,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
@@ -299,21 +452,57 @@ class _Encabezado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = ocupacion.situacion;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          ocupacion.salon.nombre,
-          style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w900, height: 1.05),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '${ocupacion.salon.detalleUbicacion} · ${ocupacion.salon.capacidad} personas',
-          style: const TextStyle(color: AppColors.textoSuave, fontSize: 15),
-        ),
-        const SizedBox(height: 12),
-        Insignia(texto: etiquetaDeSituacion(s), color: colorDeSituacion(s)),
-      ],
+    final salon = ocupacion.salon;
+    // Tarjeta en degradado con el código grande del salón (estilo UTB App).
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: BoxDecoration(
+        gradient: AppColors.degradado,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primario.withValues(alpha: 0.35),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            [
+              if (salon.edificio != null) 'ED. ${salon.edificio!.toUpperCase()}',
+              if (salon.piso != null) 'PISO ${salon.piso}',
+            ].join(' · '),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            salon.nombre,
+            style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, height: 1.05),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${salon.ubicacion} · ${salon.capacidad} personas',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xCC111216),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Insignia(texto: etiquetaDeSituacion(s), color: colorDeSituacion(s)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -377,7 +566,10 @@ class _TarjetaOcupante extends StatelessWidget {
                     children: [
                       const Icon(Icons.schedule_rounded, size: 16, color: AppColors.textoSuave),
                       const SizedBox(width: 6),
-                      Text(detalle.join(' · '), style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Expanded(
+                        child: Text(detalle.join(' · '),
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ),
                     ],
                   ),
                 ],
@@ -525,6 +717,10 @@ class _TarjetaSolicitud extends StatelessWidget {
             if (solicitud.motivo != null && solicitud.motivo!.isNotEmpty) ...[
               const SizedBox(height: 10),
               Text(solicitud.motivo!, style: const TextStyle(color: AppColors.textoSuave)),
+            ],
+            if (solicitud.avisoSalon != null) ...[
+              const SizedBox(height: 8),
+              AvisoSalonDeshabilitado(texto: solicitud.avisoSalon!),
             ],
             if (acciones.isNotEmpty) ...[
               const SizedBox(height: 12),

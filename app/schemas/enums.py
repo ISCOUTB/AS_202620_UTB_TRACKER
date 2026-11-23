@@ -30,6 +30,16 @@ class EstadoSalon(str, Enum):
     FUERA_SERVICIO = "fuera_servicio"
 
 
+class TipoSalon(str, Enum):
+    """Para qué sirve el salón (ADR-0017). El equipamiento NO va aquí: se calcula."""
+    AULA = "aula"
+    LABORATORIO_COMPUTO = "laboratorio_computo"
+    SALA_AUDIOVISUAL = "sala_audiovisual"
+    AUDITORIO = "auditorio"
+    SALA_REUNIONES = "sala_reuniones"
+    OTRO = "otro"
+
+
 class EstadoPrestamo(str, Enum):
     ACTIVO = "activo"
     DEVUELTO = "devuelto"

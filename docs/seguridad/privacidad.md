@@ -120,3 +120,70 @@ Todas las medidas en esta sección corresponden a **PROPUESTO — NO IMPLEMENTAD
    Diseñar una rutina SQL semestral que desvincule los préstamos antiguos mayores a 2 años asignando `usuario_id = NULL` (o a un usuario genérico de auditoría `0`), preservando los indicadores estadísticos de uso del inventario pero eliminando la asociación directa con la persona física.
 3. **Endpoint de Ejercicio de Derechos ARCO (Acceso, Rectificación, Cancelación, Oposición):**  
    Habilitar un endpoint dedicado `DELETE /auth/me` que permita al usuario solicitar la desactivación de su cuenta y la supresión de sus datos de contacto activos conforme al marco de Hábeas Data.
+
+## 6. Datos nuevos de la cuenta (ADR-0014 / ADR-0016, 2026-11-14)
+
+| Dato | Tabla y columna | Para qué | Quién lo ve | Obligatorio |
+|---|---|---|---|---|
+| Correo verificado y fecha | `usuarios.email_verificado`, `email_verificado_en` | Saber que el correo es de quien se registró (requisito para solicitar salones) | La persona; el panel de usuarios | Automático |
+| Nombre para mostrar | `usuarios.nombre_mostrar` | Mostrar un nombre amable en la app | La persona; auxiliares en solicitudes | No |
+| Teléfono | `usuarios.telefono` | Que el auxiliar pueda contactar a quien pidió un salón | La persona (no se expone en listados) | No |
+| Dependencia o cargo | `usuarios.dependencia` | Contexto de la solicitud ("Laboratorios", "Docente") | La persona | No |
+| Color del avatar | `usuarios.color_avatar` | Personalización visual | La persona | No |
+| Preferencias | `usuarios.preferencias` (JSON) | Qué avisos recibir (correo/push por tipo), tamaño de texto, pantalla de inicio | La persona y el worker (para decidir si envía) | No |
+| Versión de sesión | `usuarios.sesion_version` | Invalidar tokens al cambiar la contraseña o "cerrar las demás sesiones" | Nadie (técnico) | Automático |
+| Tokens usados | `tokens_usados` (`jti`, propósito, usuario, fechas) | Que un enlace de correo sirva una sola vez. **No se guarda el token** | Nadie (técnico) | Automático |
+| Intentos limitados | `intentos_limitados` (clave con IP y usuario/correo, fecha) | Frenar fuerza bruta y abuso de envío de correos. Se purgan a los 2 días | Nadie (técnico) | Automático |
+| Correos pendientes | `mensajes_outbox.payload` (destino, plantilla, datos con enlaces) | Entregar el correo con reintentos | Nadie (técnico). Los enlaces vencen en 30 min – 24 h | Automático |
+
+Reglas aplicadas:
+
+- **Minimización en la auditoría:** al editar el perfil se registran los *nombres* de los campos
+  cambiados, nunca los valores (el teléfono no queda en la bitácora). En el cambio de correo se
+  guardan los correos ocultos (`an***@utb.edu.co`). Nunca se registran contraseñas ni tokens.
+- **Logs:** el worker no escribe el contenido de los correos; el modo desarrollo escribe el
+  enlace solo si `ENVIRONMENT != production`. Los correos de desarrollo quedan en `logs/correos/`
+  (fuera de git).
+- **Derecho de cancelación:** `POST /auth/me/desactivar` (con la contraseña) desactiva la cuenta
+  propia y cierra todas sus sesiones. Esto cubre parcialmente la propuesta 3 de la sección 5; la
+  supresión de los datos de contacto sigue pendiente.
+- **Avisos de seguridad:** el cambio de correo avisa al correo anterior y el cambio de contraseña
+  avisa al correo actual; esos avisos no se pueden apagar desde las preferencias.
+
+## 7. Correo institucional, rol asignado y foto de perfil (ADR-0019 / ADR-0020, 2026-11-16)
+
+| Dato | Tabla y columna | Para qué | Quién lo ve | Obligatorio |
+|---|---|---|---|---|
+| Lista de roles por correo | `asignaciones_rol` (correo, rol, cargo, quién y cuándo) | Decidir quién es Auditor o Administrador sin deducirlo del correo | Solo administradores | Lo mantiene el administrador |
+| Rol manual | `usuarios.rol_manual` | Que la lista no pise un rol puesto a mano | Administradores | Automático |
+| Foto de perfil | `fotos_perfil` (bytes, tipo, tamaño, dimensiones, versión, fecha) | Reconocer a la persona en el perfil, en Inicio y en las listas de gestión | La persona; auditores y administradores (permiso `usuarios.ver`). **Nunca pública** | No |
+
+Reglas aplicadas:
+
+- **Minimización de la foto:** la app la reduce a 256 px antes de subirla; el servidor quita
+  todos los metadatos (EXIF con GPS, XMP, comentarios, bloques de texto PNG) y solo conserva la
+  orientación. Lo que se guarda no tiene la ubicación del teléfono (lo verifica
+  `tests/test_foto_perfil.py`).
+- **Borrado:** "Quitar foto" borra la fila con su contenido; desactivar la cuenta (por la
+  persona o por un administrador) también la borra; si se borrara el usuario, la base la borra
+  en cascada.
+- **Bitácora:** `usuario.foto_actualizada` guarda tipo, tamaño y dimensiones, nunca el
+  contenido; las asignaciones guardan el correo oculto (`a***@utb.edu.co`) y la importación solo
+  cifras.
+- **Datos reales fuera del repositorio:** la lista inicial se carga desde la pantalla de
+  administración o con `scripts/cargar_asignaciones.py` y un archivo local en `privado/`
+  (ignorado por git). Las contraseñas nunca van en esa lista.
+- **Caché en el teléfono:** las fotos descargadas se guardan solo en memoria mientras la app
+  está abierta y se olvidan al cerrar sesión.
+
+## 8. Salones deshabilitados y equipos (ADR-0022, 2026-11-16)
+
+- **Sin datos personales nuevos.** El historial del salón guarda qué cambió y el nombre de quien
+  lo hizo (igual que la bitácora). La nota de deshabilitación es texto libre del Auditor: la
+  pantalla pide describir el salón, no a personas.
+- **Aviso al estudiante:** si el salón de su solicitud se deshabilita, recibe un correo con el
+  salón, la franja, el motivo y la reapertura estimada. Es de la categoría "salones": si la
+  persona la apagó en su perfil, no se envía.
+- **CSV del catálogo:** solo datos de salones y equipos (códigos, capacidad, estado); ningún
+  nombre ni correo.
+

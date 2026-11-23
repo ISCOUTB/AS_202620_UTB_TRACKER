@@ -6,20 +6,20 @@ Resiliencia y Concurrencia (S11):
 - Riesgo R-02 / QS-06 (Prevención de condiciones de carrera): Bloqueo pesimista
   mediante '.with_for_update()' para control de concurrencia.
 """
+import logging
 from datetime import datetime, timezone
-import json
 from typing import Optional
 import uuid
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.resilience import with_retry
-from app.messaging.models import MensajeOutbox
 from app.messaging.publisher import publicar_evento
 from app.models.auth_models import Usuario
 from app.models import recurso_models
 from app.schemas import schemas
+
+logger = logging.getLogger("utb_tracker")
 
 
 def _verificar_idempotencia(
@@ -45,8 +45,8 @@ def _obtener_recurso_con_bloqueo(db: Session, recurso_id: int) -> recurso_models
         bind = db.get_bind()
         if bind and not bind.name.startswith("sqlite"):
             query = query.with_for_update()
-    except Exception:
-        pass
+    except Exception:  # noqa: S110 - sin bind (p. ej. en pruebas) se consulta sin bloqueo
+        logger.debug("No se pudo aplicar SELECT FOR UPDATE; se consulta sin bloqueo")
 
     recurso = query.first()
     if not recurso:
@@ -69,8 +69,8 @@ def _resolver_correlation_id(correlation_id: str | None) -> str:
         cid = request_id_ctx.get()
         if cid and cid != "system":
             return cid
-    except Exception:
-        pass
+    except Exception:  # noqa: S110 - fuera de una petición HTTP no hay request_id
+        logger.debug("Sin request_id en contexto; se genera uno nuevo")
     return str(uuid.uuid4())[:8]
 
 

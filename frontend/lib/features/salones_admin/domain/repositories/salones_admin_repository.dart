@@ -34,4 +34,10 @@ abstract class SalonesAdminRepository {
 
   /// PATCH /prestamos-salon/{id}
   Future<PrestamoSalon> cambiarEstadoSolicitud(int prestamoId, String estado);
+
+  /// GET /salones/reportes (auxiliar): novedades de todos los salones.
+  Future<List<ReporteSalon>> listarTodosLosReportes();
+
+  /// GET /prestamos-salon (todas las páginas): el usuario UTB recibe solo las suyas.
+  Future<List<PrestamoSalon>> listarTodasLasSolicitudes();
 }

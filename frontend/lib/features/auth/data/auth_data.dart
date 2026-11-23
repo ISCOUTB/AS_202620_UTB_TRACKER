@@ -12,6 +12,24 @@ class UsuarioModel {
         nombre: (j['nombre'] ?? '').toString(),
         email: (j['email'] ?? '').toString(),
         rol: (j['rol'] ?? '').toString(),
+        // Servidores anteriores a ADR-0014 no mandan el campo: se asume verificado.
+        emailVerificado: j['email_verificado'] as bool? ?? true,
+        nombreMostrar: j['nombre_mostrar'] as String?,
+        telefono: j['telefono'] as String?,
+        dependencia: j['dependencia'] as String?,
+        colorAvatar: j['color_avatar'] as String?,
+        preferencias: Preferencias.desdeJson(j['preferencias']),
+        // ADR-0018 (servidores anteriores no los mandan: se calculan del rol).
+        rolEtiqueta: j['rol_etiqueta'] as String?,
+        permisos: Permisos.desdeJson(j['permisos'], (j['rol'] ?? '').toString()),
+        // ADR-0019 (servidores anteriores no los mandan).
+        correoInstitucional: j['correo_institucional'] as bool? ?? true,
+        rolOrigen: (j['rol_origen'] ?? 'base').toString(),
+        rolOrigenTexto: j['rol_origen_texto'] as String?,
+        cargo: j['cargo'] as String?,
+        // ADR-0020 (foto de perfil).
+        tieneFoto: j['tiene_foto'] as bool? ?? false,
+        fotoVersion: (j['foto_version'] as num?)?.toInt() ?? 0,
       );
 }
 
@@ -30,7 +48,6 @@ class AuthRemoteDataSource {
   Future<Usuario> registrar({
     required String nombre,
     required String email,
-    required String rol,
     required String password,
   }) async {
     final r = await _api.post(
@@ -38,7 +55,6 @@ class AuthRemoteDataSource {
       cuerpo: {
         'nombre': nombre,
         'email': email,
-        'rol': rol,
         'password': password,
       },
     );
@@ -93,6 +109,10 @@ class AuthRemoteDataSource {
     );
   }
 
+  Future<void> reenviarVerificacion() async {
+    await _api.post('/auth/reenviar-verificacion');
+  }
+
   Future<bool> salud() async {
     try {
       final r = await _api.get('/salud', reintentos: 0);
@@ -127,13 +147,14 @@ class AuthRepositoryImpl implements AuthRepository {
         'El servidor no devolvió un token de acceso.',
       );
     }
-    _api.fijarToken(token);
+    final refresh = r['refresh_token']?.toString();
+    _api.fijarTokens(token, refresh);
 
     try {
       final usuario = conocido ?? await _identificar(r, token, nombre);
-      return Sesion(token: token, usuario: usuario);
+      return Sesion(token: token, refreshToken: refresh, usuario: usuario);
     } catch (_) {
-      _api.fijarToken(null);
+      _api.fijarTokens(null, null);
       rethrow;
     }
   }
@@ -198,13 +219,11 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Usuario> registrar({
     required String nombre,
     required String email,
-    required String rol,
     required String password,
   }) =>
       _remoto.registrar(
         nombre: nombre,
         email: email,
-        rol: rol,
         password: password,
       );
 
@@ -224,4 +243,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<bool> servidorSaludable() => _remoto.salud();
+
+  @override
+  Future<void> reenviarVerificacion() => _remoto.reenviarVerificacion();
 }

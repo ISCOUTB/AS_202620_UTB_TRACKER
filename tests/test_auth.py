@@ -43,7 +43,7 @@ def test_registro_usuario_duplicado_rechazado(client):
 
     r2 = client.post("/auth/register", json=payload)
     assert r2.status_code == 409
-    assert "Ya existe un usuario" in r2.json()["detail"]
+    assert "ya está en uso" in r2.json()["detail"]
 
 
 def test_login_exitoso_genera_jwt(client):
@@ -109,7 +109,7 @@ def test_login_usuario_inexistente_rechazado(client):
     assert response.status_code == 401
 
 
-def test_obtener_usuario_por_id(client, auth_headers):
+def test_obtener_usuario_por_id(client, admin_headers):
     res_reg = client.post(
         "/auth/register",
         json={
@@ -121,13 +121,13 @@ def test_obtener_usuario_por_id(client, auth_headers):
     )
     user_id = res_reg.json()["id"]
 
-    response = client.get(f"/auth/user/{user_id}", headers=auth_headers)
+    response = client.get(f"/auth/user/{user_id}", headers=admin_headers)
     assert response.status_code == 200
     assert response.json()["nombre"] == "Consulta ID"
 
 
-def test_obtener_usuario_inexistente_404(client, auth_headers):
-    response = client.get("/auth/user/999999", headers=auth_headers)
+def test_obtener_usuario_inexistente_404(client, admin_headers):
+    response = client.get("/auth/user/999999", headers=admin_headers)
     assert response.status_code == 404
 
 

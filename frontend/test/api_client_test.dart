@@ -29,7 +29,8 @@ void main() {
 
     final lista = await RecursosRemoteDataSource(api).listar();
 
-    expect(visto.url.toString(), 'http://x/recursos');
+    // Lee todas las páginas: la primera pide skip=0 y el máximo permitido.
+    expect(visto.url.toString(), 'http://x/recursos?skip=0&limit=100');
     expect(visto.headers['Authorization'], 'Bearer abc');
     expect(lista.single.serial, 'VB-1');
     expect(lista.single.disponible, isTrue);

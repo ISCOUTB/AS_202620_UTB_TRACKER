@@ -55,6 +55,13 @@ jobs:
           inputs: requirements.txt
           require-hashes: true
 
+      # Análisis estático y Quality Gate (SonarCloud — S13)
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e  # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   deploy:
     needs: test
     runs-on: ubuntu-latest
@@ -76,6 +83,13 @@ jobs:
             set -a; . ./.env; set +a
             alembic upgrade head
             sudo systemctl restart utb-tracker
+            # Worker del outbox (correos de verificación/recuperación, ADR-0015). Sin él los
+            # correos se quedan en la base sin salir. Ver docs/despliegue/worker.md.
+            if systemctl list-unit-files | grep -q '^utb-tracker-worker'; then
+              sudo systemctl restart utb-tracker-worker
+            else
+              echo "AVISO: no existe utb-tracker-worker.service; los correos no se enviarán"
+            fi
             curl --fail --silent --show-error --max-time 15 \
             --retry 6 --retry-delay 3 --retry-connrefused \
             https://api.iscoutb.dev/salud

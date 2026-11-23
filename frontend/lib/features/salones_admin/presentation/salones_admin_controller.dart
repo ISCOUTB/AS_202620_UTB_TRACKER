@@ -2,14 +2,16 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/error/api_exception.dart';
 import '../../../core/state/carga.dart';
+import '../../salones/domain/entities/salon.dart';
 import '../domain/entities/ocupacion.dart';
 import '../domain/repositories/salones_admin_repository.dart';
+import '../domain/catalogo.dart';
 
 enum FiltroPanel {
   todos('Todos'),
   atencion('Por atender'),
   clases('En clase'),
-  prestados('Prestados'),
+  prestados('Reservados'),
   libres('Libres');
 
   const FiltroPanel(this.etiqueta);
@@ -27,6 +29,48 @@ class SalonesAdminController extends ChangeNotifier {
   String? _error;
   FiltroPanel _filtro = FiltroPanel.todos;
   String _busqueda = '';
+  // Filtros de ADR-0017: tipo de salón y "con equipo operativo de…".
+  TipoSalon? _tipo;
+  String? _conEquipo;
+
+  // Filtros del catálogo UTB (ADR-0021): edificio y piso.
+  String? _edificio;
+  int? _piso;
+
+  TipoSalon? get tipo => _tipo;
+  String? get conEquipo => _conEquipo;
+  String? get edificio => _edificio;
+  int? get piso => _piso;
+
+  List<String> get edificios =>
+      {for (final o in _items) if (o.salon.edificio != null) o.salon.edificio!}.toList()..sort();
+  List<int> get pisos => {
+        for (final o in _items)
+          if (o.salon.piso != null && (_edificio == null || o.salon.edificio == _edificio))
+            o.salon.piso!
+      }.toList()
+        ..sort();
+
+  void fijarEdificio(String? e) {
+    _edificio = e;
+    _piso = null;
+    notifyListeners();
+  }
+
+  void fijarPiso(int? p) {
+    _piso = p;
+    notifyListeners();
+  }
+
+  void fijarTipo(TipoSalon? t) {
+    _tipo = t;
+    notifyListeners();
+  }
+
+  void fijarConEquipo(String? categoria) {
+    _conEquipo = categoria;
+    notifyListeners();
+  }
 
   Carga get carga => _carga;
   String? get error => _error;
@@ -64,14 +108,19 @@ class SalonesAdminController extends ChangeNotifier {
     final q = _busqueda.toLowerCase();
     final lista = _items.where((o) {
       if (!_coincide(o)) return false;
+      if (_tipo != null && o.salon.tipo != _tipo) return false;
+      if (_edificio != null && o.salon.edificio != _edificio) return false;
+      if (_piso != null && o.salon.piso != _piso) return false;
+      if (_conEquipo != null && o.salon.operativos(_conEquipo!) == 0) return false;
       if (q.isEmpty) return true;
-      final texto =
-          '${o.salon.nombre} ${o.salon.ubicacion} ${o.titular} ${o.subtitular}'.toLowerCase();
+      final texto = '${o.salon.nombre} ${o.salon.ubicacion} ${o.titular} ${o.subtitular} '
+              '${o.salon.descripcion ?? ''}'
+          .toLowerCase();
       return texto.contains(q);
     }).toList();
     lista.sort((a, b) {
       if (a.requiereAtencion != b.requiereAtencion) return a.requiereAtencion ? -1 : 1;
-      return a.salon.nombre.compareTo(b.salon.nombre);
+      return compararCodigos(a.salon.nombre, b.salon.nombre);
     });
     return lista;
   }

@@ -1,65 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:utb_tracker_app/core/error/api_exception.dart';
-import 'package:utb_tracker_app/features/admin/presentation/admin_usuarios_controller.dart';
-import 'package:utb_tracker_app/features/auth/domain/auth_domain.dart';
 import 'package:utb_tracker_app/features/prestamos/domain/entities/prestamo.dart';
 import 'package:utb_tracker_app/features/prestamos/domain/repositories/prestamos_repository.dart';
 import 'package:utb_tracker_app/features/prestamos/presentation/prestamos_controller.dart';
 import 'package:utb_tracker_app/features/recursos/domain/entities/recurso.dart';
 import 'package:utb_tracker_app/features/recursos/domain/repositories/recursos_repository.dart';
 import 'package:utb_tracker_app/features/recursos/presentation/recursos_controller.dart';
-
-class _AuthFalso implements AuthRepository {
-  _AuthFalso(this.usuarios, {this.fallo});
-  final List<Usuario> usuarios;
-  final ApiException? fallo;
-
-  @override
-  Future<Sesion> iniciarSesion(String nombre, String password, {Usuario? conocido}) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Usuario> registrar({
-    required String nombre,
-    required String email,
-    required String rol,
-    required String password,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Usuario> usuarioActual() async => usuarios.first;
-
-  @override
-  Future<Usuario> obtenerUsuario(int id) async => usuarios.firstWhere((u) => u.id == id);
-
-  @override
-  Future<List<Usuario>> listarUsuarios({String? busqueda, String? rol}) async => List.of(usuarios);
-
-  @override
-  Future<Usuario> actualizarRolUsuario(int usuarioId, String nuevoRol) async {
-    if (fallo != null) throw fallo!;
-    final index = usuarios.indexWhere((u) => u.id == usuarioId);
-    if (index == -1) throw ApiException(TipoError.noEncontrado, 'Usuario no encontrado');
-    final actual = usuarios[index];
-    final actualizado = Usuario(
-      id: actual.id,
-      nombre: actual.nombre,
-      email: actual.email,
-      rol: nuevoRol,
-    );
-    usuarios[index] = actualizado;
-    return actualizado;
-  }
-
-  @override
-  Future<void> registrarTokenFcm(String token) async {}
-
-  @override
-  Future<bool> servidorSaludable() async => true;
-}
 
 class _RecursosFalso implements RecursosRepository {
   _RecursosFalso(this.datos);
@@ -139,14 +85,14 @@ class _PrestamosFalso implements PrestamosRepository {
 const _vb = Recurso(
   id: 1,
   categoriaCodigo: 'video_beam',
-  salonId: 'A1-304',
+  salonId: '1', salonNombre: 'A1-304',
   serial: 'VB-1',
   estadoCodigo: 'disponible',
 );
 const _pc = Recurso(
   id: 2,
   categoriaCodigo: 'computador',
-  salonId: 'B2-101',
+  salonId: '2', salonNombre: 'B2-101',
   serial: 'PC-24',
   estadoCodigo: 'dañado',
 );
@@ -240,48 +186,5 @@ void main() {
           EstadoPrestamo.devuelto);
     });
   });
-
-  group('AdminUsuariosController', () {
-    const u1 = Usuario(id: 1, nombre: 'Ana Gómez', email: 'ana@utb.edu.co', rol: 'usuario_utb');
-    const u2 = Usuario(id: 2, nombre: 'Carlos Auxiliar', email: 'carlos@utb.edu.co', rol: 'administrador');
-
-    test('carga y filtra usuarios por texto y rol', () async {
-      final ctrl = AdminUsuariosController(_AuthFalso([u1, u2]));
-      await ctrl.cargar();
-
-      expect(ctrl.todos.length, 2);
-      expect(ctrl.filtrados.length, 2);
-
-      ctrl.fijarBusqueda('carlos');
-      expect(ctrl.filtrados, [u2]);
-
-      ctrl.fijarBusqueda('');
-      ctrl.fijarFiltroRol('usuario_utb');
-      expect(ctrl.filtrados, [u1]);
-
-      ctrl.fijarFiltroRol('auxiliar');
-      expect(ctrl.filtrados, [u2]);
-    });
-
-    test('actualiza el rol de un usuario exitosamente', () async {
-      final ctrl = AdminUsuariosController(_AuthFalso([u1, u2]));
-      await ctrl.cargar();
-
-      final exito = await ctrl.cambiarRol(usuarioId: 1, nuevoRol: 'administrador');
-      expect(exito, isTrue);
-      expect(ctrl.todos.firstWhere((u) => u.id == 1).esAdministrador, isTrue);
-    });
-
-    test('maneja error cuando falla la asignación de rol', () async {
-      final ctrl = AdminUsuariosController(_AuthFalso(
-        [u1],
-        fallo: ApiException(TipoError.servidor, 'Fallo al actualizar rol', statusCode: 500),
-      ));
-      await ctrl.cargar();
-
-      final exito = await ctrl.cambiarRol(usuarioId: 1, nuevoRol: 'auxiliar');
-      expect(exito, isFalse);
-      expect(ctrl.error, contains('Fallo al actualizar rol'));
-    });
-  });
+  // La gestión de usuarios se prueba en test/roles_test.dart (UsuariosController, ADR-0018).
 }

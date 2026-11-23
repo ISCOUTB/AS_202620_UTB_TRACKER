@@ -4,6 +4,11 @@
 
 Propuesto (Mitigación arquitectónica derivada del modelado de amenazas S13 para resolver las vulnerabilidades T-03, T-04 y T-06).
 
+Nota (2026-11-15): ADR-0018 implementa la parte de autorización. Hay una tabla única de
+permisos (`app/core/permisos.py`) y una matriz verificada por pruebas. `GET /auth/user/{id}`
+queda solo para uno mismo o el auditor/administrador (T-03), y el préstamo legado de equipos,
+solo para el personal (T-04, T-06). Falta el bloqueo pesimista en la devolución (T-06).
+
 ## Fecha
 
 31 de octubre de 2026

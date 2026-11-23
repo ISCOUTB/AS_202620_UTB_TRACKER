@@ -1,10 +1,22 @@
 # UTB Tracker
-https://api.iscoutb.dev/docs#/
-Backend desplegado
+Administración de los **salones** de la Universidad Tecnológica de Bolívar.
 
-Sistema de inventario y préstamo de equipos y salones de la Universidad
-Tecnológica de Bolívar. El backend está construido con FastAPI y el cliente
-móvil con Flutter.
+- Ocupación en vivo y solicitudes de salón.
+- Habilitación con motivo y equipos fijos por salón (**los equipos no se prestan**).
+- Catálogo A1-101, auditoría, roles Estudiante, Auditor y Administrador, y cuentas con correo
+  institucional verificado.
+
+Backend con FastAPI y app móvil con Flutter. **Índice de toda la documentación:
+[docs/README.md](docs/README.md).**
+
+## Despliegue y Acceso Público
+
+| Componente | URL / Acceso | Descripción |
+|---|---|---|
+| **API Backend (Producción)** | [https://api.iscoutb.dev](https://api.iscoutb.dev) | Servidor VPS en producción gestionado por systemd y Nginx |
+| **Documentación Interactiva (Swagger)** | [https://api.iscoutb.dev/docs](https://api.iscoutb.dev/docs) | Catálogo OpenAPI interactivo |
+| **Endpoint de Salud (Smoke Test)** | [https://api.iscoutb.dev/salud](https://api.iscoutb.dev/salud) | Monitor de estado del servicio y conexión a BD |
+| **Cliente Android (Release APK)** | [Releases GitHub · v1.0.4](https://github.com/ISCOUTB/AS_202620_UTB_TRACKER/releases) | Binario `app-release.apk` con R8 habilitado y firmado |
 
 ## Arquitectura del proyecto
 
@@ -223,6 +235,15 @@ El CI no usa `continue-on-error` ni exclusiones silenciosas. Una vulnerabilidad
 sin corregir bloquea el despliegue; cualquier excepción temporal debe quedar
 documentada con responsable, justificación y fecha de vencimiento.
 
+## Ejecutar con Docker (ADR-0012)
+
+```bash
+docker compose up --build                 # PostgreSQL, API, worker y app web
+docker compose --profile demo up seed     # (una vez) datos de ejemplo
+```
+
+App web: <http://localhost:8080> · API: <http://localhost:8000/docs>
+
 ## Despliegue
 
 El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
@@ -273,7 +294,7 @@ requirements.in         Dependencias fuente
 requirements.txt        Lock reproducible con hashes
 ```
 
-Consulta [`docs/arc42.md`](docs/arc42.md) para la arquitectura y
+Consulta [`docs/arc42.md`](docs/arc42/arc42.md) para la arquitectura y
 [`docs/seguridad/analisis-dependencias.md`](docs/seguridad/analisis-dependencias.md)
 para la política de auditoría.
 

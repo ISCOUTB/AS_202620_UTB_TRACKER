@@ -4,9 +4,14 @@ import '../../../core/di/injection.dart';
 import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/utilidades.dart';
+import '../../../shared/utb_ui.dart';
 import '../../../shared/widgets.dart';
+import '../../auth/domain/permisos.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/entities/salon.dart';
+import '../../../shared/equipamiento_chips.dart';
+import '../../salones_admin/domain/catalogo.dart';
+import '../../salones_admin/presentation/catalogo_page.dart';
 import 'salon_detalle_page.dart';
 import 'salones_controller.dart';
 
@@ -25,7 +30,7 @@ class _SalonesPageState extends State<SalonesPage> {
   @override
   void initState() {
     super.initState();
-    _salones.cargar();
+    _salones.cargar(silencioso: _salones.carga == Carga.ok);
   }
 
   @override
@@ -34,70 +39,106 @@ class _SalonesPageState extends State<SalonesPage> {
     super.dispose();
   }
 
-  void _abrirCrearSalon() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.superficie,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        // #4 — al crear un salón se limpia la búsqueda para que el nuevo sea visible
-        child: _CrearSalonSheet(
-          onExito: () {
-            _busquedaCtrl.clear();
-            _salones.fijarBusqueda('');
-          },
-        ),
-      ),
-    );
+  /// El catálogo (crear, crear varios, desactivar) es solo del Administrador (ADR-0021).
+  Future<void> _abrirCatalogo() async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const CatalogoPage()));
+    _salones.cargar(silencioso: true);
   }
+
+  /// Edificio y piso elegidos en los chips (null = todos).
+  String? _edificio;
+  int? _piso;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Salones y Aulas'),
-        actions: [
-          if (_auth.esAdministrador)
-            IconButton(
-              icon: const Icon(Icons.add_rounded),
-              tooltip: 'Registrar salón',
-              onPressed: _abrirCrearSalon,
-            ),
-        ],
-      ),
+      floatingActionButton: _auth.permisos.puede(Permisos.salonesCrearCatalogo)
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 90),
+              child: FloatingActionButton(
+                tooltip: 'Catálogo de salones',
+                onPressed: _abrirCatalogo,
+                child: const Icon(Icons.add_rounded),
+              ),
+            )
+          : null,
       body: ListenableBuilder(
         listenable: _salones,
         builder: (context, _) {
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                child: TextField(
-                  controller: _busquedaCtrl,
-                  onChanged: _salones.fijarBusqueda,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar salón, edificio o aula...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _busquedaCtrl.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear_rounded),
-                            onPressed: () {
-                              _busquedaCtrl.clear();
-                              _salones.fijarBusqueda('');
-                            },
-                          )
-                        : null,
+          final edificios = _salones.todos
+              .map((s) => s.edificio)
+              .whereType<String>()
+              .where((e) => e.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort();
+          final libres = _salones.todos.where((s) => s.disponible).length;
+          return RefreshIndicator(
+            onRefresh: () => _salones.cargar(silencioso: true),
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 130),
+              children: [
+                EncabezadoDegradado(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
+                      const Text('Salones',
+                          style: TextStyle(
+                              fontSize: 32, fontWeight: FontWeight.w800)),
+                      Text(
+                        '$libres libres de ${_salones.todos.length} en el Campus Tecnológico',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 15),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _busquedaCtrl,
+                        onChanged: _salones.fijarBusqueda,
+                        decoration: InputDecoration(
+                          hintText: 'Buscar salón o edificio',
+                          fillColor: const Color(0x33000000),
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _busquedaCtrl.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear_rounded),
+                                  onPressed: () {
+                                    _busquedaCtrl.clear();
+                                    _salones.fijarBusqueda('');
+                                  },
+                                )
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              Expanded(
-                child: _construirCuerpo(),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                  child: FiltroEdificioPiso(
+                    edificios: edificios,
+                    pisos: {
+                      for (final s in _salones.todos)
+                        if (s.piso != null && s.edificio == _edificio) s.piso!
+                    }.toList()
+                      ..sort(),
+                    edificio: _edificio,
+                    piso: _piso,
+                    onEdificio: (e) => setState(() {
+                      _edificio = e;
+                      _piso = null;
+                    }),
+                    onPiso: (p) => setState(() => _piso = p),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: _construirCuerpo(),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -115,42 +156,35 @@ class _SalonesPageState extends State<SalonesPage> {
           onReintentar: _salones.cargar,
         );
       case Carga.ok:
-        final lista = _salones.filtrados;
+        final lista = _salones.filtrados
+            .where((s) => _edificio == null || s.edificio == _edificio)
+            .where((s) => _piso == null || s.piso == _piso)
+            .toList()
+          ..sort((a, b) => compararCodigos(a.nombre, b.nombre));
         if (lista.isEmpty) {
-          return RefreshIndicator(
-            color: Colors.black,
-            backgroundColor: AppColors.texto,
-            onRefresh: () => _salones.cargar(silencioso: true),
-            child: ListView(
-              children: const [
-                SizedBox(
-                  height: 300,
-                  child: VistaVacia(
-                    mensaje: 'No hay salones que coincidan',
-                    detalle: 'Intenta con otro término o crea un nuevo salón.',
-                  ),
-                ),
-              ],
-            ),
+          return const VistaVacia(
+            mensaje: 'No hay salones que coincidan',
+            detalle: 'Intenta con otro término o edificio.',
           );
         }
-        return RefreshIndicator(
-          color: Colors.black,
-          backgroundColor: AppColors.texto,
-          onRefresh: () => _salones.cargar(silencioso: true),
-          child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 130),
-            itemCount: lista.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, i) {
-              final s = lista[i];
-              return _FilaSalon(
-                salon: s,
-                puedeSolicitar: !_auth.esAdministrador && s.disponible,
-                onSolicitar: () => _abrirSolicitud(s),
-              );
-            },
-          ),
+        return Column(
+          children: [
+            for (final (i, s) in lista.indexed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Aparecer(
+                  key: ValueKey('${_edificio ?? ''}-${_piso ?? ''}-${s.id}'),
+                  orden: i,
+                  child: _FilaSalon(
+                    salon: s,
+                    puedeSolicitar: _auth.permisos.puede(Permisos.salonesSolicitar) &&
+                        !_auth.permisos.opera &&
+                        s.solicitable,
+                    onSolicitar: () => _abrirSolicitud(s),
+                  ),
+                ),
+              ),
+          ],
         );
     }
   }
@@ -160,6 +194,9 @@ class _SalonesPageState extends State<SalonesPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.superficie,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetContext) => _SolicitudSalonSheet(salon: salon),
     );
   }
@@ -178,28 +215,33 @@ class _FilaSalon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final disponible = salon.disponible;
+    final color = disponible ? AppColors.disponible : AppColors.danado;
     return TarjetaBorde(
       padding: const EdgeInsets.all(14),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => SalonDetallePage(salon: salon),
-          ),
-        );
-      },
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => SalonDetallePage(salon: salon)),
+      ),
       child: Row(
         children: [
           Container(
-            width: 52,
-            height: 52,
+            width: 78,
+            padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.superficieAlta,
               borderRadius: BorderRadius.circular(16),
+              gradient: disponible
+                  ? AppColors.degradado
+                  : LinearGradient(
+                      colors: [
+                        color.withValues(alpha: 0.30),
+                        color.withValues(alpha: 0.10)
+                      ],
+                    ),
             ),
-            child: const Icon(
-              Icons.meeting_room_rounded,
-              color: AppColors.texto,
-              size: 28,
+            child: Text(
+              salon.nombre,
+              textAlign: TextAlign.center,
+              style:
+                  const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(width: 14),
@@ -208,47 +250,61 @@ class _FilaSalon extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  salon.nombre,
+                  salon.ubicacion,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w700),
+                      fontSize: 15.5, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  salon.detalleUbicacion,
+                  [
+                    salon.tipo.etiqueta,
+                    if (salon.edificio != null) 'Ed. ${salon.edificio}',
+                    if (salon.piso != null) 'Piso ${salon.piso}',
+                    '${salon.capacidad} personas',
+                  ].join(' · '),
                   style: const TextStyle(
-                      color: AppColors.textoSuave, fontSize: 13.5),
+                      color: AppColors.textoSuave, fontSize: 13),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  'Capacidad: ${salon.capacidad} personas',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textoSuave,
-                  ),
+                if (salon.equipamiento.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  EquipamientoChips(equipamiento: salon.equipamiento, compacto: true),
+                ],
+                const SizedBox(height: 8),
+                Insignia(
+                  texto: disponible ? 'Libre' : _estadoLegible(salon.estado),
+                  color: color,
                 ),
+                if (salon.avisoDeshabilitado != null) ...[
+                  const SizedBox(height: 6),
+                  Text(salon.avisoDeshabilitado!,
+                      style: const TextStyle(color: AppColors.danado, fontSize: 12.5)),
+                ],
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Insignia(
-                texto: salon.estado.toUpperCase(),
-                color: disponible ? AppColors.disponible : AppColors.danado,
-              ),
-              if (puedeSolicitar)
-                TextButton(
-                  onPressed: onSolicitar,
-                  child: const Text('Solicitar'),
-                ),
-            ],
-          ),
+          if (puedeSolicitar)
+            IconButton.filled(
+              tooltip: 'Solicitar',
+              style: IconButton.styleFrom(backgroundColor: AppColors.primario),
+              onPressed: onSolicitar,
+              icon: const Icon(Icons.add_rounded),
+            )
+          else
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textoTenue),
         ],
       ),
     );
   }
+
+  static String _estadoLegible(String e) => switch (e.toLowerCase()) {
+        'mantenimiento' => 'Deshabilitado',
+        'fuera_servicio' => 'Deshabilitado',
+        'ocupado' => 'Ocupado ahora',
+        _ => e,
+      };
 }
 
 class _SolicitudSalonSheet extends StatefulWidget {
@@ -372,158 +428,6 @@ class _SolicitudSalonSheetState extends State<_SolicitudSalonSheet> {
             onPressed: _enviando ? null : _enviar,
             icon: const Icon(Icons.send_outlined),
             label: Text(_enviando ? 'Enviando...' : 'Enviar solicitud'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Sheet: Crear nuevo salón ─────────────────────────────────────────────────
-
-class _CrearSalonSheet extends StatefulWidget {
-  const _CrearSalonSheet({required this.onExito});
-  // #4 — callback para limpiar el buscador tras crear exitosamente
-  final VoidCallback onExito;
-
-  @override
-  State<_CrearSalonSheet> createState() => _CrearSalonSheetState();
-}
-
-class _CrearSalonSheetState extends State<_CrearSalonSheet> {
-  final SalonesController _salones = sl<SalonesController>();
-  final TextEditingController _nombreCtrl = TextEditingController();
-  final TextEditingController _ubicacionCtrl = TextEditingController();
-  final TextEditingController _edificioCtrl = TextEditingController();
-  final TextEditingController _pisoCtrl = TextEditingController();
-  final TextEditingController _capacidadCtrl =
-      TextEditingController(text: '30');
-
-  bool _enviando = false;
-
-  @override
-  void dispose() {
-    _nombreCtrl.dispose();
-    _ubicacionCtrl.dispose();
-    _edificioCtrl.dispose();
-    _pisoCtrl.dispose();
-    _capacidadCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _guardar() async {
-    final nombre = _nombreCtrl.text.trim();
-    final ubicacion = _ubicacionCtrl.text.trim();
-    final capacidad = int.tryParse(_capacidadCtrl.text.trim()) ?? 0;
-
-    if (nombre.isEmpty || ubicacion.isEmpty || capacidad <= 0) {
-      mostrarMensaje(context, 'Completa los campos obligatorios');
-      return;
-    }
-
-    setState(() => _enviando = true);
-    final error = await _salones.crear(
-      nombre: nombre,
-      ubicacion: ubicacion,
-      edificio: _edificioCtrl.text.trim(),
-      piso: int.tryParse(_pisoCtrl.text.trim()),
-      capacidad: capacidad,
-    );
-    setState(() => _enviando = false);
-
-    if (!mounted) return;
-    if (error != null) {
-      mostrarMensaje(context, error);
-    } else {
-      Navigator.of(context).pop();
-      // #4 — notificar al padre para limpiar búsqueda y mostrar el nuevo salón
-      widget.onExito();
-      mostrarMensaje(context, 'Salón creado exitosamente');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'Nuevo Salón / Aula',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _nombreCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Nombre del salón *',
-              hintText: 'Ej. A-301, Lab Sistemas 1',
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _ubicacionCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Ubicación *',
-              hintText: 'Ej. Edificio A, Piso 3',
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _edificioCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Edificio (opc.)',
-                    hintText: 'Ej. A, B, C',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _pisoCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Piso (opc.)',
-                    hintText: 'Ej. 3',
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _capacidadCtrl,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Capacidad de personas *',
-              hintText: 'Ej. 35',
-            ),
-          ),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: _enviando ? null : _guardar,
-            child: _enviando
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.black),
-                  )
-                : const Text('Registrar salón'),
           ),
         ],
       ),

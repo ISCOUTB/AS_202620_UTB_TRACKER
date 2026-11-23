@@ -6,13 +6,18 @@ import '../../../core/di/injection.dart';
 import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/uber_widgets.dart';
+import '../../../shared/utb_ui.dart';
+import '../../../shared/equipamiento_chips.dart';
 import '../../../shared/widgets.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../salones/domain/entities/salon.dart';
 import '../domain/entities/ocupacion.dart';
 import 'plano_salones.dart';
 import 'salon_control_page.dart';
 import 'salones_admin_controller.dart';
 import 'salones_admin_estilos.dart';
+import '../domain/disponibilidad.dart';
+import 'disponibilidad_secciones.dart';
 
 /// Pantalla principal del auxiliar: el plano del campus arriba y, abajo, una hoja que se
 /// arrastra con la lista de salones (la misma idea que el mapa y la hoja de viajes de Uber).
@@ -28,11 +33,13 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
   final AuthController _auth = sl<AuthController>();
   Timer? _refresco;
   DateTime? _actualizado;
+  final DisponibilidadRepository _disp = sl<DisponibilidadRepository>();
+  List<ResumenPiso> _resumen = const [];
 
   @override
   void initState() {
     super.initState();
-    _cargar();
+    _cargar(silencioso: _c.carga == Carga.ok);
     // El estado de un salón cambia durante el día: se refresca solo cada medio minuto.
     _refresco = Timer.periodic(const Duration(seconds: 30), (_) => _cargar(silencioso: true));
   }
@@ -46,6 +53,34 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
   Future<void> _cargar({bool silencioso = false}) async {
     await _c.cargar(silencioso: silencioso);
     if (mounted && _c.carga == Carga.ok) setState(() => _actualizado = DateTime.now());
+    try {
+      final r = await _disp.resumen();
+      if (mounted) setState(() => _resumen = r);
+    } catch (_) {
+      // El resumen es un extra: si falla, el panel sigue funcionando.
+    }
+  }
+
+  Future<void> _menu(String opcion) async {
+    final String? mensaje;
+    if (opcion == 'lote') {
+      final pisos = <String, Set<int>>{};
+      for (final o in _c.todos) {
+        final e = o.salon.edificio;
+        if (e == null) continue;
+        pisos.putIfAbsent(e, () => <int>{});
+        if (o.salon.piso != null) pisos[e]!.add(o.salon.piso!);
+      }
+      if (pisos.isEmpty) return mostrarMensaje(context, 'No hay salones con edificio');
+      final orden = pisos.keys.toList()..sort();
+      mensaje = await cambiarLote(context, _disp,
+          pisosPorEdificio: {for (final e in orden) e: pisos[e]!.toList()..sort()});
+    } else {
+      mensaje = await copiarCatalogoCsv(_disp);
+    }
+    if (mensaje == null || !mounted) return;
+    mostrarMensaje(context, mensaje);
+    _cargar(silencioso: true);
   }
 
   Future<void> _abrir(OcupacionSalon o) async {
@@ -57,7 +92,9 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Sin SafeArea arriba: el encabezado en degradado llega hasta la barra de estado.
     return SafeArea(
+      top: false,
       bottom: false,
       child: ListenableBuilder(
         listenable: _c,
@@ -70,7 +107,9 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
                 actualizado: _actualizado,
                 onBuscar: _c.fijarBusqueda,
                 onRefrescar: () => _cargar(),
+                onMenu: _menu,
               ),
+              const SizedBox(height: 12),
               _Filtros(controller: _c),
               const SizedBox(height: 8),
               Expanded(child: _cuerpo()),
@@ -103,14 +142,23 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
               snapSizes: const [0.46],
               builder: (context, scroll) {
                 return Container(
-                  decoration: const BoxDecoration(
-                    color: AppColors.fondo,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-                    border: Border(top: BorderSide(color: AppColors.borde)),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xF2181A24), Color(0xFA0A0A0C)],
+                    ),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                    border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.10))),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primario.withValues(alpha: 0.18),
+                        blurRadius: 30,
+                        offset: const Offset(0, -6),
+                      ),
+                    ],
                   ),
                   child: RefreshIndicator(
-                    color: Colors.black,
-                    backgroundColor: AppColors.texto,
                     onRefresh: () => _cargar(silencioso: true),
                     child: ListView(
                       controller: scroll,
@@ -119,6 +167,9 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
                       children: [
                         const AsaHoja(),
                         _Resumen(controller: _c),
+                        const SizedBox(height: 10),
+                        // Ocupación por edificio y piso: cuántos libres AHORA (ADR-0022).
+                        ResumenPorPiso(resumen: _resumen),
                         const SizedBox(height: 14),
                         if (visibles.isEmpty)
                           const Padding(
@@ -129,10 +180,14 @@ class _PanelSalonesPageState extends State<PanelSalonesPage> {
                             ),
                           )
                         else
-                          for (final o in visibles)
+                          for (final (i, o) in visibles.indexed)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 10),
-                              child: TarjetaSalonAdmin(ocupacion: o, onTap: () => _abrir(o)),
+                              child: Aparecer(
+                                key: ValueKey('${_c.filtro}-${o.salon.id}'),
+                                orden: i,
+                                child: TarjetaSalonAdmin(ocupacion: o, onTap: () => _abrir(o)),
+                              ),
                             ),
                       ],
                     ),
@@ -153,17 +208,19 @@ class _Cabecera extends StatelessWidget {
     required this.actualizado,
     required this.onBuscar,
     required this.onRefrescar,
+    required this.onMenu,
   });
 
   final String nombre;
   final DateTime? actualizado;
   final ValueChanged<String> onBuscar;
   final VoidCallback onRefrescar;
+  final ValueChanged<String> onMenu;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+    return EncabezadoDegradado(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -173,16 +230,16 @@ class _Cabecera extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      nombre.isEmpty ? 'Salones' : 'Hola, ${nombre.split(' ').first}',
-                      style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800),
+                    const Text(
+                      'Salones',
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       actualizado == null
                           ? 'Estado de los salones en vivo'
-                          : 'Actualizado ${formatearHora(actualizado!)}',
-                      style: const TextStyle(color: AppColors.textoSuave),
+                          : 'En vivo · actualizado ${formatearHora(actualizado!)}',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
                     ),
                   ],
                 ),
@@ -190,8 +247,17 @@ class _Cabecera extends StatelessWidget {
               IconButton.filledTonal(
                 tooltip: 'Actualizar',
                 onPressed: onRefrescar,
-                style: IconButton.styleFrom(backgroundColor: AppColors.superficieAlta),
+                style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.18)),
                 icon: const Icon(Icons.refresh_rounded),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Más opciones',
+                icon: const Icon(Icons.more_vert_rounded),
+                onSelected: onMenu,
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'lote', child: Text('Habilitar o deshabilitar varios')),
+                  PopupMenuItem(value: 'csv', child: Text('Copiar catálogo y equipos (CSV)')),
+                ],
               ),
             ],
           ),
@@ -203,7 +269,7 @@ class _Cabecera extends StatelessWidget {
               hintText: 'Salón, profesor o usuario',
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
-              fillColor: AppColors.superficieAlta,
+              fillColor: const Color(0x33000000),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(30),
                 borderSide: BorderSide.none,
@@ -244,17 +310,98 @@ class _Filtros extends StatelessWidget {
                 label: Text('${f.etiqueta} · ${controller.contar(f)}'),
                 selected: controller.filtro == f,
                 onSelected: (_) => controller.fijarFiltro(f),
-                selectedColor: AppColors.texto,
+                selectedColor: AppColors.primario,
                 backgroundColor: AppColors.superficieAlta,
                 side: BorderSide.none,
                 shape: const StadiumBorder(),
-                labelStyle: TextStyle(
+                labelStyle: const TextStyle(
                   fontWeight: FontWeight.w700,
-                  color: controller.filtro == f ? Colors.black : AppColors.texto,
+                  color: AppColors.texto,
                 ),
               ),
             ),
+          // Filtros de ADR-0017: tipo de salón y equipo operativo.
+          _Menu<TipoSalon?>(
+            etiqueta: controller.tipo == null ? 'Tipo' : controller.tipo!.etiqueta,
+            activo: controller.tipo != null,
+            opciones: [
+              (null, 'Todos los tipos'),
+              for (final t in TipoSalon.values) (t, t.etiqueta),
+            ],
+            onElegir: controller.fijarTipo,
+          ),
+          _Menu<String?>(
+            etiqueta: controller.conEquipo == null
+                ? 'Con equipo'
+                : 'Con ${nombreCategoria(controller.conEquipo!).toLowerCase()}',
+            activo: controller.conEquipo != null,
+            opciones: [
+              (null, 'Cualquier equipo'),
+              for (final c in categoriasEquipo.keys) (c, nombreCategoria(c)),
+            ],
+            onElegir: controller.fijarConEquipo,
+          ),
+          // Filtros del catálogo UTB (ADR-0021).
+          if (controller.edificios.length > 1)
+            _Menu<String?>(
+              etiqueta: controller.edificio ?? 'Edificio',
+              activo: controller.edificio != null,
+              opciones: [
+                (null, 'Todos los edificios'),
+                for (final e in controller.edificios) (e, 'Edificio $e'),
+              ],
+              onElegir: controller.fijarEdificio,
+            ),
+          if (controller.edificio != null && controller.pisos.length > 1)
+            _Menu<int?>(
+              etiqueta: controller.piso == null ? 'Piso' : 'Piso ${controller.piso}',
+              activo: controller.piso != null,
+              opciones: [
+                (null, 'Todos los pisos'),
+                for (final p in controller.pisos) (p, 'Piso $p'),
+              ],
+              onElegir: controller.fijarPiso,
+            ),
         ],
+      ),
+    );
+  }
+}
+
+/// Chip con menú desplegable (tipo de salón / equipo).
+class _Menu<T> extends StatelessWidget {
+  const _Menu({
+    required this.etiqueta,
+    required this.activo,
+    required this.opciones,
+    required this.onElegir,
+  });
+
+  final String etiqueta;
+  final bool activo;
+  final List<(T, String)> opciones;
+  final ValueChanged<T> onElegir;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: PopupMenuButton<int>(
+        tooltip: etiqueta,
+        onSelected: (i) => onElegir(opciones[i].$1),
+        itemBuilder: (_) => [
+          for (var i = 0; i < opciones.length; i++)
+            PopupMenuItem(value: i, child: Text(opciones[i].$2)),
+        ],
+        child: Chip(
+          label: Text(etiqueta),
+          avatar: Icon(Icons.arrow_drop_down_rounded,
+              color: activo ? AppColors.texto : AppColors.textoSuave),
+          backgroundColor: activo ? AppColors.primario : AppColors.superficieAlta,
+          side: BorderSide.none,
+          shape: const StadiumBorder(),
+          labelStyle: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.texto),
+        ),
       ),
     );
   }
@@ -359,6 +506,14 @@ class TarjetaSalonAdmin extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: AppColors.textoSuave, fontSize: 13),
                 ),
+                // Tipo y equipamiento compactos (ADR-0017).
+                const SizedBox(height: 4),
+                Text(ocupacion.salon.tipo.etiqueta,
+                    style: const TextStyle(color: AppColors.textoTenue, fontSize: 12)),
+                if (ocupacion.salon.equipamiento.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  EquipamientoChips(equipamiento: ocupacion.salon.equipamiento, compacto: true),
+                ],
                 if (ocupacion.solicitudesPendientes > 0 || ocupacion.reportesAbiertos > 0) ...[
                   const SizedBox(height: 8),
                   Wrap(

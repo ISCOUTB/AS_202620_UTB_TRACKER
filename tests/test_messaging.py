@@ -18,14 +18,13 @@ import logging
 import uuid
 import pytest
 
-from app.messaging.events import VERSIONES_SOPORTADAS, EventoPrestamoCreado, PayloadPrestamoCreado
 from app.messaging.models import MensajeOutbox, NotificacionProcesada
 from app.messaging.worker import (
     NotificadorSimulado,
-    _calcular_siguiente_intento,
     procesar_pendientes,
 )
 from app.models.recurso_models import Recurso
+import contextlib
 
 
 def _crear_recurso(client, admin_headers, serial="VB-MSG-001"):
@@ -54,7 +53,7 @@ def test_outbox_se_inserta_en_misma_transaccion_que_prestamo(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert res.status_code == 201
     prestamo_id = res.json()["id"]
@@ -94,7 +93,7 @@ def test_rollback_no_deja_mensaje_en_outbox(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert res_404.status_code == 404
 
@@ -107,7 +106,7 @@ def test_rollback_no_deja_mensaje_en_outbox(
             "usuario_id": 88888,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert res_no_user.status_code == 404
 
@@ -131,7 +130,7 @@ def test_worker_procesa_mensaje_exitosamente(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
 
     notificador = NotificadorSimulado(fallos_antes_de_exito=0)
@@ -163,7 +162,7 @@ def test_consumidor_idempotente_ante_reentrega(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
 
     notificador = NotificadorSimulado(fallos_antes_de_exito=0)
@@ -393,7 +392,7 @@ def test_idempotencia_http_con_x_idempotency_key(
     res1 = client.post(
         "/prestamos",
         json=body,
-        headers={**auth_headers, "X-Idempotency-Key": idem_key},
+        headers={**admin_headers, "X-Idempotency-Key": idem_key},
     )
     assert res1.status_code == 201, f"Primer POST falló: {res1.json()}"
     prestamo_id_1 = res1.json()["id"]
@@ -402,7 +401,7 @@ def test_idempotencia_http_con_x_idempotency_key(
     res2 = client.post(
         "/prestamos",
         json=body,
-        headers={**auth_headers, "X-Idempotency-Key": idem_key},
+        headers={**admin_headers, "X-Idempotency-Key": idem_key},
     )
     assert res2.status_code == 201, f"Segundo POST falló: {res2.json()}"
     prestamo_id_2 = res2.json()["id"]
@@ -439,7 +438,7 @@ def test_desacoplamiento_temporal_sin_worker(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert res.status_code == 201
 
@@ -474,7 +473,7 @@ def test_rollback_real_forzando_fallo_en_commit(
     """
     from app.main import app
     from app.core.database import get_db
-    from app.models.recurso_models import Prestamo, Recurso
+    from app.models.recurso_models import Prestamo
 
     recurso_id = _crear_recurso(client, admin_headers, serial="VB-RBACK-01")
 
@@ -505,10 +504,8 @@ def test_rollback_real_forzando_fallo_en_commit(
         try:
             yield session
         finally:
-            try:
+            with contextlib.suppress(StopIteration):
                 next(gen)
-            except StopIteration:
-                pass
 
     app.dependency_overrides[get_db] = sabotaged_get_db
 
@@ -523,7 +520,7 @@ def test_rollback_real_forzando_fallo_en_commit(
                     "usuario_id": 1,
                     "fecha_devolucion_esperada": "2026-10-30T18:00:00",
                 },
-                headers=auth_headers,
+                headers=admin_headers,
             )
     finally:
         # Restaurar el override original
@@ -568,7 +565,7 @@ def test_trazabilidad_http_x_request_id_coincide_con_correlation_id(
             "usuario_id": 1,
             "fecha_devolucion_esperada": "2026-10-30T18:00:00",
         },
-        headers=auth_headers,
+        headers=admin_headers,
     )
     assert res.status_code == 201
     assert "X-Request-ID" in res.headers, "Encabezado X-Request-ID no presente en la respuesta"

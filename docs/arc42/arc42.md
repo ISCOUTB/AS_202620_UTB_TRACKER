@@ -102,7 +102,7 @@ El auxiliar de planta accede normalmente desde la app móvil, muchas veces con c
 
 **Diagrama de contexto (C4 Nivel 1)**
 
-![Diagrama de contexto C4 Nivel 1 - Tractar](c4/c4_nivel1.md)
+![Diagrama de contexto C4 Nivel 1 - Tractar](../c4/c4_nivel1.md)
 
 *(Diagrama modelado utilizando la extension de *Mermaid* para VSCode. Muestra Auxiliar de planta y usuario UTB
 como actores, UTB Tracker como sistema central, y un sistema externo: el sistema de correo electronico.)*
@@ -183,6 +183,110 @@ Todos los módulos se comunican vía HTTP/JSON. Internamente, `prestamos` depend
 *Interfaz:* `POST /prestamos`, `GET /prestamos`.
 *Ubicación:* `app/routers/loans.py`, modelo en `app/models.py::Prestamo`.
 *Requisitos que cumple:* QS-06 (confiabilidad de datos) probado en `tests/test_loans.py`.
+
+### cuenta y correo (ADR-0014, ADR-0015, ADR-0016)
+
+*Responsabilidad:* identidad de las personas (registro con correo verificado, inicio de sesión por
+usuario o correo, sesión con tokens por id y versión de sesión), perfil y preferencias guardadas
+en el servidor, y todos los correos de la cuenta (verificación, recuperación, cambio de correo y
+de contraseña, alertas).
+*Interfaz:* `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`,
+`GET /auth/verificar-correo`, `POST /auth/reenviar-verificacion`, `POST /auth/forgot-password`,
+`POST /auth/reset-password`, `GET /auth/restablecer`, `GET|PATCH /auth/me`,
+`POST /auth/me/cambiar-correo`, `POST /auth/me/cambiar-password`, `POST /auth/me/cerrar-sesiones`,
+`POST /auth/me/desactivar`.
+*Ubicación:* `app/routers/auth.py` → `app/services/auth.py`, `app/services/perfil.py`,
+`app/services/correo.py` (+ `plantillas_correo.py`), `app/services/limites.py` →
+`app/schemas/auth.py`, `app/schemas/perfil.py` → `app/models/auth_models.py`,
+`app/models/seguridad_models.py`. Los correos salen por el outbox y el worker
+(`app/messaging/worker.py::_procesar_correo`).
+*Requisitos que cumple:* QS-04 (seguridad) — `tests/test_identidad.py`,
+`tests/test_correo_verificado.py`, `tests/test_perfil.py`, `tests/test_persistencia_cuentas.py`.
+
+### salones: tipo y equipamiento (ADR-0017)
+
+*Responsabilidad:* tipo y descripción de cada salón y su equipamiento **calculado** desde los
+recursos activos (una consulta agrupada para todos los salones), con sugerencia de tipo.
+*Interfaz:* `GET /salones?tipo=&con_equipo=&busqueda=`, `GET /salones/{id}`,
+`GET /salones/ocupacion` (campos `tipo`, `descripcion`, `equipamiento`, `tipo_sugerido`).
+*Ubicación:* `app/services/equipamiento.py`, `app/services/salones.py`, `app/schemas/salones.py`.
+*Requisitos que cumple:* QS-05 (usabilidad) y QS-02 (sin consultas N+1) —
+`tests/test_salones_tipo_equipamiento.py`.
+
+### roles y permisos (ADR-0018)
+
+*Responsabilidad:* decidir qué puede hacer cada rol (Estudiante = `usuario_utb`, Auditor =
+`auxiliar`, Administrador = `administrador`) con UNA tabla de permisos; gestión de usuarios y
+roles por el administrador (con protección del último administrador), bandeja de solicitudes
+del auditor y estadísticas del administrador. "Auditor" (rol) no es la bitácora de auditoría.
+*Interfaz:* `GET /auth/me` (`rol_etiqueta`, `permisos`), `GET /usuarios`,
+`PATCH /usuarios/{id}/rol|estado`, `GET /prestamos-salon/mias`, `GET /prestamos-salon/gestion`,
+`POST /prestamos-salon/{id}/aprobar|rechazar`, `GET /stats/admin`.
+*Ubicación:* `app/core/permisos.py` (tabla) → `app/core/deps.py` (`require_permiso` y alias por
+permiso) → routers; `app/services/usuarios.py`, `app/services/prestamos_salon.py`,
+`app/services/estadisticas.py`; en la app `frontend/lib/features/auth/domain/permisos.dart`,
+`features/home/presentation/shell_page.dart` (pestañas por permisos), `features/solicitudes/`,
+`features/admin/`, `shared/sin_acceso.dart`.
+*Requisitos que cumple:* QS-04 (seguridad) — `tests/test_matriz_permisos.py` (cada endpoint ×
+cada rol contra `docs/seguridad/matriz-permisos.md`), `tests/test_roles.py`,
+`frontend/test/roles_test.dart`.
+
+### cuenta institucional, rol por asignación y foto (ADR-0019, ADR-0020)
+
+*Responsabilidad:* admitir solo correos institucionales en registros y cambios de correo
+(`DOMINIOS_PERMITIDOS`, por defecto `utb.edu.co`, coincidencia exacta) sin bloquear cuentas
+antiguas; decidir el rol con UNA función a partir de la lista `asignaciones_rol` que mantiene
+el administrador, solo con el correo comprobado (un rol manual gana); guardar la foto de perfil
+como miniatura limpia (sin EXIF/GPS) en una tabla aparte.
+*Interfaz:* `GET /auth/me` (`correo_institucional`, `rol_origen`, `rol_origen_texto`, `cargo`,
+`tiene_foto`, `foto_version`), `GET|POST /usuarios/asignaciones`,
+`PATCH|DELETE /usuarios/asignaciones/{id}`, `POST /usuarios/asignaciones/importar`,
+`POST /usuarios/{id}/rol/automatico`, `PUT|DELETE|GET /auth/me/foto`, `GET /usuarios/{id}/foto`.
+*Ubicación:* `app/core/politica.py` (`error_correo_nuevo`), `app/core/config.py`,
+`app/services/asignaciones.py` (`rol_resuelto`, `recalcular`, importación),
+`app/services/fotos.py`, `app/services/imagenes.py` (firma, estructura y limpieza sin
+librerías), `app/routers/asignaciones.py`, `app/routers/fotos.py`, `scripts/cargar_asignaciones.py`;
+en la app `frontend/lib/core/utils/politica.dart`, `features/admin/presentation/asignaciones_page.dart`,
+`features/cuenta/presentation/foto_perfil_sheet.dart`, `shared/foto_perfil.dart`.
+*Requisitos que cumple:* QS-04 (seguridad) y privacidad — `tests/test_correo_institucional.py`,
+`tests/test_rol_por_correo.py`, `tests/test_foto_perfil.py`,
+`frontend/test/correo_institucional_test.dart`, `asignaciones_test.dart`, `perfil_foto_test.dart`.
+
+### catálogo de salones UTB (ADR-0021)
+
+*Responsabilidad:* aplicar en UN solo lugar la regla del código (`A` + edificio + `-` + piso +
+salón: A1-101) con edificio y piso coincidentes; cargar el catálogo provisional desde un
+archivo de datos sin borrar nunca; reportar los salones que no siguen la regla con una
+propuesta; dejar crear, renombrar y desactivar solo al Administrador.
+*Interfaz:* `POST /salones/catalogo/rango/vista-previa`, `POST /salones/catalogo/rango`,
+`GET /salones/catalogo/fuera`, `POST|DELETE /salones` (ahora `salones.crear_catalogo`),
+`GET /salones?edificio=&piso=`, campo `capacidad_estimada`.
+*Ubicación:* `app/services/catalogo.py`, `app/routers/catalogo.py`, `app/schemas/catalogo.py`,
+`scripts/datos/catalogo_utb.json`, `scripts/cargar_catalogo_utb.py`; en la app
+`features/salones_admin/domain/catalogo.dart` (espejo de la regla) y
+`features/salones_admin/presentation/catalogo_page.dart`.
+*Requisitos que cumple:* QS-06 (confiabilidad de los datos) y QS-05 —
+`tests/test_catalogo_salones.py`, `frontend/test/catalogo_test.dart`.
+
+### habilitación, ocupación y equipos del salón (ADR-0022)
+
+*Responsabilidad:* separar la HABILITACIÓN manual (con motivo obligatorio, nota y reapertura)
+de la OCUPACIÓN calculada (clase u horario aprobado ahora); calcular `estado` para los
+clientes de siempre; impedir solicitar o aprobar un salón deshabilitado y señalar y avisar las
+solicitudes afectadas; llevar el historial legible del salón; cambiar el estado de los equipos
+fijos (nunca "prestado") con sugerencia de reporte; aplicar plantillas con vista previa.
+*Interfaz:* `PATCH /salones/{id}/habilitacion`, `GET /salones/{id}/historial`,
+`POST /salones/habilitacion/lote[/vista-previa]`, `GET /salones/ocupacion/resumen`,
+`GET /salones/exportar.csv`, `PATCH /recursos/{id}/estado`, `GET /recursos/plantillas`,
+`POST /recursos/plantillas/{vista-previa|aplicar}`; campos `habilitado`, `aviso_deshabilitado`,
+`ocupado_ahora` y `aviso_salon`.
+*Ubicación:* `app/services/estado_salon.py`, `app/services/equipos.py`,
+`app/services/exportar.py`, `app/routers/estado_salon.py`, `app/schemas/estado_salon.py`,
+`app/schemas/equipos.py`, modelo `HistorialSalon`; en la app
+`features/salones_admin/domain/disponibilidad.dart`, `data/disponibilidad_data.dart`,
+`presentation/disponibilidad_secciones.dart`.
+*Requisitos que cumple:* QS-06 (confiabilidad), QS-02 (sin N+1 en el panel) y QS-05 —
+`tests/test_habilitacion_equipos.py`, `frontend/test/habilitacion_test.dart`.
 
 ## Nivel 2
 
@@ -304,6 +408,60 @@ stateDiagram-v2
 
 
 
+### Escenario 4 — Solicitud de salón por rol (ADR-0018)
+
+El Estudiante pide un salón; el Auditor lo aprueba o rechaza desde su bandeja; el Estudiante
+ve la respuesta en "Mis solicitudes" y le llega un correo (si no apagó los avisos de salones).
+
+```mermaid
+sequenceDiagram
+    actor E as Estudiante
+    actor A as Auditor
+    participant API as UTB Tracker (FastAPI)
+    participant DB as Base de datos
+    participant W as Worker (outbox)
+
+    E->>API: POST /prestamos-salon (permiso salones.solicitar + correo verificado)
+    API->>DB: valida conflictos con clases y otras solicitudes, guarda "pendiente"
+    A->>API: GET /prestamos-salon/gestion (permiso solicitudes.gestionar)
+    API->>DB: pendientes + 2 consultas para el conflicto de toda la página
+    API-->>A: lista con "conflicto" por solicitud
+    A->>API: POST /prestamos-salon/{id}/rechazar {respuesta}
+    API->>DB: estado, respuesta, atendido_por/en + bitácora + correo en el outbox (1 transacción)
+    W->>DB: lee el outbox
+    W-->>E: correo "Tu solicitud ... fue rechazada" (respeta preferencias)
+    E->>API: GET /prestamos-salon/mias
+    API-->>E: estado y motivo del rechazo
+```
+
+Un Estudiante que llame a la bandeja o a aprobar recibe 403 y la app muestra "No tienes acceso a
+esto". El modo prueba del Administrador solo cambia lo que la app dibuja: la API sigue
+aplicando su rol real.
+
+### Escenario 5 — Registro institucional y rol por asignación (ADR-0019)
+
+```mermaid
+sequenceDiagram
+    actor Ad as Administrador
+    actor P as Persona nueva
+    participant API as UTB Tracker (FastAPI)
+    participant DB as Base de datos
+
+    Ad->>API: POST /usuarios/asignaciones {correo exacto, rol Auditor, cargo}
+    API->>DB: guarda la fila + bitácora (correo oculto)
+    P->>API: POST /auth/register {correo @utb.edu.co, ...} (un "rol" en el cuerpo se ignora)
+    API->>API: error_correo_nuevo: dominio exacto en DOMINIOS_PERMITIDOS (si no, 422)
+    API->>DB: cuenta con rol base (Estudiante) y SIN verificar + correo de verificación
+    P->>API: GET /auth/verificar-correo?token=...
+    API->>DB: correo comprobado -> rol_resuelto = rol de la asignación
+    API->>DB: sube sesion_version (cierra sesiones) + bitácora usuario.rol_automatico
+    P->>API: POST /auth/login -> GET /auth/me
+    API-->>P: rol Auditor, rol_origen "correo", cargo
+```
+
+Sin correo real en producción la cuenta nace "verificada" pero sin `email_verificado_en`: no
+cuenta como comprobada y se queda con el rol base hasta que un administrador le asigne otro.
+
 ## Infrastructure Level 1
 
 El backend de UTB Tracker se despliega en un único servidor Linux (VPS) gestionado
@@ -362,6 +520,23 @@ gestionados. La decisión de no usar microservicios está formalizada en
 
 ## Infrastructure Level 2
 
+### Despliegue reproducible con Docker Compose (ADR-0012)
+
+Para desarrollo y demostraciones el sistema completo se levanta con `docker compose up --build`:
+
+```mermaid
+flowchart LR
+    nav[Navegador :8080] --> web[web · nginx + Flutter web]
+    nav -->|HTTP JSON| api[api · FastAPI :8000]
+    api --> db[(db · PostgreSQL 16)]
+    worker[worker · python -m app.messaging] --> db
+    worker -->|SMTP / FCM| ext[Servicios externos]
+    seed[seed · perfil demo] -.-> db
+```
+
+`api`, `worker` y `seed` usan la misma imagen (`Dockerfile`): es un monolito modular (ADR-0005),
+no microservicios. La API aplica `alembic upgrade head` al arrancar.
+
 ### Estimación de costos mensuales (S8 — req. 8.10)
 
 Costos aproximados para el entorno de producción del proyecto académico:
@@ -383,6 +558,8 @@ Costos aproximados para el entorno de producción del proyecto académico:
 # Conceptos transversales (Cross-cutting Concepts)
 
 ## 8.1 Patrón de Capas y Control de Erosión Arquitectónica
+
+> **Regla automática (ADR-0023, S09):** `tests/test_erosion_capas.py` falla si un router importa modelos o consulta la base, si un servicio importa routers, si un modelo depende de capas superiores, o si `domain/` de Flutter importa Flutter, `http`, `data/` o `presentation/`. Corre en el CI en cada unión a `main`.
 Para evitar la erosión del estilo Monolito Modular (S9 — req. 9.6), el backend implementa una separación estricta de tres capas en cada módulo de dominio:
 1. **Capa de Enrutamiento HTTP (`app/routers/`):** Expone endpoints REST, valida datos de entrada mediante esquemas Pydantic y gestiona respuestas HTTP/códigos de estado (200, 201, 404, 409). No ejecuta lógica de negocio ni consultas directas al ORM.
 2. **Capa de Servicio (`app/services/`):** Orquesta la lógica de negocio, reglas de dominio (ej. exclusividad de recursos en préstamo — QS-06) y transacciones de base de datos. Módulos: `services/resources.py`, `services/loans.py`, `services/auth.py`.
@@ -443,6 +620,21 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0006](../adr/0006-mensajeria-asincrona-outbox.md) — Mensajería Asíncrona: Transactional Outbox para notificaciones de préstamos (S12)
 - [ADR-0007](../adr/0007-identificadores-enteros-autoincrementales.md) — Identificadores enteros autoincrementales en claves primarias (S12)
 - [ADR-0008](../adr/0008-control-acceso-granular-recurso.md) — Control de acceso granular por recurso (mitigación BOLA/IDOR) (S13)
+- [ADR-0009](../adr/0009-administracion-de-salones.md) — Administración de salones: ocupación en vivo, presencia del profesor y reportes
+- [ADR-0010](../adr/0010-auditoria.md) — Auditoría: bitácora de solo-agregar escrita en la misma transacción
+- [ADR-0011](../adr/0011-rediseno-interfaz-y-control.md) — Rediseño al estilo de UTB App y pestaña "Control" en lugar de préstamos de equipos
+- [ADR-0012](../adr/0012-contenedores-docker.md) — Empaquetar el sistema con Docker Compose (PostgreSQL, API, worker y web)
+- [ADR-0013](../adr/0013-identidad-propia-y-servidor-unico.md) — Identidad visual propia, interfaz más compacta y un solo servidor (la nube) para web y APK
+- [ADR-0014](../adr/0014-autenticacion-correo-verificado-y-tokens-por-id.md) — Autenticación con correo verificado, identidad normalizada y tokens por id
+- [ADR-0015](../adr/0015-servicio-de-correo.md) — Servicio de correo con plantillas y entrega por el outbox
+- [ADR-0016](../adr/0016-perfil-y-preferencias-en-el-servidor.md) — Perfil personalizable y preferencias guardadas en el servidor
+- [ADR-0017](../adr/0017-tipo-de-salon-y-equipamiento-calculado.md) — Tipo de salón y equipamiento calculado desde los recursos
+- [ADR-0018](../adr/0018-modelo-de-roles-y-permisos.md) — Modelo de roles y permisos con una matriz única (etiquetas Estudiante/Auditor/Administrador, permisos en /auth/me, modo prueba solo de interfaz)
+- [ADR-0019](../adr/0019-correo-institucional-y-rol-por-asignacion.md) — Solo correos institucionales (dominio exacto, sin bloquear cuentas antiguas) y rol por una lista de asignación que solo aplica con el correo comprobado; el rol manual gana
+- [ADR-0020](../adr/0020-foto-de-perfil.md) — Foto de perfil como miniatura limpia (firma real, sin EXIF/GPS, sin librerías nuevas en el backend) en la tabla aparte `fotos_perfil`
+- [ADR-0023](../adr/0023-retiro-del-prestamo-de-equipos-y-control-de-erosion.md) — "prestado" deja de usarse (422 y migración de datos auditada), `/prestamos/*` queda como legado obsoleto y las capas se verifican solas con `tests/test_erosion_capas.py` (S09)
+- [ADR-0022](../adr/0022-habilitacion-ocupacion-y-equipos-del-salon.md) — Habilitación manual del salón (motivo obligatorio) separada de la ocupación calculada; `estado` calculado con los valores de siempre; salón deshabilitado no se solicita y sus solicitudes se señalan y avisan sin cancelarse solas; historial del salón; equipos fijos con estado (nunca "prestado"), plantillas con vista previa; panel sin N+1
+- [ADR-0021](../adr/0021-catalogo-de-salones-utb.md) — Catálogo de salones UTB: regla del código en un solo lugar, lista provisional en un archivo de datos (59 salones, corregida con una tesis de la biblioteca UTB), carga idempotente que nunca borra y solo el Administrador crea, renombra y desactiva
 
 # Requisitos de calidad
 
@@ -502,7 +694,7 @@ aspecto correspondiente en `docs/aspectos.md`.
 | **Artefacto** | Servicio movil de UTB Tracker |
 | **Respuesta** | La vista carga y queda interactiva |
 | **Medida** | Tiempo de carga ≤ 3 segundos |
-| **Evidencia empírica (S9)** | Evaluada con `tests/test_performance.py`: p50 de respuesta API ~4 ms, p95 < 25 ms, muy por debajo del umbral de 3 s |
+| **Evidencia empírica (S9 / S14)** | Evaluada con `tests/test_performance.py`: p50 de respuesta API ~4 ms, p95 < 25 ms, muy por debajo del umbral de 3 s. Medición empírica S14 con endpoints reales reportada en [`docs/calidad/medicion-qs03.md`](../calidad/medicion-qs03.md) (máx 2976 ms bajo 300 peticiones concurrentes). |
 
 ### QS-03 — Rendimiento (concurrencia)
 
@@ -514,7 +706,7 @@ aspecto correspondiente en `docs/aspectos.md`.
 | **Artefacto** | Backend / API de UTB Tracker |
 | **Respuesta** | El sistema procesa las solicitudes sin degradar el servicio |
 | **Medida** | Soporta al menos 300 usuarios simultáneos sin errores ni caídas |
-| **Evidencia empírica (S9)** | `tests/test_performance.py::test_concurrencia_solicitudes_simultaneas`: 50 peticiones simultáneas con ThreadPool, 100% de tasa de éxito (HTTP 200), 0 caídas o timeouts |
+| **Evidencia empírica (S9 / S14)** | `tests/test_performance.py::test_concurrencia_solicitudes_simultaneas`: 50 peticiones simultáneas con ThreadPool, 100% de tasa de éxito (HTTP 200), 0 caídas o timeouts. Medición empírica S14 con 300 usuarios simultáneos sobre endpoints reales en [`docs/calidad/medicion-qs03.md`](../calidad/medicion-qs03.md): 300/300 peticiones exitosas (0 errores). |
 
 
 ### QS-04 — Seguridad
@@ -568,15 +760,30 @@ en `docs/auditoria_s8_s9_s11.md`.
 | **R-09** | Nombres de usuario duplicados por omisión de `unique=True` (`models/auth_models.py:19`) | Alto — Seguridad / QS-04. Nombres idénticos rompen el flujo de login (`auth.py:70`) | **Abierto / Deuda técnica:** Propuesta de restricción única en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
 | **R-10** | Inoperancia de bloqueo pesimista en SQLite (`services/loans.py:54-60`) | Medio — Confiabilidad / QS-06. Pruebas locales en SQLite no validan aislamiento de concurrencia | **Abierto / Deuda técnica:** Propuesta de estandarizar PostgreSQL local en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
 | **R-11** | Enumeración de usuarios por clave entera expuesta (`routers/auth.py:53-59`) | Alto — Seguridad / QS-04. Falta de chequeo de autorización permite enumerar usuarios | **Abierto / Deuda técnica:** Documentado en [`docs/adr/0007-identificadores-enteros-autoincrementales.md`](../adr/0007-identificadores-enteros-autoincrementales.md). |
-| **R-12** | Auto-asignación de roles privilegiados en registro público (`services/auth.py:40-44`) | Crítico — Seguridad / QS-04. Atacante puede enviar `{"rol": "administrador"}` y ganar control total | **Abierto / Deuda técnica:** Propuesta de forzar `rol = "usuario_utb"` en registro público en [`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md). |
+| **R-12** | Auto-asignación de roles privilegiados en registro público | Crítico — Seguridad / QS-04. Atacante podía enviar `{"rol": "administrador"}` y ganar control total | **Mitigado:** el registro ignora el rol enviado y siempre asigna `usuario_utb`; solo una asignación comprobada puede cambiarlo tras verificar el correo ([`app/services/auth.py`](../../app/services/auth.py), [`app/services/asignaciones.py`](../../app/services/asignaciones.py)). |
 | **R-13** | Creación de préstamos a nombre de terceros por falta de validación de titularidad (`services/loans.py:46-48`) | Alto — Seguridad / Integridad. Estudiantes pueden comprometer a otros asignándoles equipos | **Abierto / Deuda técnica:** Propuesta de autorización a nivel de recurso en [`docs/adr/0008-control-acceso-granular-recurso.md`](../adr/0008-control-acceso-granular-recurso.md). |
-| **R-14** | Secretos de JWT y firmas criptográficas con valores débiles por defecto (`core/config.py:14,21`) | Crítico — Seguridad / QS-04. Si falta variable de entorno, permite falsificar tokens con clave `"change-me-in-production"` | **Abierto / Deuda técnica:** Propuesta de validación estricta y fallo al inicio del backend en [`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md). |
-| **R-15** | Ausencia de Rate Limiting en API y Login (`routers/auth.py:21-26`) | Alto — Disponibilidad / QS-03. Ataques de fuerza bruta y agotamiento de CPU por hashing `bcrypt` | **Abierto / Deuda técnica:** Propuesta de middleware de limitación de tasa en [`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md). |
+| **R-14** | Secretos de JWT y firmas criptográficas con valores débiles por defecto | Crítico — Seguridad / QS-04. Si falta configuración, podía permitirse una clave insegura | **Mitigado:** producción rechaza las claves por defecto y exige secretos distintos mediante [`app/core/config.py`](../../app/core/config.py). |
+| **R-15** | Ausencia de Rate Limiting en API y Login | Alto — Disponibilidad / QS-03. Ataques de fuerza bruta y agotamiento de CPU por hashing `bcrypt` | **Mitigado:** existen límites persistidos por cuenta, correo e IP para login, recuperación, verificación y cambio de correo ([`app/services/limites.py`](../../app/services/limites.py), [`app/services/auth.py`](../../app/services/auth.py), [`app/services/perfil.py`](../../app/services/perfil.py)). |
 | **R-16** | Vulnerabilidades conocidas en dependencias externas Starlette y PyJWT (`requirements.txt`) | Alto — Seguridad. PYSEC-2026-161 y GHSA-pxh4-856f-4h89 detectados por `pip-audit` | **Abierto / En proceso:** Actualización de paquetes y bloqueo en CI en [`docs/seguridad/analisis-dependencias.md`](../seguridad/analisis-dependencias.md). |
-| **R-17** | Almacenamiento de tokens de sesión en archivo plano sin cifrar en Flutter (`frontend/lib/core/storage/token_storage.dart:18-19`) | Medio — Privacidad / Seguridad. Exposición de tokens en `.utb_sesion.json` | **Abierto / Deuda técnica:** Propuesta de migrar a `flutter_secure_storage` en [`docs/seguridad/privacidad.md`](../seguridad/privacidad.md). |
+| **R-17** | Almacenamiento de tokens de sesión en almacenamiento inseguro en Flutter | Medio — Privacidad / Seguridad. Exposición de tokens en el dispositivo | **Mitigado:** Flutter usa `flutter_secure_storage` en [`frontend/lib/core/storage/token_storage.dart`](../../frontend/lib/core/storage/token_storage.dart). |
 | **R-18** | Entrega at-least-once con potenciales duplicados y orden no garantizado en Outbox (`messaging/worker.py:145-153, 250-291`) | Bajo — Calidad / Usabilidad. Mensajes pueden entregarse fuera de orden o duplicarse si el worker cae | **Amenaza aceptada (S13):** Se asume por diseño para mantener desacoplamiento sin 2PC ni colas FIFO complejas ([`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md)). |
 | **R-19** | Vulnerabilidad de bypass y forja de tokens JWT por omisión de lista de revocación (T-17) | Medio — Seguridad / QS-04. Cierre de sesión declarativo mantiene tokens válidos hasta su expiración | **Amenaza aceptada (S13 / A-03):** Se preserva diseño stateless; ventana de riesgo acotada por `ACCESS_TOKEN_EXPIRE_MINUTES`. |
-| **R-20** | Vulnerabilidades en cadena de suministro de paquetes backend (T-22) | Medio — Seguridad / Integridad. CVEs en starlette 0.50.0 y pyjwt 2.12.1 | **Abierto / En proceso:** Mitigado parcialmente con `pip-audit` en CI (`ci.yml:51-55`); pendiente actualización de versiones a starlette >= 1.0.1 y pyjwt >= 2.14.0. |
+| **R-20** | Vulnerabilidades en cadena de suministro de paquetes backend (T-22) | Medio — Seguridad / Integridad. Dependencias desactualizadas pueden contener CVEs | **Mitigado:** requirements bloquea por hashes, instala versiones actualizadas (`starlette==1.3.1`, `PyJWT==2.15.1`) y CI ejecuta `pip-audit`; esta fila debe actualizarse con cada run de CI ([`docs/seguridad/analisis-dependencias.md`](../seguridad/analisis-dependencias.md)). |
+| **R-21** | Margen mínimo de QS-02 bajo 300 peticiones concurrentes con 1 worker (máx 2976 ms vs 3000 ms) | Medio — Rendimiento / QS-02. Latencia al límite del umbral ante picos de demanda. Causa no aislada (hipótesis no verificada: 1 worker de Uvicorn y pool de 30 conexiones en `app/core/database.py:21-24`) | **Abierto / Deuda técnica:** Mitigación propuesta mediante caché en memoria acotada por TTL ([`docs/datos/diseno-cache.md`](../datos/diseno-cache.md)) y despliegue multi-worker de Uvicorn. Evidencia en [`docs/calidad/medicion-qs03.md`](../calidad/medicion-qs03.md). |
+
+## 11. Revisión entre pares
+
+| Hallazgo | Evaluador | Impacto | Acción | Estado |
+|---|---|---|---|---|
+| Falta de tabla de mitigaciones en sección 8 | Profesor García | Alto (S13) | Añadir tabla de mitigaciones en `docs/arc42/arc42.md` | Mitigado |
+| Ausencia de enlace a modelo de amenazas y privacidad | Profesor García | Medio (S13) | Añadir enlaces a `docs/seguridad/modelo-amenazas.md` y `docs/seguridad/privacidad.md` | Mitigado |
+| Incorporar hallazgos de revisión en la documentación | Equipo evaluador | Medio | Registrar hallazgos, acción, responsable y estado | Cerrado |
+| Enlazar medición QS-03 desde aspectos | Equipo evaluador | Medio (S14) | Agregar enlace y resultado de la medición en `docs/aspectos.md` | Cerrado |
+| Diferenciar API y experiencia móvil/desplegada | Equipo evaluador | Medio | Limitar la conclusión de QS-03 al backend medido y declarar que la carga móvil no fue ejecutada | Cerrado |
+| Evitar que SonarCloud continúe fallando silenciosamente | Equipo evaluador | Alto | Bloquear el pipeline al fallar el análisis de SonarCloud | Cerrado |
+
+---
+
 
 
 

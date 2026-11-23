@@ -22,7 +22,7 @@ Backend en otra terminal (desde la raíz del repo): `./run.sh`
 
 | Cliente | Dirección que usa la app |
 |---|---|
-| Servidor Producción (nube) | `https://129-80-171-141.nip.io` |
+| Servidor Producción (nube) | `https://api.iscoutb.dev` |
 | Simulador iOS local | `http://127.0.0.1:8000` |
 | Emulador Android local | `http://10.0.2.2:8000` |
 | Celular real en LAN local | `flutter run --dart-define=API_BASE_URL=http://<IP-de-tu-PC>:8000` |
@@ -67,4 +67,4 @@ conoce JSON y HTTP. Estado con `ChangeNotifier` + `ListenableBuilder`, sin paque
 Autenticación (`/auth/login`, `/auth/register`, `/auth/me`, `/auth/users`), `/recursos` (con reportes),
 `/prestamos` (con `X-Idempotency-Key` y devolución), `/salones`, `/horarios`, `/prestamos-salon` y, para el
 panel del auxiliar, `/salones/ocupacion`, `/salones/{id}/presencia` y `/salones/{id}/reportes`
-(ver [ADR-0007](../docs/adr/0007-administracion-de-salones.md)). La app no inventa endpoints.
+(ver [ADR-0009](../docs/adr/0009-administracion-de-salones.md)). La app no inventa endpoints.

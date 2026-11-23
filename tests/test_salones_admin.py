@@ -169,12 +169,12 @@ def test_reportes_abiertos_se_cuentan_y_se_filtran(client, admin_headers, auth_h
     for desc in ("Piso sucio", "Tablero roto"):
         client.post(f"/salones/{salon_id}/reportes",
                     json={"tipo": "limpieza", "descripcion": desc}, headers=auth_headers)
-    primero = client.get(f"/salones/{salon_id}/reportes", headers=auth_headers).json()[0]
+    primero = client.get(f"/salones/{salon_id}/reportes", headers=admin_headers).json()[0]
     client.patch(f"/salones/{salon_id}/reportes/{primero['id']}",
                  json={"estado": "resuelto"}, headers=admin_headers)
 
     abiertos = client.get(f"/salones/{salon_id}/reportes", params={"estado": "abierto"},
-                          headers=auth_headers).json()
+                          headers=admin_headers).json()
     ocupacion = client.get(f"/salones/{salon_id}/ocupacion", params={"momento": LUNES_13_00},
                            headers=admin_headers).json()
 
@@ -196,3 +196,31 @@ def test_reporte_de_salon_inexistente_da_404(client, auth_headers):
                     json={"tipo": "otro", "descripcion": "algo"}, headers=auth_headers)
 
     assert r.status_code == 404
+
+
+def test_reportes_de_todos_los_salones_traen_nombre_del_salon(client, admin_headers, auth_headers):
+    a = _salon_con_clase(client, admin_headers, nombre="A4-204")
+    b = _salon_con_clase(client, admin_headers, nombre="A1-101")
+    for salon_id in (a, b):
+        r = client.post(f"/salones/{salon_id}/reportes", json={
+            "tipo": "limpieza", "descripcion": "Tablero sin borrar",
+        }, headers=auth_headers)
+        assert r.status_code == 201, r.text
+
+    assert client.get("/salones/reportes", headers=auth_headers).status_code == 403
+    r = client.get("/salones/reportes", headers=admin_headers)
+    assert r.status_code == 200, r.text
+    assert {x["salon_nombre"] for x in r.json()} == {"A4-204", "A1-101"}
+    assert all(x["usuario_nombre"] for x in r.json())
+
+
+def test_recurso_expone_el_codigo_real_del_salon(client, admin_headers):
+    salon = client.post("/salones", json={
+        "nombre": "A4-206", "ubicacion": "Aula de clase", "capacidad": 40, "edificio": "A4",
+    }, headers=admin_headers).json()
+    r = client.post("/recursos", json={
+        "categoria": "aire_ac", "salon_id": salon["id"], "serial": "AC-A4-206",
+    }, headers=admin_headers)
+    assert r.status_code == 201, r.text
+    assert r.json()["salon_nombre"] == "A4-206"
+    assert r.json()["salon_edificio"] == "A4"

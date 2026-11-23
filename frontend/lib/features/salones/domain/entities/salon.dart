@@ -1,6 +1,35 @@
 /// Entidades del módulo de Salones, Horarios y Préstamos de Salón (UTB Tracker).
 library;
 
+/// Para qué sirve el salón (ADR-0017). Espejo de `TipoSalon` del backend.
+enum TipoSalon {
+  aula('aula', 'Aula'),
+  laboratorioComputo('laboratorio_computo', 'Laboratorio de cómputo'),
+  salaAudiovisual('sala_audiovisual', 'Sala audiovisual'),
+  auditorio('auditorio', 'Auditorio'),
+  salaReuniones('sala_reuniones', 'Sala de reuniones'),
+  otro('otro', 'Otro');
+
+  const TipoSalon(this.api, this.etiqueta);
+  final String api;
+  final String etiqueta;
+
+  static TipoSalon desdeApi(Object? v) =>
+      values.firstWhere((t) => t.api == v, orElse: () => TipoSalon.aula);
+}
+
+/// Equipamiento CALCULADO por el servidor desde los recursos activos del salón.
+class EquipoCategoria {
+  const EquipoCategoria({required this.categoria, required this.total, required this.operativos});
+
+  final String categoria;
+  final int total;
+  final int operativos;
+
+  /// Dañados o en mantenimiento.
+  int get fueraDeServicio => total - operativos;
+}
+
 class Salon {
   const Salon({
     required this.id,
@@ -11,7 +40,44 @@ class Salon {
     required this.capacidad,
     required this.estado,
     this.activo = true,
+    this.tipo = TipoSalon.aula,
+    this.descripcion,
+    this.equipamiento = const [],
+    this.tipoSugerido,
+    this.capacidadEstimada = false,
+    this.habilitado = true,
+    this.motivoDeshabilitado,
+    this.notaDeshabilitado,
+    this.reaperturaEstimada,
+    this.avisoDeshabilitado,
+    this.ocupadoAhora = false,
   });
+
+  /// HABILITACIÓN manual (ADR-0022): un salón deshabilitado no se solicita.
+  final bool habilitado;
+  final String? motivoDeshabilitado;
+  final String? notaDeshabilitado;
+  final DateTime? reaperturaEstimada;
+
+  /// Texto listo del servidor: "Deshabilitado: Mantenimiento (…). Reapertura estimada: …".
+  final String? avisoDeshabilitado;
+
+  /// OCUPACIÓN calculada por el servidor: hay clase o solicitud aprobada ahora.
+  final bool ocupadoAhora;
+
+  /// Capacidad por defecto sin dato oficial (ADR-0021): se muestra "estimada".
+  final bool capacidadEstimada;
+
+  final TipoSalon tipo;
+  final String? descripcion;
+  final List<EquipoCategoria> equipamiento;
+
+  /// Sugerencia del servidor (p. ej. 8+ computadores -> laboratorio). Nunca cambia el tipo sola.
+  final TipoSalon? tipoSugerido;
+
+  /// Cantidad operativa de una categoría (para filtros y chips).
+  int operativos(String categoria) =>
+      equipamiento.where((e) => e.categoria == categoria).fold(0, (a, e) => a + e.operativos);
 
   final int id;
   final String nombre;
@@ -23,6 +89,9 @@ class Salon {
   final bool activo;
 
   bool get disponible => estado.toLowerCase() == 'disponible';
+
+  /// Se puede pedir para otro momento aunque ahora esté ocupado; deshabilitado, nunca.
+  bool get solicitable => habilitado && estado != 'mantenimiento' && estado != 'fuera_servicio';
 
   String get detalleUbicacion {
     final partes = <String>[ubicacion];
@@ -102,6 +171,13 @@ class PrestamoSalon {
     this.motivo,
     required this.estado,
     required this.createdAt,
+    this.salonNombre,
+    this.usuarioNombre,
+    this.respuesta,
+    this.atendidoPorNombre,
+    this.atendidoEn,
+    this.conflicto,
+    this.avisoSalon,
   });
 
   final int id;
@@ -112,4 +188,33 @@ class PrestamoSalon {
   final String? motivo;
   final String estado;
   final DateTime createdAt;
+
+  /// Código real del salón ("A4-204") y nombre de quien lo pidió.
+  final String? salonNombre;
+  final String? usuarioNombre;
+
+  /// ADR-0018: motivo del rechazo o nota al aprobar, quién la atendió y cuándo.
+  final String? respuesta;
+  final String? atendidoPorNombre;
+  final DateTime? atendidoEn;
+
+  /// Solo en la bandeja del auditor: con qué choca la franja (null = libre).
+  final String? conflicto;
+
+  /// ADR-0022: el salón quedó deshabilitado (texto del servidor con el motivo).
+  final String? avisoSalon;
+
+  String get salonTexto => salonNombre ?? 'Salón';
+  bool get pendiente => estado == 'pendiente';
+
+  /// Texto para mostrar (no depender solo del color, accesibilidad).
+  String get estadoTexto => switch (estado) {
+        'pendiente' => 'Pendiente',
+        'aprobado' => 'Aprobada',
+        'rechazado' => 'Rechazada',
+        'cancelado' => 'Cancelada',
+        'en_uso' => 'En uso',
+        'finalizado' => 'Finalizada',
+        _ => estado,
+      };
 }

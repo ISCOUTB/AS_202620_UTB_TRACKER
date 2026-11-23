@@ -1,7 +1,7 @@
 name: utb_tracker_app
 description: App móvil de UTB Tracker (Flutter). Cliente del API FastAPI del repositorio.
 publish_to: "none"
-version: 0.1.0+3
+version: 0.1.1+4
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -11,6 +11,9 @@ environment:
 #  - get_it:      inyección de dependencias (lo nombra el Blueprint, patrón Repositorio).
 #  - flutter_svg: dibuja las figuras SVG de assets/figuras/. Es la única que NO está en el Blueprint;
 #                 si el profesor no la aprueba, se reemplaza convirtiendo las figuras a PNG.
+#  - image_picker: oficial del equipo de Flutter (flutter.dev). Foto de perfil desde la cámara o la
+#                 galería, ya reducida a 256 px y recomprimida en el teléfono (ADR-0020). Sin
+#                 permisos nuevos en Android (cámara del sistema y selector de fotos).
 dependencies:
   flutter:
     sdk: flutter
@@ -20,13 +23,43 @@ dependencies:
   firebase_core: ^4.2.1
   firebase_messaging: ^16.0.4
   flutter_secure_storage: ^9.2.4
+  image_picker: ^1.2.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.6
 
 flutter:
   uses-material-design: true
   assets:
     - assets/figuras/
+    - assets/icono/logo_splash.png
+
+# Ícono de la app y pantalla de arranque (identidad visual, ADR-0011). Se regeneran con:
+#   dart run flutter_launcher_icons && dart run flutter_native_splash:create
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/icono/icono.png
+  adaptive_icon_background: "#2F55E4"
+  adaptive_icon_foreground: assets/icono/primer_plano.png
+  adaptive_icon_foreground_inset: 22
+  web:
+    generate: true
+    image_path: assets/icono/icono.png
+    background_color: "#000000"
+    theme_color: "#000000"
+
+flutter_native_splash:
+  color: "#000000"
+  image: assets/icono/logo_splash.png
+  # Android 12+: círculo azul con el pin ya dibujado (sin icon_background_color): se ve igual
+  # aunque el fabricante no recorte el ícono (antes quedaba un cuadrado azul en MIUI).
+  android_12:
+    color: "#000000"
+    image: assets/icono/splash_android12.png
+  web: true
+  ios: false

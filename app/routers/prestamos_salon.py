@@ -11,11 +11,14 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AdminUser, CurrentUser
+from app.core import permisos
+from app.core.deps import GestionaSolicitudes, SolicitaSalon, TieneSolicitudes
 from app.schemas.prestamos_salon import (
     PrestamoSalonCreate,
     PrestamoSalonResponse,
     PrestamoSalonUpdate,
+    RechazoSolicitud,
+    RespuestaSolicitud,
 )
 from app.services import prestamos_salon as ps_service
 
@@ -26,21 +29,55 @@ router = APIRouter()
 def crear_prestamo_salon(
     prestamo: PrestamoSalonCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: SolicitaSalon,
 ):
     """
-    Solicita un préstamo de salón.
+    Solicita un préstamo de salón. Exige correo verificado (ADR-0014): una cuenta sin
+    verificar puede entrar y consultar, pero no pedir salones.
     Valida conflictos con horarios académicos y otros préstamos existentes.
     El usuario autenticado queda asociado como solicitante.
     """
     return ps_service.crear_prestamo_salon(db, prestamo, current_user.id)
 
 
+@router.get("/mias", response_model=list[PrestamoSalonResponse])
+def listar_mis_solicitudes(
+    response: Response,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: TieneSolicitudes,
+    estado: Optional[str] = None,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+):
+    """Mis solicitudes (pantalla del estudiante). Siempre solo las propias."""
+    items, total = ps_service.listar_mias(db, current_user.id, estado, skip, limit)
+    response.headers["X-Total-Count"] = str(total)
+    return items
+
+
+@router.get("/gestion", response_model=list[PrestamoSalonResponse])
+def bandeja_de_solicitudes(
+    response: Response,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: GestionaSolicitudes,
+    estado: Annotated[Optional[str], Query(description="Por defecto 'pendiente'; 'todas' para todas")] = "pendiente",
+    salon_id: Optional[int] = None,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+):
+    """Bandeja del auditor: solicitudes de todos los estudiantes con su conflicto, si lo hay."""
+    items, total = ps_service.listar_gestion(
+        db, None if estado == "todas" else estado, salon_id, skip, limit
+    )
+    response.headers["X-Total-Count"] = str(total)
+    return items
+
+
 @router.get("", response_model=list[PrestamoSalonResponse])
 def listar_prestamos_salon(
     response: Response,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: TieneSolicitudes,
     salon_id: Optional[int] = None,
     estado: Optional[str] = None,
     skip: Annotated[int, Query(ge=0)] = 0,
@@ -48,12 +85,10 @@ def listar_prestamos_salon(
 ):
     """
     Lista préstamos de salón con filtros.
-    Admin/auxiliar ve todos; usuario normal solo ve los suyos.
+    Quien gestiona solicitudes ve todas; el estudiante solo las suyas (ADR-0018).
     Devuelve el total de registros en el header X-Total-Count.
     """
-    usuario_id = None
-    if current_user.rol not in ("administrador", "auxiliar"):
-        usuario_id = current_user.id
+    usuario_id = None if _gestiona(current_user) else current_user.id
     items, total = ps_service.listar_prestamos_salon(db, salon_id, estado, usuario_id, skip, limit)
     response.headers["X-Total-Count"] = str(total)
     return items
@@ -63,15 +98,13 @@ def listar_prestamos_salon(
 def obtener_prestamo_salon(
     prestamo_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: TieneSolicitudes,
 ):
     """
     Obtiene un préstamo de salón por ID.
-    Usuario normal solo puede consultar el suyo; admin/auxiliar cualquiera.
+    El estudiante solo puede consultar el suyo; quien gestiona solicitudes, cualquiera.
     """
-    usuario_id = None
-    if current_user.rol not in ("administrador", "auxiliar"):
-        usuario_id = current_user.id
+    usuario_id = None if _gestiona(current_user) else current_user.id
     return ps_service.obtener_prestamo_salon(db, prestamo_id, usuario_id)
 
 
@@ -80,22 +113,48 @@ def actualizar_estado_prestamo_salon(
     prestamo_id: int,
     datos: PrestamoSalonUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaSolicitudes,
 ):
     """
     Actualiza el estado de un préstamo de salón.
-    Solo admin/auxiliar puede aprobar, rechazar o cambiar estados.
+    Solo auditor/administrador puede aprobar, rechazar o cambiar estados.
     Valida transiciones: pendiente→aprobado/rechazado/cancelado,
     aprobado→en_uso/cancelado, en_uso→finalizado.
     """
-    return ps_service.actualizar_estado_prestamo_salon(db, prestamo_id, datos.estado)
+    return ps_service.actualizar_estado_prestamo_salon(
+        db, prestamo_id, datos.estado, actor_id=current_user.id, respuesta=datos.respuesta
+    )
+
+
+@router.post("/{prestamo_id}/aprobar", response_model=PrestamoSalonResponse)
+def aprobar_solicitud(
+    prestamo_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: GestionaSolicitudes,
+    datos: RespuestaSolicitud | None = None,
+):
+    """Aprueba (nota opcional). 409 si la franja ya choca con otra aprobada o con una clase."""
+    return ps_service.responder_solicitud(
+        db, prestamo_id, True, current_user.id, datos.respuesta if datos else None
+    )
+
+
+@router.post("/{prestamo_id}/rechazar", response_model=PrestamoSalonResponse)
+def rechazar_solicitud(
+    prestamo_id: int,
+    datos: RechazoSolicitud,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: GestionaSolicitudes,
+):
+    """Rechaza con un motivo obligatorio, que el estudiante ve en la app y en el correo."""
+    return ps_service.responder_solicitud(db, prestamo_id, False, current_user.id, datos.respuesta)
 
 
 @router.delete("/{prestamo_id}", response_model=PrestamoSalonResponse)
 def cancelar_prestamo_propio(
     prestamo_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: CurrentUser,
+    current_user: TieneSolicitudes,
 ):
     """
     Cancela un préstamo propio que todavía esté en estado 'pendiente'.
@@ -108,12 +167,16 @@ def cancelar_prestamo_propio(
 @router.post("/expirar", status_code=200)
 def expirar_prestamos_pendientes(
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaSolicitudes,
 ):
     """
     Marca como 'cancelado' todos los préstamos pendientes cuya fecha_inicio
     ya pasó. Debe llamarse periódicamente (cron/scheduler).
-    Solo admin/auxiliar.
+    Solo auditor/administrador.
     """
     total = ps_service.expirar_prestamos_pendientes(db)
     return {"expirados": total}
+
+
+def _gestiona(usuario) -> bool:
+    return permisos.tiene(usuario.rol, permisos.Permiso.SOLICITUDES_GESTIONAR)

@@ -7,33 +7,53 @@ Delega toda la lógica de negocio y hashing seguro (bcrypt) a app.services.auth.
 """
 from typing import Annotated, Optional
 
-import time
-from collections import defaultdict
-
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import AdminUser, CurrentUser
+from app.core.deps import CurrentUser, GestionaUsuarios
 from app.schemas.auth import (
+    CambiarCorreoRequest,
     ForgotPasswordRequest, RefreshTokenRequest, ResetPasswordRequest,
     FcmTokenRequest,
     TokenResponse,
-    UserMeResponse,
     UserResponse,
     UsuarioCreate,
     UsuarioLogin,
     UsuarioRoleUpdate,
 )
+from app.routers.fotos import leer_cuerpo_limitado, respuesta_foto
+from app.schemas.perfil import (
+    CambiarPasswordRequest,
+    FotoEstado,
+    PasswordRequest,
+    PerfilResponse,
+    PerfilUpdate,
+    SesionRenovada,
+)
 from app.services import auth as auth_service
+from app.services import fotos as fotos_service
+from app.services import paginas_auth, perfil as perfil_service
+from app.services import usuarios as usuarios_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-_login_failures: dict[str, list[float]] = defaultdict(list)
+
+_SEGURIDAD_HTML = {
+    "Content-Security-Policy": paginas_auth.CSP,
+    "Cache-Control": "no-store",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+}
 
 
-def _client_key(request: Request, username: str) -> str:
-    host = request.client.host if request.client else "unknown"
-    return f"{host}:{username.strip().lower()}"
+def _ip(request: Request) -> str:
+    return request.client.host if request.client else "desconocida"
+
+
+def _html(contenido: str, status_code: int = 200) -> HTMLResponse:
+    return HTMLResponse(contenido, status_code=status_code, headers=_SEGURIDAD_HTML)
 
 
 @router.post(
@@ -46,23 +66,8 @@ def login_endpoint(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
 ):
-    from app.core.config import LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW_SECONDS
-    key = _client_key(request, user.nombre)
-    ahora = time.monotonic()
-    _login_failures[key] = [
-        instante for instante in _login_failures[key]
-        if ahora - instante < LOGIN_RATE_WINDOW_SECONDS
-    ]
-    if len(_login_failures[key]) >= LOGIN_RATE_LIMIT:
-        raise HTTPException(status_code=429, detail="Demasiados intentos. Intenta más tarde.")
-    try:
-        result = auth_service.login(db, user)
-    except HTTPException as error:
-        if error.status_code == 401:
-            _login_failures[key].append(ahora)
-        raise
-    _login_failures.pop(key, None)
-    return result
+    """Entra con nombre de usuario o correo. Límite de intentos guardado en la base."""
+    return auth_service.login(db, user, ip=_ip(request))
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
@@ -70,23 +75,167 @@ def register_endpoint(
     user: UsuarioCreate,
     db: Annotated[Session, Depends(get_db)],
 ):
+    """Crea la cuenta SIN verificar y envía el correo de verificación."""
     return auth_service.create_user(db, user)
 
 
-@router.get("/me", response_model=UserMeResponse)
-def me_endpoint(current_user: CurrentUser):
-    """Retorna los datos del usuario autenticado a partir del token JWT."""
-    return current_user
+@router.get("/verificar-correo", response_class=HTMLResponse, include_in_schema=True)
+def verificar_correo_endpoint(
+    db: Annotated[Session, Depends(get_db)],
+    token: Annotated[str, Query(min_length=10, max_length=2048)],
+):
+    """Abre el enlace del correo: verifica la cuenta o confirma el cambio de correo."""
+    try:
+        resultado = auth_service.abrir_enlace_correo(db, token)
+    except HTTPException as exc:
+        return _html(paginas_auth.enlace_invalido(str(exc.detail)), status_code=400)
+    tipo, user = resultado
+    if tipo == "cambio":
+        return _html(paginas_auth.correo_cambiado(user.email))
+    return _html(paginas_auth.correo_verificado(user.nombre))
+
+
+@router.post("/reenviar-verificacion", status_code=202,
+             responses={409: {"description": "Ya verificado"}, 429: {"description": "Límite"}})
+def reenviar_verificacion_endpoint(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    auth_service.reenviar_verificacion(db, current_user, ip=_ip(request))
+    return {"message": "Te enviamos de nuevo el correo de verificación."}
+
+
+@router.get("/restablecer", response_class=HTMLResponse)
+def restablecer_pagina_endpoint(
+    token: Annotated[str, Query(min_length=10, max_length=2048)],
+):
+    """Página del enlace de recuperación: formulario que llama a POST /auth/reset-password."""
+    return _html(paginas_auth.formulario_restablecer(token))
+
+
+@router.get("/me", response_model=PerfilResponse)
+def me_endpoint(current_user: CurrentUser, db: Annotated[Session, Depends(get_db)]):
+    """Perfil completo: datos, verificación, preferencias y, desde ADR-0018, `rol_etiqueta` y
+    `permisos` (la app decide qué mostrar por permisos, nunca comparando el texto del rol).
+    Desde ADR-0019: `correo_institucional`, `rol_origen`, `rol_origen_texto` y `cargo`."""
+    return perfil_service.respuesta(db, current_user)
+
+
+@router.patch("/me", response_model=PerfilResponse)
+def actualizar_perfil_endpoint(
+    body: PerfilUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Edita nombre para mostrar, teléfono, dependencia/cargo, color de avatar y preferencias."""
+    return perfil_service.respuesta(db, perfil_service.actualizar_perfil(db, current_user, body))
+
+
+_CUERPO_FOTO = {
+    "requestBody": {
+        "required": True,
+        "description": "Los bytes de la foto (JPEG o PNG, ya reducida por la app). El tipo se "
+                       "decide por el contenido, no por el Content-Type.",
+        "content": {t: {"schema": {"type": "string", "format": "binary"}}
+                    for t in ("image/jpeg", "image/png")},
+    }
+}
+
+
+@router.put("/me/foto", response_model=FotoEstado, openapi_extra=_CUERPO_FOTO,
+            responses={413: {"description": "Demasiado grande"},
+                       415: {"description": "No es JPEG ni PNG"},
+                       422: {"description": "Dañada o de dimensiones no admitidas"},
+                       429: {"description": "Demasiadas subidas"}})
+async def subir_foto_endpoint(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Sube o reemplaza la foto propia (ADR-0020). Se quitan sus metadatos (EXIF/GPS)."""
+    datos = await leer_cuerpo_limitado(request)
+    foto = await run_in_threadpool(fotos_service.guardar, db, current_user, datos)
+    return FotoEstado(tiene_foto=True, foto_version=foto.version, tipo=foto.tipo,
+                      tamano=foto.tamano, ancho=foto.ancho, alto=foto.alto)
+
+
+@router.delete("/me/foto", response_model=FotoEstado)
+def quitar_foto_endpoint(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Quita la foto propia: el contenido se borra de la base."""
+    fotos_service.quitar(db, current_user)
+    return FotoEstado(tiene_foto=False)
+
+
+@router.get("/me/foto", response_class=Response,
+            responses={200: {"content": {"image/jpeg": {}, "image/png": {}}},
+                       404: {"description": "Sin foto"}})
+def ver_mi_foto_endpoint(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    return respuesta_foto(fotos_service.obtener(db, current_user.id, current_user))
+
+
+@router.post("/me/cambiar-password", response_model=SesionRenovada,
+             responses={403: {"description": "Contraseña actual incorrecta"}})
+def cambiar_password_endpoint(
+    body: CambiarPasswordRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Cambia la contraseña y cierra las demás sesiones; devuelve tokens para este dispositivo."""
+    return perfil_service.cambiar_password(db, current_user, body.password_actual, body.password_nueva)
+
+
+@router.post("/me/cerrar-sesiones", response_model=SesionRenovada)
+def cerrar_sesiones_endpoint(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Cierra la sesión en todos los demás dispositivos."""
+    return perfil_service.cerrar_sesiones(db, current_user)
+
+
+@router.post("/me/desactivar", status_code=200,
+             responses={403: {"description": "Contraseña actual incorrecta"}})
+def desactivar_cuenta_endpoint(
+    body: PasswordRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Desactiva la cuenta propia (confirmando con la contraseña). Un administrador puede reactivarla."""
+    perfil_service.desactivar_cuenta(db, current_user, body.password)
+    return {"message": "Tu cuenta quedó desactivada."}
+
+
+@router.post("/me/cambiar-correo", status_code=202,
+             responses={403: {"description": "Contraseña actual incorrecta"},
+                        409: {"description": "Correo en uso"}, 429: {"description": "Límite"}})
+def cambiar_correo_endpoint(
+    body: CambiarCorreoRequest,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Pide cambiar el correo: no cambia hasta abrir el enlace enviado al correo NUEVO."""
+    perfil_service.solicitar_cambio_correo(
+        db, current_user, body.correo_nuevo, body.password, ip=_ip(request)
+    )
+    return {"message": "Te enviamos un enlace al nuevo correo. Hasta que lo abras, sigue valiendo el anterior."}
 
 
 @router.delete("/delete/{user_id}")
 def delete_user_endpoint(
     user_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaUsuarios,
 ):
-    """Elimina (soft-delete) un usuario. Requiere rol admin/auxiliar."""
-    return auth_service.delete_user(db, user_id)
+    """Desactiva (soft-delete) un usuario. Solo administrador (ADR-0018)."""
+    return auth_service.delete_user(db, user_id, current_user)
 
 
 @router.get("/user/{user_id}", response_model=UserResponse)
@@ -95,19 +244,20 @@ def get_user_endpoint(
     db: Annotated[Session, Depends(get_db)],
     current_user: CurrentUser,
 ):
-    return auth_service.get_user_by_id(db, user_id)
+    """Uno mismo, o auditor/administrador (para mostrar quién pidió o reportó)."""
+    return usuarios_service.ver_usuario(db, user_id, current_user)
 
 
 @router.get("/users", response_model=list[UserResponse])
 def get_users_endpoint(
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaUsuarios,
     search: Optional[str] = None,
     rol: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
 ):
-    """Lista todos los usuarios para el panel administrativo. Requiere rol admin/auxiliar."""
+    """Lista usuarios (legado; la app nueva usa GET /usuarios). Solo administrador."""
     return auth_service.get_all_users(
         db, skip=skip, limit=limit, search=search, rol=rol
     )
@@ -119,18 +269,19 @@ def update_user_role_endpoint(
     user_id: int,
     body: UsuarioRoleUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: AdminUser,
+    current_user: GestionaUsuarios,
 ):
-    """Asigna o actualiza el rol de un usuario desde el panel administrativo. Requiere rol admin/auxiliar."""
-    return auth_service.update_user_role(db, user_id, body.rol)
+    """Cambia el rol (legado; la app nueva usa PATCH /usuarios/{id}/rol). Solo administrador."""
+    return auth_service.update_user_role(db, user_id, body.rol, current_user)
 
 
 @router.post("/forgot-password", status_code=202)
 def forgot_password_endpoint(
     body: ForgotPasswordRequest,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
 ):
-    auth_service.request_password_reset(db, body.email)
+    auth_service.request_password_reset(db, body.email, ip=_ip(request))
     return {"message": "Si el correo está registrado, recibirás instrucciones para recuperar tu contraseña"}
 
 

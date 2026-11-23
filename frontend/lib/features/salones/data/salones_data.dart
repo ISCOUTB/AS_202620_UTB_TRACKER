@@ -15,6 +15,29 @@ class SalonModel {
         capacidad: (j['capacidad'] as num).toInt(),
         estado: (j['estado'] ?? 'disponible').toString(),
         activo: j['activo'] as bool? ?? true,
+        // Campos de ADR-0017; un servidor anterior no los manda.
+        tipo: TipoSalon.desdeApi(j['tipo']),
+        descripcion: j['descripcion'] as String?,
+        equipamiento: [
+          for (final e in (j['equipamiento'] as List<dynamic>? ?? const []))
+            EquipoCategoria(
+              categoria: (e['categoria'] ?? 'otro').toString(),
+              total: (e['total'] as num).toInt(),
+              operativos: (e['operativos'] as num).toInt(),
+            ),
+        ],
+        tipoSugerido: j['tipo_sugerido'] == null ? null : TipoSalon.desdeApi(j['tipo_sugerido']),
+        capacidadEstimada: j['capacidad_estimada'] as bool? ?? false,
+        // ADR-0022; un servidor anterior no los manda (se deduce del estado de siempre).
+        habilitado: j['habilitado'] as bool? ??
+            !['mantenimiento', 'fuera_servicio'].contains(j['estado']),
+        motivoDeshabilitado: j['motivo_deshabilitado'] as String?,
+        notaDeshabilitado: j['nota_deshabilitado'] as String?,
+        reaperturaEstimada: j['reapertura_estimada'] == null
+            ? null
+            : DateTime.tryParse(j['reapertura_estimada'].toString()),
+        avisoDeshabilitado: j['aviso_deshabilitado'] as String?,
+        ocupadoAhora: j['ocupado_ahora'] as bool? ?? j['estado'] == 'ocupado',
       );
 }
 
@@ -58,6 +81,15 @@ class PrestamoSalonModel {
         createdAt: j['created_at'] != null
             ? parsearFechaServidor(j['created_at'].toString())
             : DateTime.now(),
+        salonNombre: j['salon_nombre'] as String?,
+        usuarioNombre: j['usuario_nombre'] as String?,
+        respuesta: j['respuesta'] as String?,
+        atendidoPorNombre: j['atendido_por_nombre'] as String?,
+        atendidoEn: j['atendido_en'] != null
+            ? parsearFechaServidor(j['atendido_en'].toString())
+            : null,
+        conflicto: j['conflicto'] as String?,
+        avisoSalon: j['aviso_salon'] as String?,
       );
 }
 
@@ -65,8 +97,9 @@ class SalonesRemoteDataSource {
   SalonesRemoteDataSource(this._api);
   final ApiClient _api;
 
+  /// TODAS las páginas: el catálogo UTB ya pasa de 50 salones (ADR-0021).
   Future<List<Salon>> listarSalones() async {
-    final cuerpo = await _api.get('/salones') as List<dynamic>;
+    final cuerpo = await _api.getTodo('/salones');
     return cuerpo
         .map((e) => SalonModel.desdeJson(e as Map<String, dynamic>))
         .toList();
@@ -83,6 +116,8 @@ class SalonesRemoteDataSource {
     String? edificio,
     int? piso,
     required int capacidad,
+    TipoSalon tipo = TipoSalon.aula,
+    String? descripcion,
   }) async {
     final cuerpo = await _api.post(
       '/salones',
@@ -92,7 +127,18 @@ class SalonesRemoteDataSource {
         if (edificio != null && edificio.isNotEmpty) 'edificio': edificio,
         if (piso != null) 'piso': piso,
         'capacidad': capacidad,
+        'tipo': tipo.api,
+        if (descripcion != null && descripcion.trim().isNotEmpty) 'descripcion': descripcion.trim(),
       },
+    ) as Map<String, dynamic>;
+    return SalonModel.desdeJson(cuerpo);
+  }
+
+  /// PUT /salones/{id} con tipo y descripción (vacía = sin descripción).
+  Future<Salon> actualizarTipoYDescripcion(int id, TipoSalon tipo, String descripcion) async {
+    final cuerpo = await _api.put(
+      '/salones/$id',
+      cuerpo: {'tipo': tipo.api, 'descripcion': descripcion.trim()},
     ) as Map<String, dynamic>;
     return SalonModel.desdeJson(cuerpo);
   }
@@ -204,6 +250,8 @@ class SalonesRepositoryImpl implements SalonesRepository {
     String? edificio,
     int? piso,
     required int capacidad,
+    TipoSalon tipo = TipoSalon.aula,
+    String? descripcion,
   }) =>
       _remoto.crearSalon(
         nombre: nombre,
@@ -211,7 +259,13 @@ class SalonesRepositoryImpl implements SalonesRepository {
         edificio: edificio,
         piso: piso,
         capacidad: capacidad,
+        tipo: tipo,
+        descripcion: descripcion,
       );
+
+  @override
+  Future<Salon> actualizarTipoYDescripcion(int id, TipoSalon tipo, String descripcion) =>
+      _remoto.actualizarTipoYDescripcion(id, tipo, descripcion);
 
   @override
   Future<List<FranjaDisponible>> consultarDisponibilidad(

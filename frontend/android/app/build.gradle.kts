@@ -1,8 +1,14 @@
 plugins {
     id("com.android.application")
-    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// google-services.json está en .gitignore. La app inicializa Firebase con
+// lib/firebase_options.dart, así que el plugin solo se aplica si el archivo existe
+// (permite compilar el APK en máquinas nuevas y en el CI sin ese archivo).
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 android {
