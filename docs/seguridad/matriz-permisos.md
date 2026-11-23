@@ -52,6 +52,7 @@ los huecos corregidos.
 
 | Método | Ruta | Antes | Ahora | Nota |
 |---|---|---|---|---|
+| GET | `/` | público | público | Redirección a `/docs` (Swagger UI); `include_in_schema=False` |
 | GET | `/salud` | público | público | |
 | POST | `/auth/login` | público | público | |
 | POST | `/auth/register` | público | público | Siempre crea Estudiante, aunque el cuerpo traiga otro rol; solo correos institucionales (ADR-0019) |
