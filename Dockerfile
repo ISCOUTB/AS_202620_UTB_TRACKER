@@ -26,4 +26,4 @@ EXPOSE 8000
 # Prepara el esquema (base nueva: crea tablas y marca la versión; base existente: migra) y
 # arranca la API. El worker usa esta misma imagen con otro comando (ver docker-compose.yml).
 # Antes era `alembic upgrade head`, que falla con una base vacía (ADR-0014).
-CMD ["sh", "-c", "python scripts/preparar_bd.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python scripts/preparar_bd.py && python scripts/poblar_a1_piso4.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
