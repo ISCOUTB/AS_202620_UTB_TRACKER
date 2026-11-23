@@ -40,7 +40,6 @@ Map<String, dynamic> _usuario({
       'email': institucional ? 'ana.perez@utb.edu.co' : 'ana.perez.antigua@gmail.com',
       'rol': 'auxiliar',
       'rol_etiqueta': 'Auditor',
-      'email_verificado': true,
       'correo_institucional': institucional,
       'rol_origen': origen,
       'rol_origen_texto': origen == 'correo' ? 'Asignado por tu correo institucional' : null,

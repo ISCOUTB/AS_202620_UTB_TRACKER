@@ -3,8 +3,8 @@ Administración de los **salones** de la Universidad Tecnológica de Bolívar.
 
 - Ocupación en vivo y solicitudes de salón.
 - Habilitación con motivo y equipos fijos por salón (**los equipos no se prestan**).
-- Catálogo A1-101, auditoría, roles Estudiante, Auditor y Administrador, y cuentas con correo
-  institucional verificado.
+- Catálogo A1-101, auditoría, roles Estudiante, Auditor y Administrador (los asigna un administrador), y cuentas solo con
+  correo institucional (sin verificación de correo, ADR-0024).
 
 Backend con FastAPI y app móvil con Flutter. **Índice de toda la documentación:
 [docs/README.md](docs/README.md).**

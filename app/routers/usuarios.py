@@ -13,7 +13,6 @@ from app.core.database import get_db
 from app.core.deps import CurrentUser, GestionaUsuarios
 from app.schemas.usuarios import CambioEstado, CambioRol, UsuarioAdmin
 from app.routers.fotos import respuesta_foto
-from app.services import asignaciones as asignaciones_service
 from app.services import fotos as fotos_service
 from app.services import usuarios as usuarios_service
 
@@ -59,16 +58,6 @@ def cambiar_estado(
     return UsuarioAdmin.de(
         usuarios_service.cambiar_estado(db, usuario_id, body.activo, current_user)
     )
-
-
-@router.post("/{usuario_id}/rol/automatico", response_model=UsuarioAdmin)
-def rol_automatico(
-    usuario_id: int,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: GestionaUsuarios,
-):
-    """Quita el rol manual: desde ahora manda la lista de asignaciones (ADR-0019)."""
-    return UsuarioAdmin.de(asignaciones_service.volver_a_automatico(db, usuario_id, current_user))
 
 
 @router.get("/{usuario_id}/foto", response_class=Response,

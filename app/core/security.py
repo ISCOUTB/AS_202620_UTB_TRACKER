@@ -8,7 +8,7 @@ Sesión (access / refresh):
   - `sv` = versión de sesión del usuario. Cambiar la contraseña o "cerrar sesión en todos los
     dispositivos" sube la versión y deja inválidos los tokens emitidos antes.
 
-Un solo uso (verificar correo, recuperar contraseña, cambiar correo):
+Un solo uso (recuperar contraseña):
   - claim `proposito` + `jti` aleatorio; el `jti` se anota en tokens_usados al usarlo.
   - Cada propósito se firma con un secreto distinto: un token de verificación no sirve para
     recuperar la contraseña ni para iniciar sesión.
@@ -23,27 +23,18 @@ import jwt
 from app.core.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
-    CAMBIO_CORREO_EXPIRA_HORAS,
-    EMAIL_TOKEN_SECRET_KEY,
     FORGET_PWD_SECRET_KEY,
     RECUPERACION_EXPIRA_MINUTOS,
     REFRESH_TOKEN_EXPIRE_DAYS,
     SECRET_KEY,
-    VERIFICACION_EXPIRA_HORAS,
 )
 
-PROPOSITO_VERIFICAR = "verificar_correo"
 PROPOSITO_RECUPERAR = "recuperar_password"
-PROPOSITO_CAMBIAR_CORREO = "cambiar_correo"
 
 _SECRETOS = {
-    PROPOSITO_VERIFICAR: EMAIL_TOKEN_SECRET_KEY + ":verificar",
-    PROPOSITO_CAMBIAR_CORREO: EMAIL_TOKEN_SECRET_KEY + ":cambiar",
     PROPOSITO_RECUPERAR: FORGET_PWD_SECRET_KEY,
 }
 _DURACION = {
-    PROPOSITO_VERIFICAR: timedelta(hours=VERIFICACION_EXPIRA_HORAS),
-    PROPOSITO_CAMBIAR_CORREO: timedelta(hours=CAMBIO_CORREO_EXPIRA_HORAS),
     PROPOSITO_RECUPERAR: timedelta(minutes=RECUPERACION_EXPIRA_MINUTOS),
 }
 

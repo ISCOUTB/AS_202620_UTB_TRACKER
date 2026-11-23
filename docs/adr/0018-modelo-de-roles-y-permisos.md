@@ -5,6 +5,10 @@
 Aceptado (2026-11-15). Completa ADR-0008 (control de acceso granular): la autorización ya no
 compara textos de rol en cada router, sino permisos de una tabla única.
 
+> **Nota (2026-11-21, ADR-0024):** los roles siguen igual en esta fase; el rediseño por funciones (Docente, Operador de salones, Auditor de solo lectura, alcance y matriz en un archivo de datos) continúa en las fases siguientes de ADR-0024. La carga de roles ya no es automática.
+
+> **Nota (2026-11-21, ADR-0025):** la tabla rol → permisos pasó a `app/core/matriz_permisos.json`; la app ya no tiene copia y recibe los roles en `GET /auth/roles`.
+
 ## Contexto
 
 La app tenía tres valores de rol (`usuario_utb`, `auxiliar`, `administrador`), pero las reglas

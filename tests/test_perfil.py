@@ -47,7 +47,7 @@ def test_me_trae_perfil_y_preferencias_por_defecto(client, auth_headers):
     r = client.get("/auth/me", headers=auth_headers)
     assert r.status_code == 200
     j = r.json()
-    assert j["email_verificado"] is True
+    assert "email_verificado" not in j
     assert j["preferencias"]["tamano_texto"] == "normal"
     assert j["preferencias"]["notificaciones"]["correo"]["salones"] is True
     assert j["telefono"] is None
@@ -85,47 +85,6 @@ def test_patch_me_valida(client, auth_headers, cuerpo):
 def test_perfil_exige_sesion(client):
     assert client.patch("/auth/me", json={"telefono": "3001234567"}).status_code == 401
     assert client.post("/auth/me/cerrar-sesiones").status_code == 401
-
-
-def test_cambio_de_correo_solo_al_abrir_el_enlace_y_avisa_al_anterior(client, db_session, buzon):
-    headers, refresh = _sesion(client)
-    mala = client.post("/auth/me/cambiar-correo", headers=headers,
-                       json={"correo_nuevo": "nuevo@utb.edu.co", "password": "Mala12345"})
-    assert mala.status_code == 403
-    en_uso = client.post("/auth/me/cambiar-correo", headers=headers,
-                         json={"correo_nuevo": "USER2@utb.edu.co", "password": CLAVE})
-    assert en_uso.status_code == 409
-
-    r = client.post("/auth/me/cambiar-correo", headers=headers,
-                    json={"correo_nuevo": "Nuevo@UTB.edu.co", "password": CLAVE})
-    assert r.status_code == 202
-    # Todavía no cambió: se sigue entrando con el anterior.
-    assert client.get("/auth/me", headers=headers).json()["email"] == "user1@utb.edu.co"
-    _entregar(db_session, buzon)
-    assert sorted(_plantillas(buzon)) == ["cambio", "cambio"]  # cambio_correo_nuevo y _aviso
-    archivos = {p.name: p for p in Path(buzon.carpeta).glob("*.eml")}
-    nuevo = next(p for n, p in archivos.items() if "nuevo@utb.edu.co" in n)
-    aviso = next(p for n, p in archivos.items() if "user1@utb.edu.co" in n)
-    texto_aviso = message_from_bytes(aviso.read_bytes(), policy=policy.default).get_body(
-        preferencelist=("plain",)).get_content()
-    assert "nu***@utb.edu.co" in texto_aviso
-    assert "nuevo@utb.edu.co" not in texto_aviso
-    texto_nuevo = message_from_bytes(nuevo.read_bytes(), policy=policy.default).get_body(
-        preferencelist=("plain",)).get_content()
-    token = re.search(r"token=([\w\-.]+)", texto_nuevo).group(1)
-
-    pagina = client.get("/auth/verificar-correo", params={"token": token})
-    assert pagina.status_code == 200
-    assert "Correo actualizado" in pagina.text
-    # La sesión abierta ANTES del cambio sigue valiendo (sub = id).
-    me = client.get("/auth/me", headers=headers)
-    assert me.status_code == 200
-    assert me.json()["email"] == "nuevo@utb.edu.co"
-    assert client.post("/auth/refresh", json={"refresh_token": refresh}).status_code == 200
-    _sesion(client, "nuevo@utb.edu.co")
-    assert _acciones(db_session, "usuario.cambio_correo")
-    # El enlace es de un solo uso.
-    assert client.get("/auth/verificar-correo", params={"token": token}).status_code == 400
 
 
 def test_cambiar_password_cierra_las_demas_sesiones(client, db_session, buzon):
@@ -218,3 +177,30 @@ def test_worker_respeta_preferencia_de_avisos_de_salones(client, db_session):
     assert notificador._envios == 0
     msg = db_session.query(MensajeOutbox).filter_by(tipo="prestamo_salon.aprobado").one()
     assert msg.ultimo_error == "omitido por preferencia del usuario"
+
+
+def test_cambio_de_correo_es_inmediato_y_avisa_al_anterior(client, db_session, buzon):
+    headers, refresh = _sesion(client)
+    mala = client.post("/auth/me/cambiar-correo", headers=headers,
+                       json={"correo_nuevo": "nuevo@utb.edu.co", "password": "Mala12345"})
+    assert mala.status_code == 403
+    en_uso = client.post("/auth/me/cambiar-correo", headers=headers,
+                         json={"correo_nuevo": "USER2@utb.edu.co", "password": CLAVE})
+    assert en_uso.status_code == 409
+
+    r = client.post("/auth/me/cambiar-correo", headers=headers,
+                    json={"correo_nuevo": "Nuevo@UTB.edu.co", "password": CLAVE})
+    assert r.status_code == 200, r.text
+    assert r.json()["email"] == "nuevo@utb.edu.co"
+    # La sesión abierta ANTES del cambio sigue valiendo (sub = id).
+    assert client.get("/auth/me", headers=headers).json()["email"] == "nuevo@utb.edu.co"
+    assert client.post("/auth/refresh", json={"refresh_token": refresh}).status_code == 200
+    _sesion(client, "nuevo@utb.edu.co")
+    assert _acciones(db_session, "usuario.cambio_correo")
+    # El aviso de seguridad va al correo ANTERIOR, con el nuevo oculto.
+    _entregar(db_session, buzon)
+    [aviso] = list(Path(buzon.carpeta).glob("*.eml"))
+    assert "user1@utb.edu.co" in aviso.name
+    texto = message_from_bytes(aviso.read_bytes(), policy=policy.default).get_body(
+        preferencelist=("plain",)).get_content()
+    assert "nu***@utb.edu.co" in texto and "nuevo@utb.edu.co" not in texto

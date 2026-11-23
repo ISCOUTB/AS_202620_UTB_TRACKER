@@ -6,14 +6,14 @@ import '../../../core/utils/politica.dart';
 import '../../../shared/uber_widgets.dart';
 import 'auth_controller.dart';
 
-/// Pide el correo nuevo y la contraseña actual. El correo NO cambia hasta abrir el enlace que
-/// llega al correo nuevo; al anterior se le avisa (ADR-0014).
+/// Pide el correo institucional nuevo y la contraseña actual. Cambia al instante (ADR-0024) y al
+/// correo anterior le llega un aviso.
 Future<void> mostrarCambiarCorreo(BuildContext context) async {
   final auth = sl<AuthController>();
   final form = GlobalKey<FormState>();
   final correo = TextEditingController();
   final clave = TextEditingController();
-  final enviado = await showModalBottomSheet<bool>(
+  final cambiado = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
@@ -31,8 +31,8 @@ Future<void> mostrarCambiarCorreo(BuildContext context) async {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
               const Text(
-                'Te enviaremos un enlace al correo nuevo. Hasta que lo abras, tu cuenta sigue '
-                'usando el actual.',
+                'Solo se admite un correo institucional. Al correo actual le avisaremos del '
+                'cambio.',
                 style: TextStyle(color: AppColors.textoSuave, fontSize: 13),
               ),
               const SizedBox(height: 14),
@@ -60,12 +60,12 @@ Future<void> mostrarCambiarCorreo(BuildContext context) async {
               ],
               const SizedBox(height: 14),
               BotonPildora(
-                texto: 'Enviar enlace',
-                icono: Icons.send_rounded,
+                texto: 'Cambiar correo',
+                icono: Icons.check_rounded,
                 cargando: auth.cargando,
                 onPressed: () async {
                   if (!form.currentState!.validate()) return;
-                  final ok = await auth.solicitarCambioCorreo(correo.text, clave.text);
+                  final ok = await auth.cambiarCorreo(correo.text, clave.text);
                   if (ok && ctx.mounted) Navigator.pop(ctx, true);
                 },
               ),
@@ -78,9 +78,9 @@ Future<void> mostrarCambiarCorreo(BuildContext context) async {
   correo.dispose();
   clave.dispose();
   auth.limpiarError();
-  if (enviado == true && context.mounted) {
+  if (cambiado == true && context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Revisa el correo nuevo y abre el enlace para confirmar el cambio.'),
+      content: Text('Listo: tu correo cambió.'),
     ));
   }
 }

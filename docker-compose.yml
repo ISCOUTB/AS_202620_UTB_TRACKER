@@ -13,13 +13,11 @@ x-backend: &backend
     DATABASE_URL: postgresql+psycopg://utb:utb@db:5432/utb_tracker
     SECRET_KEY: ${SECRET_KEY:-solo-desarrollo-cambiar-en-produccion-123456}
     FORGET_PWD_SECRET_KEY: ${FORGET_PWD_SECRET_KEY:-solo-desarrollo-reset-cambiar-123456}
-    EMAIL_TOKEN_SECRET_KEY: ${EMAIL_TOKEN_SECRET_KEY:-solo-desarrollo-correo-cambiar-123456}
     CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
     ENVIRONMENT: development
     # Correo (ADR-0015): por defecto NO se envía; se guarda en ./logs/correos del equipo.
     URL_PUBLICA: ${URL_PUBLICA:-http://localhost:8000}
     USE_REAL_MAIL: ${USE_REAL_MAIL:-false}
-    VERIFICACION_OBLIGATORIA: ${VERIFICACION_OBLIGATORIA:-true}
     # ADR-0019: solo correos institucionales (amplíala solo en desarrollo).
     DOMINIOS_PERMITIDOS: ${DOMINIOS_PERMITIDOS:-utb.edu.co}
     CORREOS_DIR: /app/logs/correos

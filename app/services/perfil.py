@@ -1,5 +1,5 @@
 """
-Servicio de perfil de la cuenta propia (ADR-0014): cambio de correo con confirmación, y (Fase 2)
+Servicio de perfil de la cuenta propia (ADR-0014): cambio de correo directo (ADR-0024),
 edición del perfil, contraseña, sesiones y preferencias. Todo queda auditado (ADR-0010).
 """
 from fastapi import HTTPException, status
@@ -9,17 +9,14 @@ from sqlalchemy.orm import Session
 from app.core import config
 from app.core.hashing import verify_password
 from app.core.politica import error_correo_nuevo, normalizar_correo
-from app.core.security import PROPOSITO_CAMBIAR_CORREO, crear_token_proposito
 from app.models.auth_models import Usuario
 from app.schemas.perfil import PerfilResponse, PerfilUpdate, Preferencias
 from app.services import asignaciones, auditoria, correo, fotos, limites
 from app.services.usuarios import proteger_ultimo_admin
 from app.services.auth import (
     MSG_LIMITE_CORREO,
-    MSG_TOKEN_INVALIDO,
     aplicar_nueva_password,
     buscar_por_correo,
-    consumir_token,
     emitir_tokens,
 )
 
@@ -116,8 +113,10 @@ def desactivar_cuenta(db: Session, user: Usuario, password: str) -> None:
     db.commit()
 
 
-def solicitar_cambio_correo(db: Session, user: Usuario, nuevo: str, password: str, ip: str) -> None:
-    """El correo NO cambia todavía: se envía un enlace al nuevo y un aviso al anterior."""
+def cambiar_correo(db: Session, user: Usuario, nuevo: str, password: str, ip: str) -> Usuario:
+    """Cambia el correo al instante (ADR-0024: sin verificación; el dominio institucional ya es
+    de la UTB). Pide la contraseña, limita los intentos y avisa al correo anterior. El rol NO
+    depende del correo, así que cambiarlo nunca da ni quita permisos."""
     exigir_password(db, user, password)
     nuevo = normalizar_correo(nuevo)
     error = error_correo_nuevo(nuevo)  # solo institucionales (ADR-0019)
@@ -132,46 +131,19 @@ def solicitar_cambio_correo(db: Session, user: Usuario, nuevo: str, password: st
                        config.CORREO_RATE_WINDOW_SECONDS, MSG_LIMITE_CORREO)
     limites.anotar(db, f"cambio-correo:{user.id}")
     limites.anotar(db, f"cambio-correo-ip:{ip}")
-
-    token = crear_token_proposito(
-        user.id, PROPOSITO_CAMBIAR_CORREO, correo=nuevo, anterior=normalizar_correo(user.email)
-    )
-    correo.encolar(db, nuevo, "cambio_correo_nuevo", {
-        "nombre": user.nombre,
-        "correo_nuevo": nuevo,
-        "enlace": f"{config.URL_PUBLICA}/auth/verificar-correo?token={token}",
-    }, usuario_id=user.id)
-    correo.encolar(db, user.email, "cambio_correo_aviso", {
+    anterior = user.email
+    user.email = nuevo
+    correo.encolar(db, anterior, "cambio_correo_aviso", {
         "nombre": user.nombre,
         "correo_nuevo_oculto": correo.ocultar_correo(nuevo),
     }, usuario_id=user.id)
-    auditoria.registrar(db, "usuario.cambio_correo_solicitado", "usuario", user.id,
-                        actor_id=user.id, detalle={"nuevo": correo.ocultar_correo(nuevo)})
-    db.commit()
-
-
-def confirmar_cambio_correo(db: Session, token: str) -> Usuario:
-    """Abre el enlace enviado al correo NUEVO: ahí sí cambia (y queda verificado)."""
-    payload, user = consumir_token(db, token, PROPOSITO_CAMBIAR_CORREO)
-    nuevo = normalizar_correo(payload.get("correo", ""))
-    # Si el correo ya cambió por otra vía desde que se pidió, el enlace queda obsoleto.
-    if not nuevo or normalizar_correo(user.email) != payload.get("anterior"):
-        raise HTTPException(status_code=400, detail=MSG_TOKEN_INVALIDO)
-    if buscar_por_correo(db, nuevo):
-        raise HTTPException(status_code=409, detail=MSG_CORREO_EN_USO)
-    anterior = user.email
-    user.email = nuevo
-    user.email_verificado = True
-    user.email_verificado_en = limites._ahora()
     auditoria.registrar(db, "usuario.cambio_correo", "usuario", user.id, actor_id=user.id,
                         detalle={"de": correo.ocultar_correo(anterior),
                                  "a": correo.ocultar_correo(nuevo)})
-    db.flush()
-    # Rol según el correo NUEVO ya comprobado (ADR-0019).
-    asignaciones.recalcular(db, user, "cambio_correo", actor_id=user.id)
     try:
         db.commit()
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail=MSG_CORREO_EN_USO) from exc
+    db.refresh(user)
     return user

@@ -6,7 +6,6 @@ import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/domain/permisos.dart';
 import '../../auth/presentation/auth_controller.dart';
-import '../../auth/presentation/verificacion_page.dart';
 import '../../control/presentation/control_page.dart';
 import '../../cuenta/presentation/cuenta_page.dart';
 import '../../recursos/presentation/equipos_page.dart';
@@ -101,8 +100,6 @@ class _ShellPageState extends State<ShellPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (_auth.vistaComo != null) _FranjaModoPrueba(auth: _auth),
-              // Aviso fijo mientras el correo no esté verificado (ADR-0014).
-              const AvisoVerificacion(),
               BarraInferior(pestanas: pestanas, actual: actual, onTap: _ir),
             ],
           ),
@@ -134,7 +131,7 @@ class _FranjaModoPrueba extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rol = RolUsuario.etiqueta(auth.vistaComo ?? '');
+    final rol = auth.etiquetaDe(auth.vistaComo ?? '');
     return Semantics(
       liveRegion: true,
       label: 'Modo prueba: viendo la app como $rol',

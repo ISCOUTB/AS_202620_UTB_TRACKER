@@ -48,6 +48,14 @@ class Preferencias(BaseModel):
         return cls.model_validate(valor or {})
 
 
+class RolCatalogo(BaseModel):
+    """Un rol con sus permisos, tal como están en app/core/matriz_permisos.json (ADR-0025)."""
+    valor: str = Field(description="Valor guardado del rol")
+    etiqueta: str
+    descripcion: str
+    permisos: list[str]
+
+
 class PerfilResponse(BaseModel):
     """GET /auth/me: perfil completo. Los campos nuevos tienen valor por defecto (contrato)."""
     model_config = ConfigDict(from_attributes=True)
@@ -56,7 +64,6 @@ class PerfilResponse(BaseModel):
     nombre: str
     email: str
     rol: str
-    email_verificado: bool = True
     fecha_registro: Optional[datetime] = None
     nombre_mostrar: Optional[str] = None
     telefono: Optional[str] = None

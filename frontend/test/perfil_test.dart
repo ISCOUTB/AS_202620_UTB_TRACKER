@@ -1,9 +1,10 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'catalogo_roles_falso.dart';
 import 'package:utb_tracker_app/core/network/api_client.dart';
 import 'package:utb_tracker_app/core/notifications/fcm_registration.dart';
 import 'package:utb_tracker_app/features/auth/data/auth_data.dart';
@@ -24,12 +25,12 @@ http.Response _json(Object cuerpo, [int status = 200]) => http.Response(
       headers: {'content-type': 'application/json; charset=utf-8'},
     );
 
-const _perfil = {
+final _perfil = {
   'id': 3,
   'nombre': 'ana',
   'email': 'ana@utb.edu.co',
   'rol': 'auxiliar',
-  'email_verificado': true,
+  'permisos': permisosDe('auxiliar').valores.toList(),
   'nombre_mostrar': 'Ana María',
   'telefono': '+57 300 123 4567',
   'dependencia': 'Laboratorios',
@@ -142,21 +143,20 @@ void main() {
     expect(auth.autenticado, isFalse);
   });
 
-  test('cambiar correo llama al endpoint con la contraseña actual', () async {
+  test('cambiar correo llama al endpoint y el correo cambia al instante', () async {
     late Map<String, dynamic> enviado;
     final api = ApiClient(
       baseUrl: 'http://x',
       client: MockClient((req) async {
         expect(req.url.path, '/auth/me/cambiar-correo');
         enviado = jsonDecode(req.body) as Map<String, dynamic>;
-        return _json({'message': 'ok'}, 202);
+        return _json({..._perfil, 'email': 'nueva@utb.edu.co'}, 200);
       }),
     );
     final auth = AuthController(_RepoMin(), api, _FcmFalso());
     await auth.iniciarSesion('ana', 'ClaveSegura1');
-    expect(await auth.solicitarCambioCorreo(' nueva@utb.edu.co ', 'ClaveSegura1'), isTrue);
+    expect(await auth.cambiarCorreo(' nueva@utb.edu.co ', 'ClaveSegura1'), isTrue);
     expect(enviado, {'correo_nuevo': 'nueva@utb.edu.co', 'password': 'ClaveSegura1'});
-    // El correo no cambia en la app hasta abrir el enlace.
-    expect(auth.usuario!.email, 'ana@utb.edu.co');
+    expect(auth.usuario!.email, 'nueva@utb.edu.co');
   });
 }

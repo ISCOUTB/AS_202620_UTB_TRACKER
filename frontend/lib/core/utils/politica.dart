@@ -12,6 +12,7 @@ class Politica {
   static const msgPasswordIgualNombre =
       'La contraseña no puede ser igual a tu nombre de usuario';
   static const msgCorreoInvalido = 'Escribe un correo válido';
+  static const msgCorreoAlias = 'Escribe tu correo sin alias: no uses el signo + en el correo';
 
   /// Dominio institucional (ADR-0019). Solo se admiten correos NUEVOS de esta lista, por
   /// coincidencia exacta tras la última "@". En desarrollo se amplía igual que en el servidor:
@@ -33,7 +34,7 @@ class Politica {
     return dominios.isEmpty ? const [dominioInstitucional] : dominios;
   }
 
-  static final RegExp _usuarioCorreo = RegExp(r'^[a-z0-9._+\-]{1,64}$');
+  static final RegExp _usuarioCorreo = RegExp(r'^[a-z0-9._\-]{1,64}$');
 
   static final RegExp _correo = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
@@ -60,8 +61,9 @@ class Politica {
     final c = normalizarCorreo(correo);
     if (!correoValido(c)) return msgCorreoInvalido;
     final usuario = c.substring(0, c.lastIndexOf('@'));
+    if (usuario.contains('+')) return msgCorreoAlias;
     if (!_usuarioCorreo.hasMatch(usuario) ||
-        '._+-'.contains(usuario[0]) ||
+        '._-'.contains(usuario[0]) ||
         usuario.endsWith('.') ||
         usuario.contains('..')) {
       return msgCorreoInvalido;

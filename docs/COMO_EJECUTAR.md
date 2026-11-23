@@ -38,78 +38,18 @@ enlace listo para copiar en el navegador. Para enviar correos de verdad, ver
 ### Prueba guiada del flujo completo (local)
 
 1. `.\iniciar.ps1` y en el navegador **Crear cuenta** (usa una contraseña de 8 o más caracteres).
-2. Aparece "Revisa tu correo". Abre la carpeta `logs\correos\`, abre el `.html` más nuevo
-   (`..._verificacion_...`) y toca **Confirmar mi correo**: sale "Correo verificado".
-3. En la app toca **Ya lo verifiqué**. Ya puedes solicitar salones.
-4. **Perfil → Seguridad → Cambiar correo**: escribe otro correo y tu contraseña. En
-   `logs\correos\` aparecen dos correos: el enlace al correo nuevo y el aviso al anterior. Abre el
-   enlace: "Correo actualizado". Tu sesión sigue abierta.
-5. **Perfil → Seguridad → Cambiar contraseña**. Llega el aviso "Tu contraseña cambió".
-6. Cierra la ventana "UTB Tracker - API" (o `.\detener.ps1`) y vuelve a correr `.\iniciar.ps1
-   -SinCompilar`. Entra con el correo NUEVO y la contraseña NUEVA: la cuenta sigue ahí.
-
-## Forma manual
-
-Necesitas **dos terminales** abiertas en paralelo: una para el backend y otra para la app.
-Todos los comandos se ejecutan desde la raíz del repositorio salvo que se indique.
-
-## 0. Requisitos (una sola vez)
-
-- **Python 3.12+** (`py --version`).
-- **Flutter** (`flutter --version`). Si no está en el PATH, en cada terminal nueva:
-  `$env:Path += ";C:\src\flutter\bin"` (o agrégalo al PATH de Windows para siempre).
-
-## 1. Preparar el backend (una sola vez)
-
-```powershell
-py -m venv venv
-.\venv\Scripts\python -m pip install -r requirements.txt
-.\venv\Scripts\python scripts\seed_demo.py     # crea tablas (SQLite) + datos de ejemplo
-```
-
-Sin archivo `.env`, usa SQLite local (`utb_tracker.db`). No hace falta Postgres para probar.
-
-## 2. Terminal 1 — Backend
-
-```powershell
-.\venv\Scripts\python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Comprueba en el navegador: http://127.0.0.1:8000/docs (Swagger).
-
-## 3. Terminal 2 — App Flutter
-
-Primera vez (genera carpetas de plataforma y descarga paquetes):
-
-```powershell
-cd frontend
-flutter create . --org co.edu.utb --project-name utb_tracker_app --platforms=web,windows
-flutter pub get
-```
-
-> `flutter create` agrega `test/widget_test.dart` de plantilla que falla: bórralo
-> (`Remove-Item test\widget_test.dart`) y no commitees cambios a `analysis_options.yaml`.
-
-Ejecutar (elige una):
-
-```powershell
-# Web en tu navegador: abre luego http://127.0.0.1:8080
-flutter run -d web-server --web-port 8080 --dart-define=API_BASE_URL=http://127.0.0.1:8000
-
-# Aplicación de escritorio Windows (requiere Visual Studio con "Desarrollo para escritorio con C++")
-flutter run -d windows --dart-define=API_BASE_URL=http://127.0.0.1:8000
-
-# Edge/Chrome con ventana propia
-flutter run -d edge --dart-define=API_BASE_URL=http://127.0.0.1:8000
-```
-
-Dentro de `flutter run`: `r` recarga en caliente, `R` reinicia, `q` sale. En `web-server`
-los cambios se ven recargando la página (F5).
+2. Entras directo (sin verificación de correo, ADR-0024). Solo se admite un correo
+   `@utb.edu.co`; con otro dominio sale un aviso. Toda cuenta nueva es **Estudiante**.
+3. Ya puedes solicitar salones.
+4. **Perfil → Seguridad → Cambiar correo**: escribe otro correo institucional y tu contraseña. El
+   cambio es inmediato, tu sesión sigue abierta y al correo anterior le llega un aviso
+   (`logs\correos\`).
+5. Para dar un rol a una cuenta que ya existe: entra como administrador →
+   **Perfil → Usuarios y roles** (o **Cargar roles** para varias a la vez).
 
 ## 4. Cuentas de ejemplo (el login acepta el NOMBRE o el CORREO + clave)
 
-Solo existen en tu PC (el seed se niega a correr en producción) y todas vienen con el correo
-ya verificado. **Las claves están solo en `scripts/seed_demo.py`** (tabla `USUARIOS` al inicio)
+Solo existen en tu PC (el seed se niega a correr en producción) y vienen listas para entrar. **Las claves están solo en `scripts/seed_demo.py`** (tabla `USUARIOS` al inicio)
 y el script las imprime al terminar; no se copian a la documentación (ADR-0018).
 
 | Rol (etiqueta) | Valor guardado | Nombre | Qué ve |

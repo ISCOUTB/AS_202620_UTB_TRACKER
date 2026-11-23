@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'catalogo_roles_falso.dart';
 import 'package:utb_tracker_app/core/di/injection.dart';
 import 'package:utb_tracker_app/core/network/api_client.dart';
 import 'package:utb_tracker_app/core/theme/app_theme.dart';
@@ -45,7 +46,7 @@ class _Servidor {
         'nombre': 'Prueba',
         'email': 'prueba@utb.edu.co',
         'rol': rol,
-        'email_verificado': true,
+        'permisos': permisosDe(rol).valores.toList(),
       };
 
   Future<http.Response> responder(http.Request req) async {

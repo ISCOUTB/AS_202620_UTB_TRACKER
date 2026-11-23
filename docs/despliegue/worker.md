@@ -1,7 +1,7 @@
 # Correo real y worker en el servidor oficial (ADR-0015)
 
 El servidor oficial es `https://api.iscoutb.dev` (lo usan el APK y `.\iniciar.ps1 -Nube`).
-Los correos (verificación, recuperación, avisos de seguridad) los envía el **worker**: un
+Los correos (recuperación de contraseña, avisos de seguridad) los envía el **worker**: un
 proceso aparte que lee la tabla `mensajes_outbox`. Si el worker no corre, los correos quedan
 guardados en la base y **no salen**. Hoy el despliegue del CI solo reinicia la API.
 
@@ -13,7 +13,6 @@ Antes de unir esta rama a `main`, agrega al `.env` del servidor (fuera del repos
 ENVIRONMENT=production
 # Cada secreto, distinto y largo:  python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 FORGET_PWD_SECRET_KEY=<secreto 1>
-EMAIL_TOKEN_SECRET_KEY=<secreto 2>
 URL_PUBLICA=https://api.iscoutb.dev
 USE_REAL_MAIL=true
 SMTP_HOST=smtp.gmail.com
@@ -24,10 +23,10 @@ SMTP_FROM=UTB Tracker <la cuenta que envía@gmail.com>
 WORKER_POLL_INTERVAL=3
 ```
 
-> **Se puede desplegar antes de tener estas variables** (ADR-0014, punto 11): sin
-> `EMAIL_TOKEN_SECRET_KEY` se deriva de `SECRET_KEY`, sin `URL_PUBLICA` se usa el servidor
-> oficial, y sin `USE_REAL_MAIL=true` las cuentas nuevas nacen verificadas (no se bloquea a
-> nadie). Al poner `USE_REAL_MAIL=true` la verificación del correo se activa sola.
+> **Se puede desplegar antes de tener estas variables**: sin `URL_PUBLICA` se usa el servidor
+> oficial y sin `USE_REAL_MAIL=true` los correos no se envían (quedan en `logs/correos`). Desde
+> ADR-0024 **no hay verificación de correo**: registrarse funciona sin correo real. El correo real
+> solo hace falta para recuperar la contraseña y los avisos de seguridad.
 >
 > Con `ENVIRONMENT=production` la API **no arranca** si `SECRET_KEY` o `FORGET_PWD_SECRET_KEY`
 > quedan con su valor por defecto, o si `URL_PUBLICA` está definida y no es

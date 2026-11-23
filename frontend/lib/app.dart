@@ -6,7 +6,6 @@ import 'core/theme/escala.dart';
 import 'features/auth/domain/preferencias.dart';
 import 'features/auth/presentation/auth_controller.dart';
 import 'features/auth/presentation/login_page.dart';
-import 'features/auth/presentation/verificacion_page.dart';
 import 'features/home/presentation/shell_page.dart';
 
 class UtbTrackerApp extends StatelessWidget {
@@ -69,9 +68,7 @@ class _RaizState extends State<_Raiz> {
             ? const _Arranque()
             : !_auth.autenticado
                 ? const LoginPage()
-                : _auth.mostrarVerificacionPendiente
-                    ? const VerificacionPage()
-                    : const ShellPage(),
+                : const ShellPage(),
       ),
     );
   }

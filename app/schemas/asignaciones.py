@@ -1,41 +1,5 @@
-"""Esquemas de la lista de asignación de roles por correo (ADR-0019, solo administrador)."""
-from datetime import datetime
-from typing import Optional
-
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-
-from app.core import permisos
-
-
-class AsignacionCrear(BaseModel):
-    correo: str = Field(..., min_length=5, max_length=254, description="Correo institucional exacto")
-    rol: str = Field(..., description="usuario_utb | auxiliar | administrador (o su etiqueta)")
-    cargo: Optional[str] = Field(None, max_length=120, description="p. ej. Auxiliar de planta")
-
-
-class AsignacionEditar(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    rol: Optional[str] = None
-    cargo: Optional[str] = Field(None, max_length=120)
-
-
-class AsignacionRespuesta(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    correo: str
-    rol: str
-    rol_etiqueta: str = ""
-    cargo: Optional[str] = None
-    creado_por_id: Optional[int] = None
-    creado_en: Optional[datetime] = None
-    actualizado_en: Optional[datetime] = None
-
-    @model_validator(mode="after")
-    def _etiqueta(self):
-        self.rol_etiqueta = permisos.etiqueta(self.rol)
-        return self
+"""Esquemas de la carga masiva de roles (ADR-0024, solo administrador)."""
+from pydantic import BaseModel, Field
 
 
 class ImportarAsignaciones(BaseModel):
@@ -51,8 +15,9 @@ class ErrorLinea(BaseModel):
 
 class ResultadoImportacion(BaseModel):
     validas: int
-    creadas: int
-    actualizadas: int
+    actualizadas: int = Field(description="Cuentas existentes a las que se les cambia el rol o el cargo")
     sin_cambios: int
+    sin_cuenta: int = Field(description="Correos sin cuenta: se reportan y NO quedan esperando")
+    correos_sin_cuenta: list[str] = []
     errores: list[ErrorLinea]
     aplicado: bool = Field(description="False si hubo errores (no se guardó NINGUNA línea) o si era simulación")

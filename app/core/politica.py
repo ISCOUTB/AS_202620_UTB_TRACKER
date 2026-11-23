@@ -14,14 +14,16 @@ MSG_CLAVE_CORTA = f"La contraseña debe tener al menos {PASSWORD_MINIMO} caracte
 MSG_CLAVE_IGUAL_CORREO = "La contraseña no puede ser igual a tu correo"
 MSG_CLAVE_IGUAL_NOMBRE = "La contraseña no puede ser igual a tu nombre de usuario"
 MSG_CORREO_INVALIDO = "Escribe un correo válido"
+MSG_CORREO_ALIAS = "Escribe tu correo sin alias: no uses el signo + en el correo"
 MSG_CORREO_NO_INSTITUCIONAL = (
     f"Usa tu correo institucional de la UTB (termina en @{config.DOMINIO_INSTITUCIONAL})"
 )
 EJEMPLO_CORREO = f"usuario@{config.DOMINIO_INSTITUCIONAL}"
 
-# Parte antes de la "@" en correos NUEVOS: letras, números y . _ + - (sin puntos al borde ni
-# seguidos). Las cuentas antiguas no pasan por aquí.
-_CARACTERES_USUARIO = frozenset("abcdefghijklmnopqrstuvwxyz0123456789._+-")
+# Parte antes de la "@" en correos NUEVOS: letras, números y . _ - (sin puntos al borde ni
+# seguidos). El "+" no se admite: ana+2@ llega al mismo buzón que ana@ y daría dos cuentas a la
+# misma persona (un correo = una cuenta). Las cuentas antiguas no pasan por aquí.
+_CARACTERES_USUARIO = frozenset("abcdefghijklmnopqrstuvwxyz0123456789._-")
 _USUARIO_MAXIMO = 64
 
 
@@ -64,10 +66,12 @@ def error_correo_nuevo(correo: str) -> Optional[str]:
     if not correo_valido(correo):
         return MSG_CORREO_INVALIDO
     usuario = correo.rpartition("@")[0]
+    if "+" in usuario:
+        return MSG_CORREO_ALIAS
     if (
         len(usuario) > _USUARIO_MAXIMO
         or any(c not in _CARACTERES_USUARIO for c in usuario)
-        or usuario[0] in "._+-" or usuario[-1] == "." or ".." in usuario
+        or usuario[0] in "._-" or usuario[-1] == "." or ".." in usuario
     ):
         return MSG_CORREO_INVALIDO
     if not es_institucional(correo):

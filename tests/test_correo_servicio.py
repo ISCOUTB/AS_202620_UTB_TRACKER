@@ -1,5 +1,6 @@
 """
-Fase 1 (ADR-0014 / ADR-0015): cuentas ligadas a un correo verificado y servicio de correo.
+Servicio de correo y recuperación de contraseña (ADR-0014 / ADR-0015). Desde ADR-0024 no hay
+verificación de correo: el registro no envía nada.
 
 Los correos se leen como los leería una persona en desarrollo: el worker los procesa con el
 ProveedorDesarrollo, que los guarda en una carpeta (en producción irían por SMTP).
@@ -14,7 +15,7 @@ import jwt
 import pytest
 
 from app.core import config
-from app.core.security import PROPOSITO_RECUPERAR, PROPOSITO_VERIFICAR, crear_token_proposito
+from app.core.security import PROPOSITO_RECUPERAR, crear_token_proposito
 from app.messaging.models import MensajeOutbox
 from app.messaging.worker import NotificadorSimulado, procesar_pendientes
 from app.models.auditoria_models import RegistroAuditoria
@@ -67,93 +68,6 @@ def _acciones(db, accion):
 # --------------------------------------------------------------------------
 # Registro y verificación
 # --------------------------------------------------------------------------
-def test_registro_crea_cuenta_sin_verificar_y_envia_correo(client, db_session, buzon):
-    datos = _registrar(client)
-    assert datos["email_verificado"] is False
-
-    assert _entregar(db_session, buzon) == 1
-    [msg] = _correos(buzon, "verificacion")
-    assert msg["To"] == "nueva@utb.edu.co"
-    assert "Confirma tu correo" in msg["Subject"]
-    assert f"{config.URL_PUBLICA}/auth/verificar-correo?token=" in _texto(msg)
-    # HTML + texto plano
-    assert msg.get_body(preferencelist=("html",)) is not None
-
-
-def test_enlace_verifica_una_sola_vez_y_envia_bienvenida(client, db_session, buzon):
-    _registrar(client)
-    _entregar(db_session, buzon)
-    token = _token_de(_correos(buzon, "verificacion")[0])
-
-    r = client.get("/auth/verificar-correo", params={"token": token})
-    assert r.status_code == 200
-    assert "Correo verificado" in r.text
-    assert "default-src 'none'" in r.headers["content-security-policy"]
-
-    otra_vez = client.get("/auth/verificar-correo", params={"token": token})
-    assert otra_vez.status_code == 400
-    assert "no sirve" in otra_vez.text
-
-    _, login = _login(client)
-    assert login["user"]["email_verificado"] is True
-    _entregar(db_session, buzon)
-    assert len(_correos(buzon, "bienvenida")) == 1
-    assert _acciones(db_session, "usuario.verificar_correo")
-
-
-def test_token_vencido_no_verifica(client, db_session):
-    user = _registrar(client)
-    vencido = jwt.encode(
-        {"sub": str(user["id"]), "proposito": PROPOSITO_VERIFICAR, "jti": "x" * 32,
-         "exp": datetime.now(timezone.utc) - timedelta(minutes=1)},
-        config.EMAIL_TOKEN_SECRET_KEY + ":verificar", algorithm=config.ALGORITHM,
-    )
-    assert client.get("/auth/verificar-correo", params={"token": vencido}).status_code == 400
-
-
-def test_token_de_verificacion_no_sirve_para_otra_cosa(client, db_session, buzon):
-    _registrar(client)
-    _entregar(db_session, buzon)
-    token = _token_de(_correos(buzon, "verificacion")[0])
-
-    # Ni como recuperación de contraseña...
-    r = client.post("/auth/reset-password", json={"token": token, "new_password": "OtraClave99"})
-    assert r.status_code == 400
-    # ...ni como token de sesión.
-    assert client.get("/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
-    # Y un token de recuperación no verifica correos.
-    user = db_session.query(Usuario).filter_by(email="nueva@utb.edu.co").one()
-    recuperacion = crear_token_proposito(user.id, PROPOSITO_RECUPERAR)
-    assert client.get("/auth/verificar-correo", params={"token": recuperacion}).status_code == 400
-
-
-def test_cuenta_sin_verificar_entra_y_consulta_pero_no_solicita_salones(client, db_session, buzon):
-    _registrar(client)
-    headers, _ = _login(client)
-    assert client.get("/salones", headers=headers).status_code == 200
-    r = client.post("/prestamos-salon", headers=headers, json={
-        "salon_id": 1, "fecha_inicio": "2030-01-07T10:00:00", "fecha_fin": "2030-01-07T11:00:00",
-        "motivo": "Estudio",
-    })
-    assert r.status_code == 403
-    assert "Verifica tu correo" in r.json()["detail"]
-
-
-def test_reenviar_verificacion_con_limite(client, db_session, buzon):
-    _registrar(client)  # el registro ya cuenta como 1 envío
-    headers, _ = _login(client)
-    codigos = [client.post("/auth/reenviar-verificacion", headers=headers).status_code
-               for _ in range(config.CORREO_RATE_LIMIT)]
-    assert codigos[: config.CORREO_RATE_LIMIT - 1] == [202] * (config.CORREO_RATE_LIMIT - 1)
-    assert codigos[-1] == 429
-    _entregar(db_session, buzon)
-    assert len(_correos(buzon, "verificacion")) == config.CORREO_RATE_LIMIT
-
-
-def test_reenviar_a_cuenta_verificada_da_409(client, auth_headers):
-    assert client.post("/auth/reenviar-verificacion", headers=auth_headers).status_code == 409
-
-
 # --------------------------------------------------------------------------
 # Recuperación de contraseña
 # --------------------------------------------------------------------------
@@ -249,7 +163,7 @@ def test_no_permite_inyeccion_de_cabeceras(buzon):
     with pytest.raises(ValueError):
         correo.enviar("ana@utb.edu.co\nBcc: espia@x.com", "bienvenida", {"nombre": "A"}, buzon)
     with pytest.raises(ValueError):
-        correo.enviar("ana@utb.edu.co", "verificacion", {"nombre": "A", "enlace": "javascript:x"}, buzon)
+        correo.enviar("ana@utb.edu.co", "recuperacion", {"nombre": "A", "enlace": "javascript:x", "codigo": "c", "minutos": 30}, buzon)
 
 
 def test_worker_reintenta_si_el_proveedor_falla(client, db_session, buzon):
@@ -261,7 +175,7 @@ def test_worker_reintenta_si_el_proveedor_falla(client, db_session, buzon):
             self.intentos += 1
             raise ConnectionError("SMTP caído")
 
-    _registrar(client)
+    client.post("/auth/forgot-password", json={"email": "user1@utb.edu.co"})
     caido = Caido()
     procesar_pendientes(db_session, NotificadorSimulado(), proveedor_correo=caido)
     msg = db_session.query(MensajeOutbox).filter_by(tipo=correo.TIPO_EVENTO).one()
@@ -273,34 +187,24 @@ def test_worker_reintenta_si_el_proveedor_falla(client, db_session, buzon):
                         ahora=datetime.now(timezone.utc) + timedelta(minutes=5), proveedor_correo=buzon)
     db_session.refresh(msg)
     assert msg.estado == "enviado"
-    assert len(_correos(buzon, "verificacion")) == 1
+    assert len(_correos(buzon, "recuperacion")) == 1
 
 
 def test_el_log_del_worker_no_incluye_el_token(client, db_session, buzon, caplog, monkeypatch):
     monkeypatch.setattr(config, "ENVIRONMENT", "production")
-    _registrar(client)
+    client.post("/auth/forgot-password", json={"email": "user1@utb.edu.co"})
     with caplog.at_level("INFO"):
         _entregar(db_session, buzon)
-    token = _token_de(_correos(buzon, "verificacion")[0])
+    token = _token_de(_correos(buzon, "recuperacion")[0])
     assert token not in caplog.text
 
 
 def test_payload_del_outbox_identifica_plantilla_y_categoria(client, db_session):
-    _registrar(client)
+    client.post("/auth/forgot-password", json={"email": "user1@utb.edu.co"})
     msg = db_session.query(MensajeOutbox).filter_by(tipo=correo.TIPO_EVENTO).one()
     p = json.loads(msg.payload)
-    assert p["plantilla"] == "verificacion"
+    assert p["plantilla"] == "recuperacion"
     assert p["categoria"] == "seguridad"
-
-
-def test_sin_correo_real_la_cuenta_nace_verificada_y_no_se_encola_nada(
-    client, db_session, monkeypatch
-):
-    # Servidor sin SMTP configurado: el enlace nunca llegaría, así que no se bloquea a nadie.
-    monkeypatch.setattr(config, "VERIFICACION_OBLIGATORIA", False)
-    cuenta = _registrar(client)
-    assert cuenta["email_verificado"] is True
-    assert db_session.query(MensajeOutbox).filter_by(tipo=correo.TIPO_EVENTO).count() == 0
 
 
 def test_produccion_arranca_solo_con_las_claves_anteriores(tmp_path):
@@ -310,14 +214,38 @@ def test_produccion_arranca_solo_con_las_claves_anteriores(tmp_path):
     import sys
 
     env = {k: v for k, v in os.environ.items() if k not in (
-        "EMAIL_TOKEN_SECRET_KEY", "URL_PUBLICA", "USE_REAL_MAIL", "VERIFICACION_OBLIGATORIA")}
+        "URL_PUBLICA", "USE_REAL_MAIL")}
     env.update(ENVIRONMENT="production", SECRET_KEY="s" * 40, FORGET_PWD_SECRET_KEY="f" * 40,
                DATABASE_URL="postgresql+psycopg://u@localhost/x")
     codigo = ("from app.core import config as c; "
-              "print(c.URL_PUBLICA, c.VERIFICACION_OBLIGATORIA, "
-              "c.EMAIL_TOKEN_SECRET_KEY not in (c.SECRET_KEY, c.FORGET_PWD_SECRET_KEY))")
+              "print(c.URL_PUBLICA, hasattr(c, 'VERIFICACION_OBLIGATORIA'))")
     r = subprocess.run([sys.executable, "-c", codigo], cwd=tmp_path, env={
         **env, "PYTHONPATH": str(Path(__file__).resolve().parent.parent)},
         capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
-    assert r.stdout.split() == ["https://api.iscoutb.dev", "False", "True"]
+    assert r.stdout.split() == ["https://api.iscoutb.dev", "False"]
+
+
+# --------------------------------------------------------------------------
+# Sin verificación de correo (ADR-0024)
+# --------------------------------------------------------------------------
+def test_registro_no_envia_correo_ni_trae_campo_de_verificacion(client, db_session):
+    cuenta = _registrar(client)
+    assert "email_verificado" not in cuenta
+    assert db_session.query(MensajeOutbox).filter_by(tipo=correo.TIPO_EVENTO).count() == 0
+
+
+def test_cuenta_nueva_solicita_salones_de_inmediato(client, db_session):
+    _registrar(client)
+    headers, _ = _login(client)
+    r = client.post("/prestamos-salon", headers=headers, json={
+        "salon_id": 1, "fecha_inicio": "2030-01-07T10:00:00", "fecha_fin": "2030-01-07T11:00:00",
+        "motivo": "Estudio",
+    })
+    assert r.status_code != 403, r.text  # ya no se exige correo verificado
+
+
+@pytest.mark.parametrize("ruta", ["/auth/verificar-correo", "/auth/reenviar-verificacion"])
+def test_los_endpoints_de_verificacion_ya_no_existen(client, ruta):
+    assert client.get(ruta).status_code in (404, 405)
+    assert client.post(ruta).status_code in (404, 405)

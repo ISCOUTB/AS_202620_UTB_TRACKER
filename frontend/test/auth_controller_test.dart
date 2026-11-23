@@ -17,18 +17,15 @@ class _FcmFalso extends FcmRegistration {
   Future<void> stop() async {}
 }
 
-/// Repositorio falso con una sola cuenta que puede estar verificada o no.
+/// Repositorio falso con una sola cuenta.
 class _AuthFalso implements AuthRepository {
-  bool verificado = false;
-  int reenvios = 0;
   ApiException? falloRegistro;
 
-  Usuario get _u => Usuario(
+  Usuario get _u => const Usuario(
         id: 7,
         nombre: 'Ana',
         email: 'ana@utb.edu.co',
         rol: 'usuario_utb',
-        emailVerificado: verificado,
       );
 
   @override
@@ -51,14 +48,6 @@ class _AuthFalso implements AuthRepository {
 
   @override
   Future<Usuario> usuarioActual() async => _u;
-
-  @override
-  Future<void> reenviarVerificacion() async {
-    reenvios++;
-    if (reenvios > 2) {
-      throw ApiException(TipoError.limite, 'Ya te enviamos varios correos.');
-    }
-  }
 
   @override
   Future<Usuario> obtenerUsuario(int id) async => _u;
@@ -85,47 +74,15 @@ void main() {
         _FcmFalso(),
       );
 
-  test('al registrarse queda la verificación pendiente', () async {
+  test('al registrarse entra directo y guarda los tokens (sin verificación)', () async {
     final repo = _AuthFalso();
     final auth = crear(repo);
 
     expect(await auth.registrar(nombre: 'Ana', email: 'ana@utb.edu.co', password: 'ClaveSegura1'),
         isTrue);
     expect(auth.autenticado, isTrue);
-    expect(auth.correoVerificado, isFalse);
-    expect(auth.mostrarVerificacionPendiente, isTrue);
     // Se guardaron access y refresh.
     expect(await const FlutterSecureStorage().read(key: 'utb_refresh_token'), 'r');
-
-    auth.continuarSinVerificar();
-    expect(auth.mostrarVerificacionPendiente, isFalse);
-    expect(auth.correoVerificado, isFalse); // el aviso fijo sigue
-  });
-
-  test('"Ya lo verifiqué" relee el perfil', () async {
-    final repo = _AuthFalso();
-    final auth = crear(repo);
-    await auth.registrar(nombre: 'Ana', email: 'ana@utb.edu.co', password: 'ClaveSegura1');
-
-    expect(await auth.comprobarVerificacion(), isFalse);
-    expect(auth.error, contains('Aún no vemos'));
-
-    repo.verificado = true;
-    expect(await auth.comprobarVerificacion(), isTrue);
-    expect(auth.mostrarVerificacionPendiente, isFalse);
-    expect(auth.aviso, contains('verificado'));
-  });
-
-  test('reenviar muestra aviso y luego el límite', () async {
-    final repo = _AuthFalso();
-    final auth = crear(repo);
-    await auth.registrar(nombre: 'Ana', email: 'ana@utb.edu.co', password: 'ClaveSegura1');
-
-    expect(await auth.reenviarVerificacion(), isTrue);
-    expect(auth.aviso, contains('spam'));
-    await auth.reenviarVerificacion();
-    expect(await auth.reenviarVerificacion(), isFalse);
-    expect(auth.error, 'Ya te enviamos varios correos.');
   });
 
   test('los errores del registro llegan claros y no inician sesión', () async {
@@ -141,15 +98,14 @@ void main() {
   });
 
   test('login con correo o usuario; clave mala da mensaje del servidor', () async {
-    final auth = crear(_AuthFalso()..verificado = true);
+    final auth = crear(_AuthFalso());
     expect(await auth.iniciarSesion('ana@utb.edu.co', 'Mala'), isFalse);
     expect(auth.error, 'Usuario, correo o contraseña incorrectos');
     expect(await auth.iniciarSesion('ana@utb.edu.co', 'ClaveSegura1'), isTrue);
-    expect(auth.mostrarVerificacionPendiente, isFalse);
   });
 
   test('cerrar sesión borra los tokens guardados', () async {
-    final auth = crear(_AuthFalso()..verificado = true);
+    final auth = crear(_AuthFalso());
     await auth.iniciarSesion('Ana', 'ClaveSegura1');
     auth.cerrarSesion();
     await Future<void>.delayed(Duration.zero);
@@ -158,11 +114,9 @@ void main() {
     expect(await const FlutterSecureStorage().read(key: 'utb_refresh_token'), isNull);
   });
 
-  test('el parseo tolera servidores viejos sin email_verificado', () {
-    final u = UsuarioModel.desdeJson({'id': 1, 'nombre': 'A', 'email': 'a@b.co', 'rol': 'auxiliar'});
-    expect(u.emailVerificado, isTrue);
-    final n = UsuarioModel.desdeJson(
-        {'id': 1, 'nombre': 'A', 'email': 'a@b.co', 'rol': 'usuario_utb', 'email_verificado': false});
-    expect(n.emailVerificado, isFalse);
+  test('el parseo ignora el campo email_verificado de servidores viejos', () {
+    final u = UsuarioModel.desdeJson(
+        {'id': 1, 'nombre': 'A', 'email': 'a@b.co', 'rol': 'auxiliar', 'email_verificado': false});
+    expect(u.rol, 'auxiliar');
   });
 }

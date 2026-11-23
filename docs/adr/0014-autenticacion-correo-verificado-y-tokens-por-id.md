@@ -4,6 +4,8 @@
 
 Aceptado (2026-11-14). Complementa ADR-0004 (JWT) y ADR-0013 (servidor único).
 
+> **Nota (2026-11-21, ADR-0024):** la verificación de correo (enlace o código, pantalla de verificación pendiente, `VERIFICACION_OBLIGATORIA`) se retiró. El dominio institucional ya es de la UTB. Los tokens por id, las sesiones y la recuperación de contraseña siguen vigentes.
+
 ## Contexto
 
 Los usuarios reportaban que "las cuentas nunca se guardan". Se reprodujo con un script contra una

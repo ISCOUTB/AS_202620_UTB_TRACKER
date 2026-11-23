@@ -41,21 +41,6 @@ background:{VERDE};color:#fff;font-weight:bold;font-size:15px;cursor:pointer}}
 <h1>{escape(titulo)}</h1>{cuerpo}</div></main></body></html>"""
 
 
-def correo_verificado(nombre: str) -> str:
-    return _pagina("Correo verificado", (
-        f"<p>¡Listo, <b>{escape(nombre)}</b>! Tu correo quedó confirmado.</p>"
-        "<p>Vuelve a la app UTB Tracker: ya puedes solicitar salones. Si la app estaba abierta, "
-        "toca <b>Ya lo verifiqué</b> o vuelve a entrar.</p>"
-    ))
-
-
-def correo_cambiado(correo: str) -> str:
-    return _pagina("Correo actualizado", (
-        f"<p>Desde ahora tu cuenta usa <b>{escape(correo)}</b>.</p>"
-        "<p>Tus sesiones abiertas siguen funcionando. Usa este correo la próxima vez que entres.</p>"
-    ))
-
-
 def enlace_invalido(mensaje: str) -> str:
     return _pagina("El enlace no sirve", (
         f"<p>{escape(mensaje)}</p>"

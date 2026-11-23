@@ -40,7 +40,6 @@ class AuthController extends ChangeNotifier {
   bool _cargando = false;
   String? _error;
   bool? _servidorOk;
-  bool _verificacionPendienteVisible = false;
   String? _aviso;
 
   Sesion? get sesion => _sesion;
@@ -54,10 +53,33 @@ class AuthController extends ChangeNotifier {
   /// sigue aplicando el rol real.
   Permisos get permisos {
     final vista = vistaComo;
-    return vista == null ? permisosReales : Permisos.deRol(vista);
+    if (vista == null) return permisosReales;
+    return roles.where((r) => r.valor == vista).firstOrNull?.permisos ?? Permisos.ninguno;
   }
 
   String? _vistaComo;
+
+  List<RolCatalogo> _roles = const [];
+
+  /// Catálogo de roles del servidor (`GET /auth/roles`): etiqueta, descripción y permisos de cada
+  /// uno. Vacío hasta que carga; la app no guarda su propia tabla (ADR-0025).
+  List<RolCatalogo> get roles => _roles;
+
+  String etiquetaDe(String rol) =>
+      _roles.where((r) => r.valor == rol).firstOrNull?.etiqueta ?? 'Sin rol';
+
+  String descripcionDe(String rol) =>
+      _roles.where((r) => r.valor == rol).firstOrNull?.descripcion ?? '';
+
+  Future<void> cargarRoles() async {
+    try {
+      final json = await _api.get('/auth/roles') as List<dynamic>;
+      _roles = [for (final j in json) RolCatalogo.desdeJson(j as Map<String, dynamic>)];
+      notifyListeners();
+    } catch (_) {
+      // Sin catálogo solo se pierde el modo prueba y la lista de roles; no es motivo de error.
+    }
+  }
 
   /// Rol que el administrador está "viendo" (null = el suyo). Nunca para otros roles.
   String? get vistaComo =>
@@ -85,56 +107,23 @@ class AuthController extends ChangeNotifier {
   /// null = aún no se ha comprobado.
   bool? get servidorOk => _servidorOk;
 
-  bool get correoVerificado => usuario?.emailVerificado ?? true;
-
-  /// Justo después de registrarse se muestra "Revisa tu correo" antes de la app.
-  bool get mostrarVerificacionPendiente =>
-      autenticado && !correoVerificado && _verificacionPendienteVisible;
-
   /// Mensaje informativo (no error) para mostrar una vez, p. ej. "Te reenviamos el correo".
   String? get aviso => _aviso;
 
-  void continuarSinVerificar() {
-    _verificacionPendienteVisible = false;
-    notifyListeners();
-  }
-
-  Future<bool> reenviarVerificacion() async {
-    final ok = await _ejecutar(_repo.reenviarVerificacion);
-    if (ok) {
-      _aviso = 'Te enviamos de nuevo el correo. Revisa también la carpeta de spam.';
-      notifyListeners();
-    }
-    return ok;
-  }
-
-  /// Vuelve a leer el perfil para saber si ya se abrió el enlace de verificación.
-  Future<bool> comprobarVerificacion() async {
-    await _ejecutar(() async {
-      final u = await _repo.usuarioActual();
-      if (_sesion != null) {
-        _sesion = Sesion(token: _sesion!.token, refreshToken: _sesion!.refreshToken, usuario: u);
-      }
-    });
-    if (correoVerificado) {
-      _verificacionPendienteVisible = false;
-      _aviso = '¡Correo verificado! Ya puedes solicitar salones.';
-      notifyListeners();
-    } else if (_error == null) {
-      _error = 'Aún no vemos el correo verificado. Abre el enlace que te enviamos.';
-      notifyListeners();
-    }
-    return correoVerificado;
-  }
-
-  /// POST /auth/me/cambiar-correo (el correo cambia al abrir el enlace del correo nuevo).
-  Future<bool> solicitarCambioCorreo(String correoNuevo, String password) {
-    return _ejecutar(() async {
-      await _api.post('/auth/me/cambiar-correo', cuerpo: {
+  /// POST /auth/me/cambiar-correo: el correo cambia al instante (ADR-0024, sin verificación).
+  Future<bool> cambiarCorreo(String correoNuevo, String password) async {
+    final ok = await _ejecutar(() async {
+      final json = await _api.post('/auth/me/cambiar-correo', cuerpo: {
         'correo_nuevo': correoNuevo.trim(),
         'password': password,
       });
+      _fijarUsuario(json as Map<String, dynamic>);
     });
+    if (ok) {
+      _aviso = 'Correo actualizado.';
+      notifyListeners();
+    }
+    return ok;
   }
 
   // ── Perfil (ADR-0016) ─────────────────────────────────────────────────
@@ -253,6 +242,7 @@ class AuthController extends ChangeNotifier {
         usuario: u,
       );
       await _cargarVistaComo();
+      await cargarRoles();
       await _registrarFcm();
       notifyListeners();
       return true;
@@ -282,11 +272,11 @@ class AuthController extends ChangeNotifier {
   Future<bool> iniciarSesion(String identificador, String password) async {
     final ok = await _ejecutar(() async {
       _sesion = await _repo.iniciarSesion(identificador.trim(), password);
-      _verificacionPendienteVisible = false;
     });
     if (ok && _sesion != null) {
       await TokenStorage.guardarTokens(_sesion!.token, _sesion!.refreshToken);
       await _cargarVistaComo();
+      await cargarRoles();
       await _registrarFcm();
     }
     return ok;
@@ -320,7 +310,7 @@ class AuthController extends ChangeNotifier {
     required String email,
     required String password,
   }) async {
-    // Sin rol: lo decide el servidor por la lista de asignaciones (ADR-0019).
+    // Sin rol: toda cuenta nueva es Estudiante; un administrador sube el rol (ADR-0024).
     final ok = await _ejecutar(() async {
       final nuevo = await _repo.registrar(
         nombre: nombre.trim(),
@@ -332,10 +322,10 @@ class AuthController extends ChangeNotifier {
         password,
         conocido: nuevo,
       );
-      _verificacionPendienteVisible = !nuevo.emailVerificado;
     });
     if (ok && _sesion != null) {
       await TokenStorage.guardarTokens(_sesion!.token, _sesion!.refreshToken);
+      await cargarRoles();
       await _registrarFcm();
     }
     return ok;
@@ -346,7 +336,6 @@ class AuthController extends ChangeNotifier {
     _sesion = null;
     _error = null;
     _aviso = null;
-    _verificacionPendienteVisible = false;
     _vistaComo = null;
     _api.fijarTokens(null, null);
     TokenStorage.borrarToken();

@@ -77,7 +77,7 @@
           "auth"
         ],
         "summary": "Register Endpoint",
-        "description": "Crea la cuenta SIN verificar y envía el correo de verificación.",
+        "description": "Crea la cuenta (solo correos institucionales). Siempre nace como Estudiante (ADR-0024).",
         "operationId": "register_endpoint_auth_register_post",
         "requestBody": {
           "content": {
@@ -111,81 +111,6 @@
             }
           }
         }
-      }
-    },
-    "/auth/verificar-correo": {
-      "get": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Verificar Correo Endpoint",
-        "description": "Abre el enlace del correo: verifica la cuenta o confirma el cambio de correo.",
-        "operationId": "verificar_correo_endpoint_auth_verificar_correo_get",
-        "parameters": [
-          {
-            "name": "token",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "minLength": 10,
-              "maxLength": 2048,
-              "title": "Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "text/html": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/auth/reenviar-verificacion": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Reenviar Verificacion Endpoint",
-        "operationId": "reenviar_verificacion_endpoint_auth_reenviar_verificacion_post",
-        "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "409": {
-            "description": "Ya verificado"
-          },
-          "429": {
-            "description": "Límite"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
       }
     },
     "/auth/restablecer": {
@@ -233,13 +158,44 @@
         }
       }
     },
+    "/auth/roles": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Roles Endpoint",
+        "description": "Catálogo de roles con etiqueta, descripción y permisos (la matriz única, ADR-0025). La app\nlo usa para el modo prueba y para listar roles: no tiene copia propia de la tabla.",
+        "operationId": "roles_endpoint_auth_roles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RolCatalogo"
+                  },
+                  "type": "array",
+                  "title": "Response Roles Endpoint Auth Roles Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
     "/auth/me": {
       "get": {
         "tags": [
           "auth"
         ],
         "summary": "Me Endpoint",
-        "description": "Perfil completo: datos, verificación, preferencias y, desde ADR-0018, `rol_etiqueta` y\n`permisos` (la app decide qué mostrar por permisos, nunca comparando el texto del rol).\nDesde ADR-0019: `correo_institucional`, `rol_origen`, `rol_origen_texto` y `cargo`.",
+        "description": "Perfil completo: datos, preferencias y, desde ADR-0018, `rol_etiqueta` y\n`permisos` (la app decide qué mostrar por permisos, nunca comparando el texto del rol).\nDesde ADR-0019: `correo_institucional`, `rol_origen`, `rol_origen_texto` y `cargo`.",
         "operationId": "me_endpoint_auth_me_get",
         "responses": {
           "200": {
@@ -542,7 +498,7 @@
           "auth"
         ],
         "summary": "Cambiar Correo Endpoint",
-        "description": "Pide cambiar el correo: no cambia hasta abrir el enlace enviado al correo NUEVO.",
+        "description": "Cambia el correo al instante (solo institucional) confirmando con la contraseña.",
         "operationId": "cambiar_correo_endpoint_auth_me_cambiar_correo_post",
         "requestBody": {
           "content": {
@@ -555,11 +511,13 @@
           "required": true
         },
         "responses": {
-          "202": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilResponse"
+                }
               }
             }
           },
@@ -4698,158 +4656,13 @@
         }
       }
     },
-    "/usuarios/asignaciones": {
-      "get": {
-        "tags": [
-          "usuarios"
-        ],
-        "summary": "Listar Asignaciones",
-        "description": "Busca por correo o cargo. Total en X-Total-Count.",
-        "operationId": "listar_asignaciones_usuarios_asignaciones_get",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "busqueda",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Busqueda"
-            }
-          },
-          {
-            "name": "rol",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Rol"
-            }
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "default": 0,
-              "title": "Skip"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "default": 50,
-              "title": "Limit"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AsignacionRespuesta"
-                  },
-                  "title": "Response Listar Asignaciones Usuarios Asignaciones Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "usuarios"
-        ],
-        "summary": "Crear Asignacion",
-        "operationId": "crear_asignacion_usuarios_asignaciones_post",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AsignacionCrear"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AsignacionRespuesta"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Ya existe o dejaría sin administrador"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/usuarios/asignaciones/importar": {
       "post": {
         "tags": [
           "usuarios"
         ],
         "summary": "Importar Asignaciones",
-        "description": "Todo o nada: con un error en cualquier línea no se guarda ninguna (`aplicado` = false).",
+        "description": "Todo o nada: con un error en cualquier línea no se guarda ninguna (`aplicado` = false).\nCon `simular` = true solo devuelve la vista previa.",
         "operationId": "importar_asignaciones_usuarios_asignaciones_importar_post",
         "requestBody": {
           "content": {
@@ -4872,6 +4685,9 @@
               }
             }
           },
+          "409": {
+            "description": "Dejaría el sistema sin administrador activo"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -4888,101 +4704,6 @@
             "OAuth2PasswordBearer": []
           }
         ]
-      }
-    },
-    "/usuarios/asignaciones/{asignacion_id}": {
-      "patch": {
-        "tags": [
-          "usuarios"
-        ],
-        "summary": "Editar Asignacion",
-        "operationId": "editar_asignacion_usuarios_asignaciones__asignacion_id__patch",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "asignacion_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Asignacion Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AsignacionEditar"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AsignacionRespuesta"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "usuarios"
-        ],
-        "summary": "Eliminar Asignacion",
-        "operationId": "eliminar_asignacion_usuarios_asignaciones__asignacion_id__delete",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "asignacion_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Asignacion Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/usuarios": {
@@ -5217,54 +4938,6 @@
         }
       }
     },
-    "/usuarios/{usuario_id}/rol/automatico": {
-      "post": {
-        "tags": [
-          "usuarios"
-        ],
-        "summary": "Rol Automatico",
-        "description": "Quita el rol manual: desde ahora manda la lista de asignaciones (ADR-0019).",
-        "operationId": "rol_automatico_usuarios__usuario_id__rol_automatico_post",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "usuario_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Usuario Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UsuarioAdmin"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/usuarios/{usuario_id}/foto": {
       "get": {
         "tags": [
@@ -5357,145 +5030,6 @@
           "salon_ids"
         ],
         "title": "AplicarPlantilla"
-      },
-      "AsignacionCrear": {
-        "properties": {
-          "correo": {
-            "type": "string",
-            "maxLength": 254,
-            "minLength": 5,
-            "title": "Correo",
-            "description": "Correo institucional exacto"
-          },
-          "rol": {
-            "type": "string",
-            "title": "Rol",
-            "description": "usuario_utb | auxiliar | administrador (o su etiqueta)"
-          },
-          "cargo": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 120
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cargo",
-            "description": "p. ej. Auxiliar de planta"
-          }
-        },
-        "type": "object",
-        "required": [
-          "correo",
-          "rol"
-        ],
-        "title": "AsignacionCrear"
-      },
-      "AsignacionEditar": {
-        "properties": {
-          "rol": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rol"
-          },
-          "cargo": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 120
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cargo"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "AsignacionEditar"
-      },
-      "AsignacionRespuesta": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "correo": {
-            "type": "string",
-            "title": "Correo"
-          },
-          "rol": {
-            "type": "string",
-            "title": "Rol"
-          },
-          "rol_etiqueta": {
-            "type": "string",
-            "title": "Rol Etiqueta",
-            "default": ""
-          },
-          "cargo": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cargo"
-          },
-          "creado_por_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Creado Por Id"
-          },
-          "creado_en": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Creado En"
-          },
-          "actualizado_en": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Actualizado En"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "correo",
-          "rol"
-        ],
-        "title": "AsignacionRespuesta"
       },
       "AuditoriaResponse": {
         "properties": {
@@ -6832,11 +6366,6 @@
             "type": "string",
             "title": "Rol"
           },
-          "email_verificado": {
-            "type": "boolean",
-            "title": "Email Verificado",
-            "default": true
-          },
           "fecha_registro": {
             "anyOf": [
               {
@@ -8131,17 +7660,27 @@
             "type": "integer",
             "title": "Validas"
           },
-          "creadas": {
-            "type": "integer",
-            "title": "Creadas"
-          },
           "actualizadas": {
             "type": "integer",
-            "title": "Actualizadas"
+            "title": "Actualizadas",
+            "description": "Cuentas existentes a las que se les cambia el rol o el cargo"
           },
           "sin_cambios": {
             "type": "integer",
             "title": "Sin Cambios"
+          },
+          "sin_cuenta": {
+            "type": "integer",
+            "title": "Sin Cuenta",
+            "description": "Correos sin cuenta: se reportan y NO quedan esperando"
+          },
+          "correos_sin_cuenta": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Correos Sin Cuenta",
+            "default": []
           },
           "errores": {
             "items": {
@@ -8159,9 +7698,9 @@
         "type": "object",
         "required": [
           "validas",
-          "creadas",
           "actualizadas",
           "sin_cambios",
+          "sin_cuenta",
           "errores",
           "aplicado"
         ],
@@ -8257,6 +7796,39 @@
           "deshabilitados"
         ],
         "title": "ResumenPiso"
+      },
+      "RolCatalogo": {
+        "properties": {
+          "valor": {
+            "type": "string",
+            "title": "Valor",
+            "description": "Valor guardado del rol"
+          },
+          "etiqueta": {
+            "type": "string",
+            "title": "Etiqueta"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "permisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permisos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valor",
+          "etiqueta",
+          "descripcion",
+          "permisos"
+        ],
+        "title": "RolCatalogo",
+        "description": "Un rol con sus permisos, tal como están en app/core/matriz_permisos.json (ADR-0025)."
       },
       "SalonCreate": {
         "properties": {
@@ -8794,11 +8366,6 @@
           "rol": {
             "type": "string",
             "title": "Rol"
-          },
-          "email_verificado": {
-            "type": "boolean",
-            "title": "Email Verificado",
-            "default": true
           }
         },
         "type": "object",
@@ -8833,11 +8400,6 @@
           "rol": {
             "type": "string",
             "title": "Rol"
-          },
-          "email_verificado": {
-            "type": "boolean",
-            "title": "Email Verificado",
-            "default": true
           },
           "rol_etiqueta": {
             "type": "string",
@@ -8896,10 +8458,6 @@
           "activo": {
             "type": "boolean",
             "title": "Activo"
-          },
-          "email_verificado": {
-            "type": "boolean",
-            "title": "Email Verificado"
           },
           "dependencia": {
             "anyOf": [
@@ -8960,8 +8518,7 @@
           "email",
           "rol",
           "rol_etiqueta",
-          "activo",
-          "email_verificado"
+          "activo"
         ],
         "title": "UsuarioAdmin",
         "description": "Fila de la lista de usuarios (pantalla Usuarios del administrador)."

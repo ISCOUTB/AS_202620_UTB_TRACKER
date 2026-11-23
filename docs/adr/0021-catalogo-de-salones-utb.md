@@ -4,6 +4,8 @@
 
 Aceptado (2026-11-16). Amplía ADR-0017 (tipo de salón) y ADR-0018 (roles y permisos).
 
+> **Nota (2026-11-21):** los datos de demostración (equipos, horarios, solicitudes, reportes y bitácora) se agregan SOBRE los salones de este catálogo con `scripts/cargar_equipos_demo.py` y `scripts/cargar_demo_actividad.py`: nunca crean salones y todo lo ficticio queda marcado (`DEMO-` en los seriales, semestre `2026-2 DEMO`, estudiantes `estNN.demo@`). Reglas del dueño: A1-402 a A1-407 salas de computadores, A5 laboratorios de química.
+
 ## Contexto
 
 - La app necesita los salones reales del Campus Tecnológico (Ternera). Hasta ahora solo había

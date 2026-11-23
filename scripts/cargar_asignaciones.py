@@ -1,5 +1,5 @@
 """
-Carga la lista inicial de roles por correo institucional (ADR-0019) desde un archivo LOCAL que
+Asigna roles en bloque a cuentas YA EXISTENTES (ADR-0024) desde un archivo LOCAL que
 no está en el repositorio (privado/ y asignaciones*.csv están en .gitignore).
 
 Formato: una persona por línea, `correo,rol[,cargo]` (coma o punto y coma; encabezado opcional).
@@ -8,10 +8,10 @@ El rol puede ser la etiqueta (Estudiante, Auditor, Administrador) o el valor gua
     python scripts/cargar_asignaciones.py privado/asignaciones.csv            # revisa y pregunta
     python scripts/cargar_asignaciones.py privado/asignaciones.csv --aplicar  # sin preguntar
 
-Todo o nada: si una línea tiene un error no se guarda ninguna. Las cuentas que ya existen y
-verificaron su correo reciben el rol de inmediato (y se cierran sus sesiones). Queda en la
+Todo o nada: si una línea tiene un error no se guarda ninguna. Solo cuentas que ya existen
+reciben el rol (y se cierran sus sesiones); los correos sin cuenta se reportan y no quedan esperando. Queda en la
 bitácora como "asignacion_rol.importar" con origen "consola" y solo con cifras (sin correos).
-Alternativa sin consola: pantalla Perfil > Roles por correo > Importar lista (administrador).
+Alternativa sin consola: pantalla Usuarios > Cargar roles (administrador).
 """
 import argparse
 import sys
@@ -43,8 +43,8 @@ def main() -> int:
         if revision["errores"]:
             print("Hay errores: no se guardó nada. Corrige el archivo y vuelve a intentarlo.")
             return 1
-        print(f"{revision['validas']} líneas correctas: {revision['creadas']} nuevas, "
-              f"{revision['actualizadas']} cambian, {revision['sin_cambios']} sin cambios.")
+        print(f"{revision['validas']} líneas correctas: {revision['actualizadas']} cambian, "
+              f"{revision['sin_cambios']} sin cambios, {revision['sin_cuenta']} sin cuenta.")
         if not opciones.aplicar and input("¿Aplicar? (s/N): ").strip().lower() != "s":
             print("No se aplicó nada.")
             return 0

@@ -136,8 +136,8 @@ class _CuentaPageState extends State<CuentaPage> {
                         _Fila(
                           icono: Icons.alternate_email_rounded,
                           color: AppColors.mantenimiento,
-                          titulo: 'Roles por correo',
-                          detalle: 'Quién es Auditor o Administrador según su correo',
+                          titulo: 'Cargar roles',
+                          detalle: 'Asignar roles a varias cuentas desde una lista',
                           onTap: () => _abrir(const AsignacionesPage()),
                         ),
                       if (permisos.puede(Permisos.salonesCrearCatalogo))
@@ -482,7 +482,6 @@ class _Cabecera extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final verificado = usuario.emailVerificado;
     return Row(
       children: [
         Semantics(
@@ -536,11 +535,6 @@ class _Cabecera extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 4,
                 children: [
-                  _Chip(
-                    icono: verificado ? Icons.verified_rounded : Icons.mark_email_unread_rounded,
-                    texto: verificado ? 'Verificado' : 'Sin verificar',
-                    color: verificado ? AppColors.disponible : AppColors.prestado,
-                  ),
                   _Chip(
                     icono: Icons.badge_outlined,
                     texto: usuario.rolEtiqueta,
@@ -596,7 +590,7 @@ class AvatarPerfil extends StatelessWidget {
   }
 }
 
-/// El rol NO se elige (ADR-0019): se muestra de dónde viene y cómo pedir un cambio.
+/// El rol NO se elige (ADR-0019/0024): se muestra de dónde viene y cómo pedir un cambio.
 class _RolSoloLectura extends StatelessWidget {
   const _RolSoloLectura({required this.usuario});
   final Usuario usuario;
@@ -605,7 +599,6 @@ class _RolSoloLectura extends StatelessWidget {
     final texto = usuario.rolOrigenTexto;
     if (texto != null && texto.isNotEmpty) return texto;
     return switch (usuario.rolOrigen) {
-      'correo' => 'Asignado por tu correo institucional',
       'manual' => 'Asignado por un administrador',
       _ => 'Eres estudiante. Si trabajas en la UTB y necesitas otro rol, pídeselo a un '
           'administrador.',
@@ -615,7 +608,6 @@ class _RolSoloLectura extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icono = switch (usuario.rolOrigen) {
-      'correo' => Icons.alternate_email_rounded,
       'manual' => Icons.admin_panel_settings_rounded,
       _ => Icons.school_rounded,
     };
@@ -973,8 +965,7 @@ class _ModoPrueba extends StatelessWidget {
         SegmentedButton<String>(
           showSelectedIcon: false,
           segments: [
-            for (final rol in RolUsuario.todos)
-              ButtonSegment(value: rol, label: Text(RolUsuario.etiqueta(rol))),
+            for (final rol in auth.roles) ButtonSegment(value: rol.valor, label: Text(rol.etiqueta)),
           ],
           selected: {actual},
           onSelectionChanged: (s) => auth.verComo(s.first),

@@ -104,9 +104,7 @@ class _UsuariosPageState extends State<UsuariosPage> {
                     children: [
                       for (final (valor, etiqueta) in [
                         (null, 'Todos'),
-                        (RolUsuario.estudiante, 'Estudiantes'),
-                        (RolUsuario.auditor, 'Auditores'),
-                        (RolUsuario.administrador, 'Administradores'),
+                        for (final r in sl<AuthController>().roles) (r.valor, r.etiqueta),
                       ]) ...[
                         ChoiceChip(
                           label: Text(etiqueta),
@@ -230,8 +228,8 @@ class _HojaUsuario extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('¿Hacer ${RolUsuario.etiqueta(rol)} a ${usuario.nombreVisible}?'),
-        content: Text('${RolUsuario.descripcion(rol)}. Queda como rol manual (la lista de roles '
+        title: Text('¿Hacer ${sl<AuthController>().etiquetaDe(rol)} a ${usuario.nombreVisible}?'),
+        content: Text('${sl<AuthController>().descripcionDe(rol)}. Queda como rol manual (la lista de roles '
             'por correo no lo cambia) y se cerrarán sus sesiones abiertas para que aplique ya.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Volver')),
@@ -244,7 +242,7 @@ class _HojaUsuario extends StatelessWidget {
     final error = await controller.cambiarRol(usuario, rol);
     if (!context.mounted) return;
     Navigator.pop(context);
-    mostrarMensaje(context, error ?? 'Ahora es ${RolUsuario.etiqueta(rol)}');
+    mostrarMensaje(context, error ?? 'Ahora es ${sl<AuthController>().etiquetaDe(rol)}');
   }
 
   Future<void> _cambiarEstado(BuildContext context) async {
@@ -272,13 +270,6 @@ class _HojaUsuario extends StatelessWidget {
     mostrarMensaje(context, error ?? (activar ? 'Cuenta activada' : 'Cuenta desactivada'));
   }
 
-  Future<void> _automatico(BuildContext context) async {
-    final error = await controller.rolAutomatico(usuario);
-    if (!context.mounted) return;
-    Navigator.pop(context);
-    mostrarMensaje(context, error ?? 'Ahora su rol sale de la lista de roles por correo');
-  }
-
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -302,7 +293,7 @@ class _HojaUsuario extends StatelessWidget {
             else ...[
               const Text('Rol', style: TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
-              for (final rol in RolUsuario.todos)
+              for (final rol in sl<AuthController>().roles.map((r) => r.valor))
                 Card(
                   margin: const EdgeInsets.only(bottom: 6),
                   child: ListTile(
@@ -313,25 +304,9 @@ class _HojaUsuario extends StatelessWidget {
                           : Icons.radio_button_off_rounded,
                       color: rol == usuario.rol ? AppColors.primarioClaro : AppColors.textoTenue,
                     ),
-                    title: Text(RolUsuario.etiqueta(rol)),
-                    subtitle: Text(RolUsuario.descripcion(rol)),
+                    title: Text(sl<AuthController>().etiquetaDe(rol)),
+                    subtitle: Text(sl<AuthController>().descripcionDe(rol)),
                     onTap: rol == usuario.rol ? null : () => _cambiarRol(context, rol),
-                  ),
-                ),
-              Text(
-                usuario.rolManual
-                    ? 'Rol manual: lo puso un administrador y la lista de roles por correo no '
-                        'lo cambia.'
-                    : 'Rol automático: sale de la lista de roles por correo.',
-                style: const TextStyle(color: AppColors.textoSuave, fontSize: 12.5),
-              ),
-              if (usuario.rolManual)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => _automatico(context),
-                    icon: const Icon(Icons.autorenew_rounded),
-                    label: const Text('Volver al rol automático'),
                   ),
                 ),
               const SizedBox(height: 10),

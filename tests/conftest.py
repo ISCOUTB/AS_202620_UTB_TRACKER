@@ -16,8 +16,6 @@ Mejoras:
 """
 import os
 
-# Las pruebas usan el correo de desarrollo y exigen correo verificado (ADR-0014).
-os.environ.setdefault("VERIFICACION_OBLIGATORIA", "true")
 
 import pytest
 from dotenv import load_dotenv
@@ -63,21 +61,18 @@ def client():
             nombre="Usuario de prueba 1",
             email="user1@utb.edu.co",
             password=hash_password("TestPassword1"),
-            email_verificado=True,
             rol="usuario_utb",
         ),
         Usuario(
             nombre="Usuario de prueba 2",
             email="user2@utb.edu.co",
             password=hash_password("TestPassword2"),
-            email_verificado=True,
             rol="usuario_utb",
         ),
         Usuario(
             nombre="Admin prueba",
             email="admin@utb.edu.co",
             password=hash_password("AdminPassword1"),
-            email_verificado=True,
             rol="administrador",
         ),
     ])

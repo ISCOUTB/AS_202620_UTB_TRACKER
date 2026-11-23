@@ -12,8 +12,6 @@ class UsuarioModel {
         nombre: (j['nombre'] ?? '').toString(),
         email: (j['email'] ?? '').toString(),
         rol: (j['rol'] ?? '').toString(),
-        // Servidores anteriores a ADR-0014 no mandan el campo: se asume verificado.
-        emailVerificado: j['email_verificado'] as bool? ?? true,
         nombreMostrar: j['nombre_mostrar'] as String?,
         telefono: j['telefono'] as String?,
         dependencia: j['dependencia'] as String?,
@@ -21,7 +19,7 @@ class UsuarioModel {
         preferencias: Preferencias.desdeJson(j['preferencias']),
         // ADR-0018 (servidores anteriores no los mandan: se calculan del rol).
         rolEtiqueta: j['rol_etiqueta'] as String?,
-        permisos: Permisos.desdeJson(j['permisos'], (j['rol'] ?? '').toString()),
+        permisos: Permisos.desdeJson(j['permisos']),
         // ADR-0019 (servidores anteriores no los mandan).
         correoInstitucional: j['correo_institucional'] as bool? ?? true,
         rolOrigen: (j['rol_origen'] ?? 'base').toString(),
@@ -107,10 +105,6 @@ class AuthRemoteDataSource {
       '/auth/fcm-token',
       cuerpo: {'fcm_token': token},
     );
-  }
-
-  Future<void> reenviarVerificacion() async {
-    await _api.post('/auth/reenviar-verificacion');
   }
 
   Future<bool> salud() async {
@@ -243,7 +237,4 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<bool> servidorSaludable() => _remoto.salud();
-
-  @override
-  Future<void> reenviarVerificacion() => _remoto.reenviarVerificacion();
 }

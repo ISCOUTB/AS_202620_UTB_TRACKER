@@ -54,6 +54,10 @@ void main() {
         'persona@gmail.com': noInst,
         'usuario@utb.edu.co.malo.com': noInst,
         'usuario@estudiantes.utb.edu.co': noInst,
+        'usuario@evil-utb.edu.co': noInst,
+        'ana+2@utb.edu.co': Politica.msgCorreoAlias,
+        'usuario@UTB.edu.co.Evil.com': noInst,
+        'usuario@utb.edu.com': noInst,
         'usuario@utb.edu.co@otro.com': malo,
         '@utb.edu.co': malo,
         '.ana@utb.edu.co': malo,
@@ -105,7 +109,7 @@ void main() {
     expect(find.text('Ejemplo: usuario@utb.edu.co'), findsOneWidget);
     await tester.enterText(find.byType(TextFormField).at(0), 'yo@utb.edu.co.malo.com');
     await tester.enterText(find.byType(TextFormField).at(1), 'ClaveSegura1');
-    await tester.tap(find.text('Enviar enlace'));
+    await tester.tap(find.text('Cambiar correo').last);
     await tester.pumpAndSettle();
     expect(find.text(Politica.msgCorreoNoInstitucional), findsOneWidget);
     expect(_peticiones.where((p) => p.contains('cambiar-correo')), isEmpty);
