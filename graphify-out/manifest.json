@@ -90,9 +90,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795412998.28907,
-    "seen": 1795413046.684808,
-    "ast_hash": "c898f8cb8ba4d4da31c53f14e453a8f9",
+    "mtime": 1795414152.852689,
+    "seen": 1795414570.272533,
+    "ast_hash": "9abee66e4f83462eae49e984e54d676f",
     "semantic_hash": ""
   },
   "docs/adr/0001-estilo-arquitectonico.md": {
@@ -204,9 +204,9 @@
     "semantic_hash": ""
   },
   "app/core/config.py": {
-    "mtime": 1795412998.3011947,
-    "seen": 1795413046.6830359,
-    "ast_hash": "32761616d686ea2b48a4e71bf42e217e",
+    "mtime": 1795414152.8390663,
+    "seen": 1795414570.2708445,
+    "ast_hash": "c982be8fec0f2a80b86be2b24224a49a",
     "semantic_hash": ""
   },
   "app/core/database.py": {
@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/core/config/api_config.dart": {
-    "mtime": 1795412991.7838328,
-    "seen": 1795413046.6836917,
-    "ast_hash": "c51a1991e57ba39e7c2c6fa1e3199677",
+    "mtime": 1795414152.84943,
+    "seen": 1795414570.2714698,
+    "ast_hash": "f503c97c24e23e98db5cea3b9267246b",
     "semantic_hash": ""
   },
   "frontend/lib/core/di/injection.dart": {
@@ -846,9 +846,9 @@
     "semantic_hash": ""
   },
   "docs/COMO_EJECUTAR.md": {
-    "mtime": 1795412998.402316,
-    "seen": 1795413046.6848137,
-    "ast_hash": "4be06d37c1c0b7dca6feb6ece591f246",
+    "mtime": 1795414152.8450499,
+    "seen": 1795414570.2725387,
+    "ast_hash": "63b2a606beb31050099491f232708826",
     "semantic_hash": ""
   },
   "detener.ps1": {
@@ -858,9 +858,9 @@
     "semantic_hash": ""
   },
   "iniciar.ps1": {
-    "mtime": 1795412998.6919577,
-    "seen": 1795413046.6844826,
-    "ast_hash": "77f2b4c0515912cc17a30d765c7206f7",
+    "mtime": 1795414152.851425,
+    "seen": 1795414570.2722154,
+    "ast_hash": "ad74b840ff89fc4dd6920300399eca65",
     "semantic_hash": ""
   },
   "docs/adr/0007-identificadores-enteros-autoincrementales.md": {
@@ -996,9 +996,9 @@
     "semantic_hash": ""
   },
   "docs/seguridad/analisis-dependencias.md": {
-    "mtime": 1795412991.7717967,
-    "seen": 1795413046.6852634,
-    "ast_hash": "a1749f2ae28887c4124bfb740aa3f667",
+    "mtime": 1795414152.8484333,
+    "seen": 1795414570.2730072,
+    "ast_hash": "ec161c264f20e019eb26b0a0a70f7bcb",
     "semantic_hash": ""
   },
   "docs/seguridad/modelo-amenazas.md": {
@@ -1206,9 +1206,9 @@
     "semantic_hash": ""
   },
   "app/services/perfil.py": {
-    "mtime": 1795412998.3794763,
-    "seen": 1795413046.6835747,
-    "ast_hash": "9ba354b5336e688982e587278efe02ef",
+    "mtime": 1795413728.1655638,
+    "seen": 1795414111.6687834,
+    "ast_hash": "70e9a36162aad5c391680d44ae6decdb",
     "semantic_hash": ""
   },
   "app/services/plantillas_correo.py": {
@@ -1320,9 +1320,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0014-autenticacion-correo-verificado-y-tokens-por-id.md": {
-    "mtime": 1795412998.40432,
-    "seen": 1795413046.6849325,
-    "ast_hash": "ede1de0c7e7b6446b572e9606913f60c",
+    "mtime": 1795414152.8420584,
+    "seen": 1795414570.2726488,
+    "ast_hash": "d4fb70e7a874b9025372bbb5f6f9f772",
     "semantic_hash": ""
   },
   "docs/adr/0015-servicio-de-correo.md": {
@@ -1344,9 +1344,9 @@
     "semantic_hash": ""
   },
   "docs/despliegue/worker.md": {
-    "mtime": 1795413122.7048216,
-    "seen": 1795413285.1467268,
-    "ast_hash": "f3d6087a365ae4e1f2fc8d2255e2dd61",
+    "mtime": 1795414152.846103,
+    "seen": 1795414570.2728994,
+    "ast_hash": "9da01f70243b3cc9716e755090e59946",
     "semantic_hash": ""
   },
   ".claude/settings.json": {
@@ -1416,9 +1416,9 @@
     "semantic_hash": ""
   },
   "app/services/asignaciones.py": {
-    "mtime": 1795413122.7035253,
-    "seen": 1795413285.1451013,
-    "ast_hash": "26df74c0998e44eda9053e3c5de7097a",
+    "mtime": 1795413728.1655638,
+    "seen": 1795414111.6686687,
+    "ast_hash": "c36ce9aa98f616ae3caf38d8bb3257db",
     "semantic_hash": ""
   },
   "app/services/estadisticas.py": {
@@ -1434,9 +1434,9 @@
     "semantic_hash": ""
   },
   "app/services/imagenes.py": {
-    "mtime": 1795412991.7223785,
-    "seen": 1795413046.683539,
-    "ast_hash": "5d0f818fccda532bf0fe43fb319b120d",
+    "mtime": 1795413825.7400017,
+    "seen": 1795414111.6687505,
+    "ast_hash": "e7e58582efe9d1e3b1f86444bdee0642",
     "semantic_hash": ""
   },
   "app/services/usuarios.py": {
@@ -1584,9 +1584,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795412991.6848438,
-    "seen": 1795413046.6848006,
-    "ast_hash": "c55a273bb20e468667f50357f2522711",
+    "mtime": 1795414152.8410606,
+    "seen": 1795414570.2725253,
+    "ast_hash": "64814d93f0e828e6c13be8adcafb0a2e",
     "semantic_hash": ""
   },
   "docs/adr/0018-modelo-de-roles-y-permisos.md": {
@@ -1854,9 +1854,9 @@
     "semantic_hash": ""
   },
   "tests/test_correo_servicio.py": {
-    "mtime": 1795413122.7081063,
-    "seen": 1795413285.1462603,
-    "ast_hash": "b6e839aae0884e50e956b9b2886dcaab",
+    "mtime": 1795414152.8542528,
+    "seen": 1795414570.2723618,
+    "ast_hash": "8807a06831e9ddee748da1cf3f395e0d",
     "semantic_hash": ""
   },
   "tests/test_correo_unico.py": {
@@ -1878,9 +1878,9 @@
     "semantic_hash": ""
   },
   "tests/test_roles_sin_verificacion.py": {
-    "mtime": 1795412998.745518,
-    "seen": 1795413046.6847682,
-    "ast_hash": "2afd44d83a30101439dedb9277a1e1cb",
+    "mtime": 1795413728.168997,
+    "seen": 1795414111.6697013,
+    "ast_hash": "9ffa63eedd912ceed9acf0a1b2e0e2f5",
     "semantic_hash": ""
   },
   "docs/adr/0024-sin-verificacion-de-correo-y-roles-asignados-por-administrador.md": {
@@ -1920,9 +1920,9 @@
     "semantic_hash": ""
   },
   "docs/guia_evaluacion_final.md": {
-    "mtime": 1795412991.7680476,
-    "seen": 1795413046.6851804,
-    "ast_hash": "4afdc7178ba67cd7677773dab6704597",
+    "mtime": 1795414152.847429,
+    "seen": 1795414570.2729237,
+    "ast_hash": "e9a408ec320fa459b118da2cb61d580b",
     "semantic_hash": ""
   }
 }
