@@ -59,34 +59,3 @@ jobs:
       # No se llama desde aquí para evitar doble análisis y errores de autorización
       # en repos migrados. Los tests (pytest) y pip-audit cubren calidad y seguridad.
 
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            cd ${{ secrets.WORK_DIR }}
-            git fetch origin main
-            git reset --hard origin/main
-            source venv/bin/activate
-            python -m pip install --upgrade pip
-            pip install --only-binary :all: -r requirements.txt
-            set -a; . ./.env; set +a
-            alembic upgrade head
-            sudo systemctl restart utb-tracker
-            # Worker del outbox (correos de verificación/recuperación, ADR-0015). Sin él los
-            # correos se quedan en la base sin salir. Ver docs/despliegue/worker.md.
-            if systemctl list-unit-files | grep -q '^utb-tracker-worker'; then
-              sudo systemctl restart utb-tracker-worker
-            else
-              echo "AVISO: no existe utb-tracker-worker.service; los correos no se enviarán"
-            fi
-            curl --fail --silent --show-error --max-time 15 \
-            --retry 6 --retry-delay 3 --retry-connrefused \
-            https://api.iscoutb.dev/salud

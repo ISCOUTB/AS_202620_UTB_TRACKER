@@ -5,7 +5,7 @@ FROM ghcr.io/cirruslabs/flutter:stable AS compilar
 ARG API_BASE_URL=http://localhost:8000
 WORKDIR /src
 COPY pubspec.yaml pubspec.lock ./
-RUN flutter pub get --enforce-lockfile
+RUN flutter pub get
 COPY . .
 RUN flutter build web --release --no-wasm-dry-run "--dart-define=API_BASE_URL=${API_BASE_URL}"
 
