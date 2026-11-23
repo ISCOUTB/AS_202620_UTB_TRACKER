@@ -1,7 +1,7 @@
-name: utb_tracker_app
+﻿name: utb_tracker_app
 description: App móvil de UTB Tracker (Flutter). Cliente del API FastAPI del repositorio.
 publish_to: "none"
-version: 0.1.1+4
+version: 1.1.0+5
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -38,15 +38,15 @@ flutter:
     - assets/figuras/
     - assets/icono/logo_splash.png
 
-# Ícono de la app y pantalla de arranque (identidad visual, ADR-0011). Se regeneran con:
+# Ícono de la app y pantalla de arranque (logo de la UTB, ADR-0026). Se regeneran con:
 #   dart run flutter_launcher_icons && dart run flutter_native_splash:create
 flutter_launcher_icons:
   android: true
   ios: false
   image_path: assets/icono/icono.png
-  adaptive_icon_background: "#2F55E4"
+  adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: assets/icono/primer_plano.png
-  adaptive_icon_foreground_inset: 22
+  adaptive_icon_foreground_inset: 16
   web:
     generate: true
     image_path: assets/icono/icono.png
@@ -56,7 +56,7 @@ flutter_launcher_icons:
 flutter_native_splash:
   color: "#000000"
   image: assets/icono/logo_splash.png
-  # Android 12+: círculo azul con el pin ya dibujado (sin icon_background_color): se ve igual
+  # Android 12+: círculo blanco con el logo de la UTB ya dibujado (sin icon_background_color): se ve igual
   # aunque el fabricante no recorte el ícono (antes quedaba un cuadrado azul en MIUI).
   android_12:
     color: "#000000"

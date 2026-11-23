@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/assets/figuras.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/state/carga.dart';
 import '../../../core/theme/app_theme.dart';
@@ -347,6 +349,15 @@ class _Encabezado extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 6),
+          // Logo de la UTB (ADR-0026) sobre el saludo.
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Semantics(
+              label: 'Logo de la UTB',
+              image: true,
+              child: SvgPicture.asset(Figuras.logo, height: 34),
+            ),
+          ),
           Row(
             children: [
               Expanded(

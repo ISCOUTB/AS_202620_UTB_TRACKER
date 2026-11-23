@@ -3,7 +3,6 @@ Fase 2 (ADR-0016): perfil personalizable, cambio de correo y contraseña, sesion
 desactivación y preferencias en el servidor respetadas por el worker.
 """
 import json
-import re
 from email import message_from_bytes, policy
 from pathlib import Path
 

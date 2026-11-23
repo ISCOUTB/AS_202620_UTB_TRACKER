@@ -186,12 +186,12 @@ Todos los módulos se comunican vía HTTP/JSON. Internamente, `prestamos` depend
 
 ### cuenta y correo (ADR-0014, ADR-0015, ADR-0016)
 
-*Responsabilidad:* identidad de las personas (registro con correo verificado, inicio de sesión por
+*Responsabilidad:* identidad de las personas (registro solo con correo institucional y sin verificación, ADR-0024; inicio de sesión por
 usuario o correo, sesión con tokens por id y versión de sesión), perfil y preferencias guardadas
-en el servidor, y todos los correos de la cuenta (verificación, recuperación, cambio de correo y
-de contraseña, alertas).
+en el servidor, y los correos de seguridad de la cuenta (recuperación y avisos de cambio de
+correo y de contraseña, alertas).
 *Interfaz:* `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`,
-`GET /auth/verificar-correo`, `POST /auth/reenviar-verificacion`, `POST /auth/forgot-password`,
+`GET /auth/roles` (matriz única de roles, ADR-0025), `POST /auth/forgot-password`,
 `POST /auth/reset-password`, `GET /auth/restablecer`, `GET|PATCH /auth/me`,
 `POST /auth/me/cambiar-correo`, `POST /auth/me/cambiar-password`, `POST /auth/me/cerrar-sesiones`,
 `POST /auth/me/desactivar`.
@@ -201,7 +201,7 @@ de contraseña, alertas).
 `app/models/seguridad_models.py`. Los correos salen por el outbox y el worker
 (`app/messaging/worker.py::_procesar_correo`).
 *Requisitos que cumple:* QS-04 (seguridad) — `tests/test_identidad.py`,
-`tests/test_correo_verificado.py`, `tests/test_perfil.py`, `tests/test_persistencia_cuentas.py`.
+`tests/test_correo_servicio.py`, `tests/test_correo_unico.py`, `tests/test_perfil.py`, `tests/test_persistencia_cuentas.py`.
 
 ### salones: tipo y equipamiento (ADR-0017)
 
@@ -422,7 +422,7 @@ sequenceDiagram
     participant DB as Base de datos
     participant W as Worker (outbox)
 
-    E->>API: POST /prestamos-salon (permiso salones.solicitar + correo verificado)
+    E->>API: POST /prestamos-salon (permiso salones.solicitar; sin verificación de correo, ADR-0024)
     API->>DB: valida conflictos con clases y otras solicitudes, guarda "pendiente"
     A->>API: GET /prestamos-salon/gestion (permiso solicitudes.gestionar)
     API->>DB: pendientes + 2 consultas para el conflicto de toda la página
@@ -439,29 +439,27 @@ Un Estudiante que llame a la bandeja o a aprobar recibe 403 y la app muestra "No
 esto". El modo prueba del Administrador solo cambia lo que la app dibuja: la API sigue
 aplicando su rol real.
 
-### Escenario 5 — Registro institucional y rol por asignación (ADR-0019)
+### Escenario 5 — Registro institucional y rol asignado por un administrador (ADR-0019, ADR-0024)
 
 ```mermaid
 sequenceDiagram
-    actor Ad as Administrador
     actor P as Persona nueva
+    actor Ad as Administrador
     participant API as UTB Tracker (FastAPI)
     participant DB as Base de datos
 
-    Ad->>API: POST /usuarios/asignaciones {correo exacto, rol Auditor, cargo}
-    API->>DB: guarda la fila + bitácora (correo oculto)
     P->>API: POST /auth/register {correo @utb.edu.co, ...} (un "rol" en el cuerpo se ignora)
-    API->>API: error_correo_nuevo: dominio exacto en DOMINIOS_PERMITIDOS (si no, 422)
-    API->>DB: cuenta con rol base (Estudiante) y SIN verificar + correo de verificación
-    P->>API: GET /auth/verificar-correo?token=...
-    API->>DB: correo comprobado -> rol_resuelto = rol de la asignación
-    API->>DB: sube sesion_version (cierra sesiones) + bitácora usuario.rol_automatico
+    API->>API: error_correo_nuevo: dominio exacto, sin alias "+" (si no, 422); correo único (si no, 409)
+    API->>DB: cuenta con rol base (Estudiante) + bitácora usuario.registro
+    P->>API: POST /auth/login -> puede solicitar salones de inmediato
+    Ad->>API: PATCH /usuarios/{id}/rol (o POST /usuarios/asignaciones/importar, solo cuentas existentes)
+    API->>DB: guarda el rol, sube sesion_version (cierra sesiones) + bitácora usuario.rol
     P->>API: POST /auth/login -> GET /auth/me
-    API-->>P: rol Auditor, rol_origen "correo", cargo
+    API-->>P: rol y permisos (la matriz única de app/core/matriz_permisos.json)
 ```
 
-Sin correo real en producción la cuenta nace "verificada" pero sin `email_verificado_en`: no
-cuenta como comprobada y se queda con el rol base hasta que un administrador le asigne otro.
+Ningún correo da un rol: registrarse con el correo de una persona de la lista no hereda nada
+(mitigación de la suplantación, T-36).
 
 ## Infrastructure Level 1
 

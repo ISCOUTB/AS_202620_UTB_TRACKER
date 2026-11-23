@@ -7,6 +7,8 @@ nube por defecto) y la escala 0,9 los reemplazan ADR-0014 (`iniciar.ps1` levanta
 app locales y `-Nube` usa el servidor oficial; la app siempre muestra a qué servidor habla) y
 ADR-0016 (escala 1,10 y tamaño de texto como preferencia).
 
+> **Nota (2026-11-23, ADR-0026):** el logo propio se reemplazó por el logo de la UTB.
+
 ## Contexto
 
 Al probar el APK en un celular real aparecieron tres problemas:

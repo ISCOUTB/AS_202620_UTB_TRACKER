@@ -79,10 +79,11 @@ services:
       - api
     restart: unless-stopped
 
-  # Carga los datos de demostración. Solo corre si se pide el perfil "demo".
+  # Carga el catálogo de salones y los datos de demostración sobre él (ADR-0021: sin crear salones
+  # nuevos). Solo corre si se pide el perfil "demo".
   seed:
     <<: *backend
-    command: ["python", "scripts/seed_demo.py"]
+    command: ["sh", "-c", "python scripts/cargar_catalogo_utb.py && python scripts/cargar_equipos_demo.py && python scripts/cargar_demo_actividad.py"]
     restart: "no"
     profiles: ["demo"]
     depends_on:

@@ -61,7 +61,7 @@ cambio de correo y avisos de seguridad.
 
 | Decisión | Código | Pruebas |
 |---|---|---|
-| Interfaz y proveedores | `app/services/correo.py` | `tests/test_correo_verificado.py` |
+| Interfaz y proveedores | `app/services/correo.py` | `tests/test_correo_servicio.py` |
 | Plantillas y escapado | `app/services/plantillas_correo.py` | `test_plantilla_escapa_html`, `test_no_permite_inyeccion_de_cabeceras` |
 | Worker y reintentos | `app/messaging/worker.py::_procesar_correo` | `test_worker_reintenta_si_el_proveedor_falla`, `test_el_log_del_worker_no_incluye_el_token` |
 | Despliegue | `iniciar.ps1`, `detener.ps1`, `docker-compose.yml`, `.github/workflows/ci.yml`, `docs/despliegue/worker.md` | revisión manual |

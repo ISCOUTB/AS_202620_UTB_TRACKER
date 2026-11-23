@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
 from app.models.auth_models import Usuario
-from app.models.recurso_models import Recurso, Prestamo
+from app.models.recurso_models import Recurso
 from app.messaging.models import MensajeOutbox, NotificacionProcesada
 from app.messaging.worker import procesar_pendientes, NotificadorSimulado
 from app.services.loans import crear_prestamo
@@ -106,7 +106,7 @@ def main():
         # Consultar estado en outbox
         msg1 = db.query(MensajeOutbox).filter(MensajeOutbox.correlation_id == "req-corr-001").first()
         assert msg1 is not None
-        print(f"-> Registro en mensajes_outbox:")
+        print("-> Registro en mensajes_outbox:")
         print(f"   message_id     : {msg1.message_id}")
         print(f"   correlation_id : {msg1.correlation_id}")
         print(f"   tipo           : {msg1.tipo} (v{msg1.version})")
@@ -175,7 +175,7 @@ def main():
             if msg2.estado == "pendiente":
                 ahora_dlq = msg2.siguiente_intento + timedelta(seconds=1)
 
-        print(f"-> Resultado final del mensaje 2:")
+        print("-> Resultado final del mensaje 2:")
         print(f"   estado       : {msg2.estado}")
         print(f"   intentos     : {msg2.intentos}")
         print(f"   ultimo_error : {msg2.ultimo_error}")

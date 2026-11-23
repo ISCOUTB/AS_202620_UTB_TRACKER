@@ -15,11 +15,9 @@ import jwt
 import pytest
 
 from app.core import config
-from app.core.security import PROPOSITO_RECUPERAR, crear_token_proposito
 from app.messaging.models import MensajeOutbox
 from app.messaging.worker import NotificadorSimulado, procesar_pendientes
 from app.models.auditoria_models import RegistroAuditoria
-from app.models.auth_models import Usuario
 from app.services import correo
 from app.services.correo import ProveedorDesarrollo
 

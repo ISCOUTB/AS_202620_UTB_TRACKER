@@ -69,3 +69,15 @@ El sistema evolucionó a lo largo de 16 semanas respondiendo a escenarios de cal
   Enviar dos solicitudes idénticas con la misma clave `X-Idempotency-Key` o en el mismo intervalo de horario: la primera es aceptada y la segunda rechazada sin corromper el estado.
 * **Demostración 4 (Auditabilidad Inmutable · Aspecto A-08):**  
   Realizar un cambio de estado en un salón o usuario y consultar `/auditoria` para mostrar el registro con timestamp, actor y diff (antes/después).
+
+---
+
+## Anexo: versión final 1.1.0 (2026-11-23)
+
+| Tema | Decisión | Evidencia |
+|---|---|---|
+| Identidad y roles | Sin verificación de correo (el dominio `@utb.edu.co` ya es de la UTB); todo registro nace Estudiante y solo un administrador asigna roles a cuentas existentes; correo único y sin alias `+` | ADR-0024, `tests/test_roles_sin_verificacion.py`, `tests/test_correo_unico.py`, amenaza T-36 |
+| Una sola fuente de verdad | La matriz rol → permisos vive en `app/core/matriz_permisos.json`; la app la recibe en `GET /auth/roles` y no tiene copia | ADR-0025, `tests/test_matriz_unica.py` |
+| Datos de demostración | Equipos, horarios, solicitudes y reportes sobre los 59 salones del catálogo, marcados y repetibles; no crean salones | `docs/despliegue/demostracion.md`, `tests/test_demo_datos.py` |
+| Marca | Logo de la UTB en toda la app | ADR-0026 |
+| Calidad | SonarCloud: complejidad reducida; suite del backend y de la app en verde | `sonar-project.properties`, CI |

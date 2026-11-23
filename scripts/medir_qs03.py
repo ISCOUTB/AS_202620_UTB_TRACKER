@@ -142,7 +142,7 @@ def main():
 
     niveles = [int(x.strip()) for x in args.concurrencias.split(",") if x.strip()]
     print("=" * 80)
-    print(f"MEDICIÓN EMPÍRICA QS-03 — UTB Tracker")
+    print("MEDICIÓN EMPÍRICA QS-03 — UTB Tracker")
     print(f"URL Base: {args.base_url}")
     print(f"Niveles de concurrencia: {niveles}")
     print(f"Timeout por petición: {args.timeout} s")

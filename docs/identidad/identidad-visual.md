@@ -36,7 +36,10 @@ texto `#C5C8D0` sobre el fondo negro supera 12:1.
 `frontend/assets/figuras/logo.svg` (copia en `docs/identidad/logo.svg`; versión con nombre en
 `docs/identidad/logo-horizontal.svg`).
 
-Desde el 2026-11-14 es un **pin de ubicación blanco** sobre el degradado azul → índigo de la app
+> **Actualización (2026-11-23, ADR-0026):** la app usa ahora el **logo de la UTB** (letras U, T y B
+> en bloque, azul `#0939D7` sobre baldosa blanca). Lo que sigue describe el pin anterior, que ya no se usa.
+
+Desde el 2026-11-14 era un **pin de ubicación blanco** sobre el degradado azul → índigo de la app
 (`#1D3FE0` → `#4B3BDB`). Dentro del pin hay **un plano de cuatro salones**: tres tenues (ocupados) y
 uno azul con visto (libre/confirmado). El pin dice "tracker" (saber dónde está cada cosa) y las
 baldosas repiten el plano de salones de la app, así que el logo y la pantalla principal hablan el

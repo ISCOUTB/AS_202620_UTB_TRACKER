@@ -125,7 +125,7 @@ Todas las medidas en esta sección corresponden a **PROPUESTO — NO IMPLEMENTAD
 
 | Dato | Tabla y columna | Para qué | Quién lo ve | Obligatorio |
 |---|---|---|---|---|
-| Correo verificado y fecha | `usuarios.email_verificado`, `email_verificado_en` | Saber que el correo es de quien se registró (requisito para solicitar salones) | La persona; el panel de usuarios | Automático |
+| Correo verificado y fecha (OBSOLETO, ADR-0024) | `usuarios.email_verificado`, `email_verificado_en` | Ya no se usan: no hay verificación de correo. Se retirarán en una migración posterior | Nadie | No |
 | Nombre para mostrar | `usuarios.nombre_mostrar` | Mostrar un nombre amable en la app | La persona; auxiliares en solicitudes | No |
 | Teléfono | `usuarios.telefono` | Que el auxiliar pueda contactar a quien pidió un salón | La persona (no se expone en listados) | No |
 | Dependencia o cargo | `usuarios.dependencia` | Contexto de la solicitud ("Laboratorios", "Docente") | La persona | No |
@@ -154,8 +154,8 @@ Reglas aplicadas:
 
 | Dato | Tabla y columna | Para qué | Quién lo ve | Obligatorio |
 |---|---|---|---|---|
-| Lista de roles por correo | `asignaciones_rol` (correo, rol, cargo, quién y cuándo) | Decidir quién es Auditor o Administrador sin deducirlo del correo | Solo administradores | Lo mantiene el administrador |
-| Rol manual | `usuarios.rol_manual` | Que la lista no pise un rol puesto a mano | Administradores | Automático |
+| Lista de roles por correo (OBSOLETA, ADR-0024) | `asignaciones_rol` | Ya no decide roles: el rol lo asigna un administrador a una cuenta existente. Se retirará en una migración posterior | Nadie | No |
+| Rol manual (OBSOLETO, ADR-0024) | `usuarios.rol_manual` | Ya no se usa: todo rol lo pone un administrador | Administradores | Automático |
 | Foto de perfil | `fotos_perfil` (bytes, tipo, tamaño, dimensiones, versión, fecha) | Reconocer a la persona en el perfil, en Inicio y en las listas de gestión | La persona; auditores y administradores (permiso `usuarios.ver`). **Nunca pública** | No |
 
 Reglas aplicadas:

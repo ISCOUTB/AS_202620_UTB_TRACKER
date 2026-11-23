@@ -22,7 +22,7 @@ import '../../salones_admin/presentation/catalogo_page.dart';
 import 'foto_perfil_sheet.dart';
 
 /// Versión mostrada en el perfil (la de pubspec.yaml).
-const String versionApp = '0.1.1';
+const String versionApp = '1.1.0';
 
 /// Colores que se pueden elegir para el avatar (todos de [AppColors]).
 const List<Color> coloresAvatar = [
