@@ -2,7 +2,8 @@
 
 **Sistema:** UTB Tracker (Administración y Solicitud de Salones)  
 **Semestre:** 2026-20 · Arquitectura de Software · Universidad Tecnológica de Bolívar  
-**URL de Producción:** [https://api.iscoutb.dev](https://api.iscoutb.dev) (Swagger: `/docs`, Salud: `/salud`)
+**URL de Producción (App Web Flutter):** [https://tractar.iscoutb.dev](https://tractar.iscoutb.dev)  
+**URL de la API (Backend FastAPI):** [https://api-tractar.iscoutb.dev](https://api-tractar.iscoutb.dev) (Swagger: `/docs`, Salud: `/salud`)  
 **APK Cliente Android:** Publicado en GitHub Releases (etiqueta final)  
 
 ---
