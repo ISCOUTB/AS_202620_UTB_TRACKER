@@ -43,7 +43,7 @@ def exigir_password(db: Session, user: Usuario, password: str) -> None:
 def respuesta(db: Session, user: Usuario) -> PerfilResponse:
     """GET/PATCH /auth/me: el perfil con lo que se calcula (origen del rol y cargo)."""
     perfil = PerfilResponse.model_validate(user)
-    perfil.rol_origen, perfil.cargo = asignaciones.origen(db, user)
+    perfil.rol_origen, perfil.cargo = asignaciones.origen(user)
     perfil.rol_origen_texto = asignaciones.TEXTO_ORIGEN[perfil.rol_origen]
     perfil.foto_version = fotos.version_de(db, user.id) or 0
     perfil.tiene_foto = perfil.foto_version > 0

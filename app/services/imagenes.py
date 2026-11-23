@@ -151,42 +151,44 @@ def _leer_marcador_jpeg(
     return marcador, segmento, cuerpo, pos
 
 
+def _procesar_marcador_jpeg(marcador: int, segmento: bytes, cuerpo: bytes, estado: dict) -> None:
+    """Decide qué pasa con un marcador JPEG: se conserva, se descarta (metadatos) o aporta el
+    tamaño y la orientación. `estado` lleva salida, ancho, alto, orientacion y en_datos."""
+    if marcador == 0xE1 and estado["orientacion"] is None:
+        estado["orientacion"] = _orientacion_exif(cuerpo)
+    if 0xE1 <= marcador <= 0xEF or marcador == 0xFE:
+        return  # metadatos y comentarios: fuera
+    if marcador in _SOF:
+        if len(cuerpo) < 5:
+            raise ImagenInvalida(ERR_JPEG_DANADA)
+        estado["alto"], estado["ancho"] = struct.unpack_from(">HH", cuerpo, 1)
+    estado["en_datos"] = marcador == 0xDA
+    estado["salida"].append(segmento)
+
+
 def _limpiar_jpeg(datos: bytes) -> ImagenLimpia:
-    salida = [b"\xff\xd8"]
-    pos, n = 2, len(datos)
-    ancho = alto = None
-    orientacion = None
-    en_datos = False  # después de un SOS: datos comprimidos hasta el próximo marcador
-    segmentos = 0
+    estado = {"salida": [b"\xff\xd8"], "ancho": None, "alto": None, "orientacion": None,
+              "en_datos": False}  # en_datos: tras un SOS vienen datos comprimidos
+    pos, n, segmentos = 2, len(datos), 0
     while True:
-        if en_datos:
+        if estado["en_datos"]:
             trozo, pos = _escanear_datos_jpeg(datos, pos, n)
-            salida.append(trozo)
-            en_datos = False
+            estado["salida"].append(trozo)
+            estado["en_datos"] = False
         marcador, segmento, cuerpo, pos = _leer_marcador_jpeg(datos, pos, n, segmentos)
         segmentos += 1
-        if marcador == _SENTINEL_EOI:
-            salida.append(segmento)
-            break
-        if marcador in _SIN_LONGITUD:
-            salida.append(segmento)
+        if marcador == _SENTINEL_EOI or marcador in _SIN_LONGITUD:
+            estado["salida"].append(segmento)
+            if marcador == _SENTINEL_EOI:
+                break
             continue
-        if marcador == 0xE1 and orientacion is None:
-            orientacion = _orientacion_exif(cuerpo)
-        if 0xE1 <= marcador <= 0xEF or marcador == 0xFE:
-            continue  # metadatos y comentarios: fuera
-        if marcador in _SOF:
-            if len(cuerpo) < 5:
-                raise ImagenInvalida(ERR_JPEG_DANADA)
-            alto, ancho = struct.unpack_from(">HH", cuerpo, 1)
-        if marcador == 0xDA:
-            en_datos = True
-        salida.append(segmento)
-    if not ancho or not alto:
+        _procesar_marcador_jpeg(marcador, segmento, cuerpo, estado)
+    if not estado["ancho"] or not estado["alto"]:
         raise ImagenInvalida("La foto JPEG no indica su tamaño")
+    orientacion = estado["orientacion"]
     if orientacion and orientacion != 1:
-        salida.insert(1, _app1_solo_orientacion(orientacion))
-    return ImagenLimpia(b"".join(salida), MIME_JPEG, ancho, alto)
+        estado["salida"].insert(1, _app1_solo_orientacion(orientacion))
+    return ImagenLimpia(b"".join(estado["salida"]), MIME_JPEG, estado["ancho"], estado["alto"])
 
 
 # --------------------------------------------------------------------------

@@ -47,15 +47,15 @@ TEXTO_ORIGEN = {
 }
 
 
-def rol_resuelto(db: Session, user: Usuario) -> str:
+def rol_resuelto(user: Usuario) -> str:
     """El rol de `user`: el guardado (un administrador lo puso) o, si no es válido, el base."""
     rol = permisos.normalizar_rol(user.rol)
     return rol if rol in permisos.ROLES_VALIDOS else ROL_BASE
 
 
-def origen(db: Session, user: Usuario) -> tuple[str, Optional[str]]:
+def origen(user: Usuario) -> tuple[str, Optional[str]]:
     """(origen del rol, cargo) para el perfil."""
-    return (ORIGEN_BASE if rol_resuelto(db, user) == ROL_BASE else ORIGEN_MANUAL), user.dependencia
+    return (ORIGEN_BASE if rol_resuelto(user) == ROL_BASE else ORIGEN_MANUAL), user.dependencia
 
 
 def _rol_valido(rol: str) -> str:

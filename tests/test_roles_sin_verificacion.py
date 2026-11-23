@@ -131,7 +131,7 @@ def test_login_no_recalcula_el_rol(client, db_session):
     user.rol = "auxiliar"
     db_session.commit()
     assert _me(client, _login(client, "ana@utb.edu.co"))["rol"] == "auxiliar"
-    assert asignaciones.rol_resuelto(db_session, user) == "auxiliar"
+    assert asignaciones.rol_resuelto(user) == "auxiliar"
 
 
 # --------------------------------------------------------------------------
