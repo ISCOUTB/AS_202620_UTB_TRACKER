@@ -5,10 +5,10 @@
 En la terminal de VS Code, desde la raíz del repo:
 
 ```powershell
-.\iniciar.ps1                  # LOCAL: API + worker de correos + app web, apuntándose entre sí
-.\iniciar.ps1 -ReiniciarDatos  # igual, y recarga los datos de ejemplo
-.\iniciar.ps1 -SinCompilar     # más rápido: no recompila la app si no cambiaste el frontend
-.\iniciar.ps1 -Nube            # solo la app web, contra el servidor OFICIAL (el del celular)
+.\scripts\iniciar.ps1                  # LOCAL: API + worker de correos + app web, apuntándose entre sí
+.\scripts\iniciar.ps1 -ReiniciarDatos  # igual, y recarga los datos de ejemplo
+.\scripts\iniciar.ps1 -SinCompilar     # más rápido: no recompila la app si no cambiaste el frontend
+.\scripts\iniciar.ps1 -Nube            # solo la app web, contra el servidor OFICIAL (el del celular)
 .\detener.ps1                  # apaga todo (API, worker y app)
 ```
 
@@ -16,8 +16,8 @@ En la terminal de VS Code, desde la raíz del repo:
 
 | Comando | Servidor | Cuentas |
 |---|---|---|
-| `.\iniciar.ps1` | Local, en tu PC (`http://127.0.0.1:8000`, base `utb_tracker.db`) | De prueba (sección 4) y las que crees en tu PC |
-| `.\iniciar.ps1 -Nube` y el APK | **Oficial**, `https://api-tractar.iscoutb.dev` | Las reales, iguales en el PC y el celular |
+| `.\scripts\iniciar.ps1` | Local, en tu PC (`http://127.0.0.1:8000`, base `utb_tracker.db`) | De prueba (sección 4) y las que crees en tu PC |
+| `.\scripts\iniciar.ps1 -Nube` y el APK | **Oficial**, `https://api-tractar.iscoutb.dev` | Las reales, iguales en el PC y el celular |
 
 La app siempre muestra arriba a qué servidor habla ("Local (este PC) · conectado" u "Oficial
 (nube) · conectado"). Tócalo para ver la dirección completa; en esta compilación también puedes
