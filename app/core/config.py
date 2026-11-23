@@ -139,4 +139,6 @@ else:
         "http://127.0.0.1:8080",
         "http://localhost:8000",   # Uvicorn por defecto
         "http://127.0.0.1:8000",
+        "https://tractar.iscoutb.dev",
+        "https://api-tractar.iscoutb.dev",
     ]
