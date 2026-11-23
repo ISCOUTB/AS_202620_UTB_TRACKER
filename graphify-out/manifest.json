@@ -114,9 +114,9 @@
     "semantic_hash": ""
   },
   "docs/arc42/arc42.md": {
-    "mtime": 1795412998.445765,
-    "seen": 1795413046.6850722,
-    "ast_hash": "be8c20163bbfc01e70c270bd49ac2862",
+    "mtime": 1795452684.0233855,
+    "seen": 1795453885.1256475,
+    "ast_hash": "30b6e662677c84496089d1ac4c0d59e5",
     "semantic_hash": ""
   },
   "docs/aspectos.md": {
@@ -150,9 +150,9 @@
     "semantic_hash": ""
   },
   "docs/ia.md": {
-    "mtime": 1795413122.7070558,
-    "seen": 1795413285.1467628,
-    "ast_hash": "6e6d1cc2c3f23372ccc33fa288386cd7",
+    "mtime": 1795452742.3710263,
+    "seen": 1795453885.1257582,
+    "ast_hash": "779e44d069a0b4b6374f69c3fbab5c47",
     "semantic_hash": ""
   },
   "docs/matriz_estilos.md": {
@@ -204,9 +204,9 @@
     "semantic_hash": ""
   },
   "app/core/config.py": {
-    "mtime": 1795414152.8390663,
-    "seen": 1795414570.2708445,
-    "ast_hash": "c982be8fec0f2a80b86be2b24224a49a",
+    "mtime": 1795451128.676067,
+    "seen": 1795451160.3797295,
+    "ast_hash": "482f1127fc624b93811f11d0aeb6d97b",
     "semantic_hash": ""
   },
   "app/core/database.py": {
@@ -480,15 +480,15 @@
     "semantic_hash": ""
   },
   "frontend/lib/features/cuenta/presentation/cuenta_page.dart": {
-    "mtime": 1795412998.617812,
-    "seen": 1795413046.683934,
-    "ast_hash": "ed6d87cc9d46de4c10fd074a7de93e2b",
+    "mtime": 1795452518.4347644,
+    "seen": 1795453885.124781,
+    "ast_hash": "3fdf8c83585f06849d5bb4a95cb1515b",
     "semantic_hash": ""
   },
   "frontend/lib/features/home/presentation/home_page.dart": {
-    "mtime": 1794874285.3638728,
-    "seen": 1794876716.9030597,
-    "ast_hash": "696235ffdfe6615f76ab9309221c79cf",
+    "mtime": 1795452517.5050292,
+    "seen": 1795453885.124795,
+    "ast_hash": "7be010b6d572431b36d1ee2e5e44aa8b",
     "semantic_hash": ""
   },
   "frontend/lib/features/home/presentation/shell_page.dart": {
@@ -618,9 +618,9 @@
     "semantic_hash": ""
   },
   "frontend/pubspec.yaml": {
-    "mtime": 1794874285.969422,
-    "seen": 1794876716.903175,
-    "ast_hash": "713c6f6cc9a939bf24a0a7c4a488677c",
+    "mtime": 1795452526.5406907,
+    "seen": 1795453885.1250904,
+    "ast_hash": "34437b1c8a822122d5927ad2052ee3bf",
     "semantic_hash": ""
   },
   "frontend/test/api_client_test.dart": {
@@ -648,9 +648,9 @@
     "semantic_hash": ""
   },
   "scripts/demo_mensajeria.py": {
-    "mtime": 1794874286.601386,
-    "seen": 1794876716.9032376,
-    "ast_hash": "f21499696869602cea394f8faedd6eaa",
+    "mtime": 1795452611.896979,
+    "seen": 1795453885.125258,
+    "ast_hash": "d8d8116ac3d04cf1bcf757b6d57f19c1",
     "semantic_hash": ""
   },
   "tests/test_auth.py": {
@@ -966,9 +966,9 @@
     "semantic_hash": ""
   },
   "scripts/medir_qs03.py": {
-    "mtime": 1794874286.6023836,
-    "seen": 1794876716.9032395,
-    "ast_hash": "6671a9e101fc6aa8e4b9150a948152e9",
+    "mtime": 1795452611.8979814,
+    "seen": 1795453885.125264,
+    "ast_hash": "0d3eeb41147194f4e72744d1db00e048",
     "semantic_hash": ""
   },
   "scripts/sembrar_medicion.py": {
@@ -1002,15 +1002,15 @@
     "semantic_hash": ""
   },
   "docs/seguridad/modelo-amenazas.md": {
-    "mtime": 1795412998.510728,
-    "seen": 1795413046.6852758,
-    "ast_hash": "97edf426c9b146fa854852a9fc260e52",
+    "mtime": 1795452684.0266316,
+    "seen": 1795453885.1258543,
+    "ast_hash": "7e7522d7112c2f6d5d65950580b2dc63",
     "semantic_hash": ""
   },
   "docs/seguridad/privacidad.md": {
-    "mtime": 1794874284.1719444,
-    "seen": 1794876716.9034176,
-    "ast_hash": "de0a0a322e52100d13c7eb79a195d964",
+    "mtime": 1795452684.0253792,
+    "seen": 1795453885.1258578,
+    "ast_hash": "a321ec2765991d12dfbc1f46542be428",
     "semantic_hash": ""
   },
   "alembic/versions/a1b2c3d4e5f6_add_auditoria.py": {
@@ -1062,21 +1062,21 @@
     "semantic_hash": ""
   },
   "docs/identidad/identidad-visual.md": {
-    "mtime": 1794874284.1553152,
-    "seen": 1794876716.9033885,
-    "ast_hash": "190fa1f59033bdce4e11da566b2e568c",
+    "mtime": 1795452742.3679886,
+    "seen": 1795453885.1257646,
+    "ast_hash": "07414082a65f1cda1f8c2ed65cd6a9d2",
     "semantic_hash": ""
   },
   "docs/identidad/logo-horizontal.svg": {
-    "mtime": 1794874284.1558204,
-    "seen": 1794876716.903422,
-    "ast_hash": "3abc7ef3444fd689b502c8ea38b57b2d",
+    "mtime": 1795452742.2065496,
+    "seen": 1795453885.1258676,
+    "ast_hash": "af55cc9118576544906910b68e2ec1fd",
     "semantic_hash": ""
   },
   "docs/identidad/logo.svg": {
-    "mtime": 1794874284.156821,
-    "seen": 1794876716.903424,
-    "ast_hash": "be8c642d80c7b97d73cec5da17198d70",
+    "mtime": 1795452742.1482904,
+    "seen": 1795453885.1258738,
+    "ast_hash": "af55cc9118576544906910b68e2ec1fd",
     "semantic_hash": ""
   },
   "frontend/lib/shared/utb_ui.dart": {
@@ -1116,9 +1116,9 @@
     "semantic_hash": ""
   },
   "docker-compose.yml": {
-    "mtime": 1795412998.3895195,
-    "seen": 1795413046.6836674,
-    "ast_hash": "4df4f235f5db63c5806ac762acff4666",
+    "mtime": 1795452629.4623306,
+    "seen": 1795453885.124657,
+    "ast_hash": "cb01e6e69fdf1973bd91a402778b9a7e",
     "semantic_hash": ""
   },
   "docs/adr/0011-rediseno-interfaz-y-control.md": {
@@ -1134,9 +1134,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0013-identidad-propia-y-servidor-unico.md": {
-    "mtime": 1794874284.0852723,
-    "seen": 1794876716.9033334,
-    "ast_hash": "4cb582fdd6dd3e8af2217818133edfe0",
+    "mtime": 1795452742.3689802,
+    "seen": 1795453885.1255531,
+    "ast_hash": "947bfdfa673585b8e1a6fd7e87adaba8",
     "semantic_hash": ""
   },
   "alembic/versions/b2c3d4e5f6a7_normalizar_correos_usuarios.py": {
@@ -1302,9 +1302,9 @@
     "semantic_hash": ""
   },
   "tests/test_perfil.py": {
-    "mtime": 1795412998.739231,
-    "seen": 1795413046.684722,
-    "ast_hash": "d68fb00497041f9f0912dafab9aa7f3e",
+    "mtime": 1795452611.8989785,
+    "seen": 1795453885.1253772,
+    "ast_hash": "d6928c75c45ba2428a0b39b9d982bd7d",
     "semantic_hash": ""
   },
   "tests/test_persistencia_cuentas.py": {
@@ -1320,15 +1320,15 @@
     "semantic_hash": ""
   },
   "docs/adr/0014-autenticacion-correo-verificado-y-tokens-por-id.md": {
-    "mtime": 1795414152.8420584,
-    "seen": 1795414570.2726488,
-    "ast_hash": "d4fb70e7a874b9025372bbb5f6f9f772",
+    "mtime": 1795452699.4077446,
+    "seen": 1795453885.1255596,
+    "ast_hash": "5e846a5d9e370326e107ef6b231be18b",
     "semantic_hash": ""
   },
   "docs/adr/0015-servicio-de-correo.md": {
-    "mtime": 1794874284.0873156,
-    "seen": 1794876716.9033372,
-    "ast_hash": "00675412851c6467455146287fd9eb19",
+    "mtime": 1795452699.4116006,
+    "seen": 1795453885.125566,
+    "ast_hash": "f486b5e0ce4058dfe721631f6a7fb8d4",
     "semantic_hash": ""
   },
   "docs/adr/0016-perfil-y-preferencias-en-el-servidor.md": {
@@ -1848,15 +1848,15 @@
     "semantic_hash": ""
   },
   "scripts/cargar_equipos_demo.py": {
-    "mtime": 1795412998.6959977,
-    "seen": 1795413046.6845174,
-    "ast_hash": "055d77dc9bdf29d01b2ffe18dc23d7dc",
+    "mtime": 1795454011.2315893,
+    "seen": 1795454086.3869786,
+    "ast_hash": "af70b11d61fde0be4eed78abf859bbd8",
     "semantic_hash": ""
   },
   "tests/test_correo_servicio.py": {
-    "mtime": 1795414152.8542528,
-    "seen": 1795414570.2723618,
-    "ast_hash": "8807a06831e9ddee748da1cf3f395e0d",
+    "mtime": 1795452611.896979,
+    "seen": 1795453885.125318,
+    "ast_hash": "8e8eba5d32b62df49ad197049c9ee7d9",
     "semantic_hash": ""
   },
   "tests/test_correo_unico.py": {
@@ -1866,9 +1866,9 @@
     "semantic_hash": ""
   },
   "tests/test_demo_datos.py": {
-    "mtime": 1795412998.7372272,
-    "seen": 1795413046.6846457,
-    "ast_hash": "0332a0bca614de5587597da9852dddaf",
+    "mtime": 1795454011.3045938,
+    "seen": 1795454086.3871121,
+    "ast_hash": "e30536ee55631e6b370f5a016bedf00e",
     "semantic_hash": ""
   },
   "tests/test_matriz_unica.py": {
@@ -1908,9 +1908,9 @@
     "semantic_hash": ""
   },
   "deploy/compose.lab.yaml": {
-    "mtime": 1795412991.736206,
-    "seen": 1795413046.6836445,
-    "ast_hash": "c657b93e82e6b4d1b23ba4e14a017685",
+    "mtime": 1795452629.461039,
+    "seen": 1795453885.1246476,
+    "ast_hash": "0bfebb38a32fe23e1bf37f6292fa96c0",
     "semantic_hash": ""
   },
   "docs/c4/c4_nivel3.md": {
@@ -1920,9 +1920,21 @@
     "semantic_hash": ""
   },
   "docs/guia_evaluacion_final.md": {
-    "mtime": 1795414152.847429,
-    "seen": 1795414570.2729237,
-    "ast_hash": "e9a408ec320fa459b118da2cb61d580b",
+    "mtime": 1795452742.3720322,
+    "seen": 1795453885.125744,
+    "ast_hash": "252a58a10741e0a198506f2fb1485dad",
+    "semantic_hash": ""
+  },
+  "docs/adr/0026-logo-de-la-utb.md": {
+    "mtime": 1795452742.2698474,
+    "seen": 1795453885.1256406,
+    "ast_hash": "39715be08ce1a39f46163551ffd39e3f",
+    "semantic_hash": ""
+  },
+  "scripts/poblar_a1_piso4.py": {
+    "mtime": 1795453871.4549432,
+    "seen": 1795453921.8866386,
+    "ast_hash": "7168c66ae178c2a73b106ec55a6cac11",
     "semantic_hash": ""
   }
 }
