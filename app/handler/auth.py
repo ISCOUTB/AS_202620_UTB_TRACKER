@@ -83,7 +83,7 @@ def register_endpoint(
 
 @router.get("/restablecer", response_class=HTMLResponse)
 def restablecer_pagina_endpoint(
-    token: Annotated[str, Query(min_length=10, max_length=2048)],
+    token: Annotated[str, Query(min_length=10, max_length=2048, pattern=r"^[A-Za-z0-9_\-\.~]+$")],
 ):
     """Página del enlace de recuperación: formulario que llama a POST /auth/reset-password."""
     return _html(paginas_auth.formulario_restablecer(token))

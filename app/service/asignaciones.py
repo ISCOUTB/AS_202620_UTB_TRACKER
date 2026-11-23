@@ -139,32 +139,34 @@ def analizar_lista(texto: str) -> tuple[list[dict], list[dict]]:
     return filas, errores
 
 
-def importar(db: Session, texto: str, simular: bool, actor: Optional[Usuario]) -> dict:
-    """Todo o nada: con un solo error no se aplica ninguna línea. Solo cuentas EXISTENTES.
-    `actor` = None desde la consola."""
-    actor_id = actor.id if actor else None
-    filas, errores = analizar_lista(texto)
-    resumen = {"validas": len(filas), "actualizadas": 0, "sin_cambios": 0, "sin_cuenta": 0,
-               "correos_sin_cuenta": [], "errores": errores, "aplicado": False}
-    cambios = []  # (usuario, fila)
-    for fila in filas:
-        user = _usuario_de(db, fila["correo"])
-        if user is None:
-            resumen["sin_cuenta"] += 1
-            resumen["correos_sin_cuenta"].append(fila["correo"])
-        elif permisos.normalizar_rol(user.rol) == fila["rol"] and (
-                fila["cargo"] is None or fila["cargo"] == user.dependencia):
-            resumen["sin_cambios"] += 1
-        else:
-            if actor and user.id == actor.id and permisos.normalizar_rol(user.rol) != fila["rol"]:
-                errores.append({"linea": fila["linea"], "error": MSG_A_SI_MISMO})
-                continue
-            resumen["actualizadas"] += 1
-            cambios.append((user, fila))
-    if not errores and _quedaria_sin_admin(db, cambios):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=MSG_ULTIMO_ADMIN)
-    if errores or simular:
-        return resumen
+def _clasificar_fila(
+    db: Session,
+    fila: dict,
+    actor: Optional[Usuario],
+    resumen: dict,
+    cambios: list,
+    errores: list,
+) -> None:
+    """Clasifica una fila de importación en sin_cuenta, sin_cambios o para actualizar."""
+    user = _usuario_de(db, fila["correo"])
+    if user is None:
+        resumen["sin_cuenta"] += 1
+        resumen["correos_sin_cuenta"].append(fila["correo"])
+        return
+    mismo_rol = permisos.normalizar_rol(user.rol) == fila["rol"]
+    mismo_cargo = fila["cargo"] is None or fila["cargo"] == user.dependencia
+    if mismo_rol and mismo_cargo:
+        resumen["sin_cambios"] += 1
+        return
+    if actor and user.id == actor.id and not mismo_rol:
+        errores.append({"linea": fila["linea"], "error": MSG_A_SI_MISMO})
+        return
+    resumen["actualizadas"] += 1
+    cambios.append((user, fila))
+
+
+def _aplicar_cambios(db: Session, cambios: list, actor_id: Optional[int], resumen: dict) -> None:
+    """Aplica los cambios confirmados a la base de datos y registra auditoría."""
     for user, fila in cambios:
         anterior = permisos.normalizar_rol(user.rol)
         if anterior != fila["rol"]:
@@ -177,11 +179,31 @@ def importar(db: Session, texto: str, simular: bool, actor: Optional[Usuario]) -
         user.rol_manual = True
         if fila["cargo"] is not None:
             user.dependencia = fila["cargo"]
-    # Solo cifras: los correos importados no se copian a la bitácora.
-    auditoria.registrar(db, "asignacion_rol.importar", "asignacion_rol", None, actor_id=actor_id,
-                        detalle={**{k: resumen[k] for k in ("actualizadas", "sin_cambios", "sin_cuenta")},
-                                 **({"origen": "consola"} if actor is None else {})})
+    auditoria.registrar(
+        db, "asignacion_rol.importar", "asignacion_rol", None, actor_id=actor_id,
+        detalle={**{k: resumen[k] for k in ("actualizadas", "sin_cambios", "sin_cuenta")},
+                 **({"origen": "consola"} if actor_id is None else {})},
+    )
     db.commit()
+
+
+def importar(db: Session, texto: str, simular: bool, actor: Optional[Usuario]) -> dict:
+    """Todo o nada: con un solo error no se aplica ninguna línea. Solo cuentas EXISTENTES.
+    `actor` = None desde la consola."""
+    actor_id = actor.id if actor else None
+    filas, errores = analizar_lista(texto)
+    resumen = {"validas": len(filas), "actualizadas": 0, "sin_cambios": 0, "sin_cuenta": 0,
+               "correos_sin_cuenta": [], "errores": errores, "aplicado": False}
+    cambios = []  # (usuario, fila)
+    for fila in filas:
+        _clasificar_fila(db, fila, actor, resumen, cambios, errores)
+
+    if not errores and _quedaria_sin_admin(db, cambios):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=MSG_ULTIMO_ADMIN)
+    if errores or simular:
+        return resumen
+
+    _aplicar_cambios(db, cambios, actor_id, resumen)
     resumen["aplicado"] = True
     return resumen
 

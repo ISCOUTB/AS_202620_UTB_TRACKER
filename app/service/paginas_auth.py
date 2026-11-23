@@ -50,18 +50,20 @@ def enlace_invalido(mensaje: str) -> str:
 
 
 def formulario_restablecer(token: str) -> str:
-    # El token va como dato JSON dentro del script (json.dumps escapa comillas y </script>).
-    token_js = json.dumps(token).replace("<", "\\u003c")
+    # Token validado y escapado para atributos HTML / JavaScript seguro.
+    token_escapado = escape(token, quote=True)
     return _pagina("Elige tu nueva contraseña", f"""
 <p>Escribe una contraseña de al menos {PASSWORD_MINIMO} caracteres, distinta de tu correo y de tu
 nombre de usuario.</p>
+<input type="hidden" id="tk" value="{token_escapado}">
 <label for="p1">Nueva contraseña</label><input id="p1" type="password" autocomplete="new-password">
 <label for="p2">Repítela</label><input id="p2" type="password" autocomplete="new-password">
 <p id="m" role="status" aria-live="polite"></p><button id="b" type="button">Guardar</button>
 <script>
-const T={token_js};const m=document.getElementById('m');
+const m=document.getElementById('m');
 document.getElementById('b').onclick=async()=>{{
  const a=document.getElementById('p1').value,b=document.getElementById('p2').value;
+ const T=document.getElementById('tk').value;
  if(a.length<{PASSWORD_MINIMO}){{m.textContent='La contraseña debe tener al menos {PASSWORD_MINIMO} caracteres';return}}
  if(a!==b){{m.textContent='Las contraseñas no coinciden';return}}
  m.textContent='Guardando…';
