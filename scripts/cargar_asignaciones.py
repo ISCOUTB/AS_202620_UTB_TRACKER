@@ -21,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi import HTTPException  # noqa: E402
 
-from app.core.database import SessionLocal  # noqa: E402
-from app.services import asignaciones  # noqa: E402
+from app.db.database import SessionLocal  # noqa: E402
+from app.service import asignaciones  # noqa: E402
 
 
 def main() -> int:

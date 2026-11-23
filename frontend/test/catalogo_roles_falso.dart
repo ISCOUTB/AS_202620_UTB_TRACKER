@@ -1,7 +1,7 @@
 import 'package:utb_tracker_app/features/auth/domain/permisos.dart';
 
 /// Copia de PRUEBA de lo que responde `GET /auth/roles` (la matriz vive en el servidor,
-/// `app/core/matriz_permisos.json`, ADR-0025). Solo existe en las pruebas de la app.
+/// `app/middleware/matriz_permisos.json`, ADR-0025). Solo existe en las pruebas de la app.
 const _todos = [
   'salones.ver', 'salones.solicitar', 'solicitudes.propias', 'reportes.crear', 'equipos.ver',
   'horarios.ver',

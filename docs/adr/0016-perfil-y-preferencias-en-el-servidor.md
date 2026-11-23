@@ -62,8 +62,8 @@ envía un correo) no podría leerlas.
 
 | Decisión | Código | Pruebas |
 |---|---|---|
-| Perfil y preferencias | `app/schemas/perfil.py`, `app/services/perfil.py`, `app/routers/auth.py`, migración `d4e5f6a7b8c9` | `tests/test_perfil.py` |
+| Perfil y preferencias | `app/schemas/perfil.py`, `app/service/perfil.py`, `app/handler/auth.py`, migración `d4e5f6a7b8c9` | `tests/test_perfil.py` |
 | Worker respeta preferencias | `app/messaging/worker.py::_preferencia_permite` | `test_worker_respeta_preferencias_salvo_seguridad`, `test_worker_respeta_preferencia_de_avisos_de_salones` |
-| Versión de sesión | `app/core/deps.py::sesion_vigente`, `app/core/security.py` | `test_cambiar_password_cierra_las_demas_sesiones`, `test_cerrar_sesiones_en_todos_los_dispositivos` |
+| Versión de sesión | `app/middleware/deps.py::sesion_vigente`, `app/middleware/security.py` | `test_cambiar_password_cierra_las_demas_sesiones`, `test_cerrar_sesiones_en_todos_los_dispositivos` |
 | Pantalla de perfil | `frontend/lib/features/cuenta/presentation/cuenta_page.dart`, `frontend/lib/features/auth/domain/preferencias.dart` | `frontend/test/perfil_test.dart` |
 | Privacidad | `docs/seguridad/privacidad.md` §6 | — |

@@ -2,7 +2,7 @@
 Identidad de las cuentas (ADR-0014, Fase 0): correo normalizado y único sin distinguir
 mayúsculas, login por correo o por nombre, política de contraseña y mensajes en español.
 """
-from app.core.politica import (
+from app.service.politica import (
     MSG_CLAVE_CORTA,
     MSG_CLAVE_IGUAL_CORREO,
     MSG_CLAVE_IGUAL_NOMBRE,

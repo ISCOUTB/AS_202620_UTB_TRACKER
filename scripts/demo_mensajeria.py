@@ -14,12 +14,12 @@ import tempfile
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.core.database import Base
+from app.db.database import Base
 from app.models.auth_models import Usuario
 from app.models.recurso_models import Recurso
 from app.messaging.models import MensajeOutbox, NotificacionProcesada
 from app.messaging.worker import procesar_pendientes, NotificadorSimulado
-from app.services.loans import crear_prestamo
+from app.service.loans import crear_prestamo
 from app.schemas import schemas
 
 

@@ -23,8 +23,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.core.database import Base, get_db
-from app.core.hashing import hash_password
+from app.db.database import Base, get_db
+from app.middleware.hashing import hash_password
 from app.main import app
 from app.models.auth_models import Usuario
 

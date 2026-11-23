@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Integer, String, Text
 
-from app.core.database import Base
+from app.db.database import Base
 
 
 class MensajeOutbox(Base):

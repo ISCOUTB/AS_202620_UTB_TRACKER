@@ -5,7 +5,7 @@
 Propuesto (Mitigación arquitectónica derivada del modelado de amenazas S13 para resolver las vulnerabilidades T-03, T-04 y T-06).
 
 Nota (2026-11-15): ADR-0018 implementa la parte de autorización. Hay una tabla única de
-permisos (`app/core/permisos.py`) y una matriz verificada por pruebas. `GET /auth/user/{id}`
+permisos (`app/middleware/permisos.py`) y una matriz verificada por pruebas. `GET /auth/user/{id}`
 queda solo para uno mismo o el auditor/administrador (T-03), y el préstamo legado de equipos,
 solo para el personal (T-04, T-06). Falta el bloqueo pesimista en la devolución (T-06).
 
@@ -15,12 +15,12 @@ solo para el personal (T-04, T-06). Falta el bloqueo pesimista en la devolución
 
 ## Contexto
 
-El sistema UTB Tracker implementó en el [ADR-0004](0004-seguridad-jwt.md) un modelo de autenticación y autorización basado en roles (RBAC) mediante dependencias de FastAPI (`CurrentUser` y `AdminUser` en `app/core/deps.py:78-79`). Dicho esquema valida exitosamente si una petición proviene de un usuario autenticado o si posee el rol de `"administrador"` o `"auxiliar"`.
+El sistema UTB Tracker implementó en el [ADR-0004](0004-seguridad-jwt.md) un modelo de autenticación y autorización basado en roles (RBAC) mediante dependencias de FastAPI (`CurrentUser` y `AdminUser` en `app/middleware/deps.py:78-79`). Dicho esquema valida exitosamente si una petición proviene de un usuario autenticado o si posee el rol de `"administrador"` o `"auxiliar"`.
 
 Sin embargo, el modelado de amenazas formal (S13 — `docs/seguridad/modelo-amenazas.md`) evidenció que el control basado exclusivamente en roles es insuficiente para proteger recursos individuales, dejando abiertas brechas críticas de autorización a nivel de objeto (Broken Object Level Authorization — BOLA / Insecure Direct Object References — IDOR):
-1. **Enumeración de perfiles (`GET /auth/user/{user_id}` en `app/routers/auth.py:53-59`):** Cualquier usuario autenticado puede consultar el perfil privado de cualquier otro usuario, facilitado por el uso de identificadores enteros secuenciales ([ADR-0007](0007-identificadores-enteros-autoincrementales.md)).
-2. **Creación de préstamos a nombre de terceros (`POST /prestamos` en `app/services/loans.py:46-48`):** Un estudiante autenticado puede emitir peticiones asignando un `usuario_id` ajeno en el cuerpo JSON, comprometiendo a otro titular sin su consentimiento.
-3. **Devolución arbitraria de préstamos (`PATCH /prestamos/{id}/devolver` en `app/routers/loans.py:72-81`):** No se valida la titularidad del préstamo devuelto, permitiendo a cualquier estudiante marcar como devueltos equipos físicos en posesión de otros usuarios.
+1. **Enumeración de perfiles (`GET /auth/user/{user_id}` en `app/handler/auth.py:53-59`):** Cualquier usuario autenticado puede consultar el perfil privado de cualquier otro usuario, facilitado por el uso de identificadores enteros secuenciales ([ADR-0007](0007-identificadores-enteros-autoincrementales.md)).
+2. **Creación de préstamos a nombre de terceros (`POST /prestamos` en `app/service/loans.py:46-48`):** Un estudiante autenticado puede emitir peticiones asignando un `usuario_id` ajeno en el cuerpo JSON, comprometiendo a otro titular sin su consentimiento.
+3. **Devolución arbitraria de préstamos (`PATCH /prestamos/{id}/devolver` en `app/handler/loans.py:72-81`):** No se valida la titularidad del préstamo devuelto, permitiendo a cualquier estudiante marcar como devueltos equipos físicos en posesión de otros usuarios.
 
 ## Decisión
 
@@ -32,7 +32,7 @@ Se decide adoptar un esquema de **Control de Acceso Basado en Propiedad de Recur
 2. **Inyección del Usuario Autenticado en Capa de Servicio:**  
    Las funciones de servicio que ejecutan mutaciones o consultas sobre recursos privados (`crear_prestamo`, `devolver_prestamo`, `get_user_by_id`, `listar_prestamos`) deben recibir obligatoriamente el objeto `current_user: Usuario` (o su `id` y `rol`), desacoplando la regla de autorización dentro de la lógica de dominio.
 3. **Restricción Estricta en Registro Público:**  
-   En `app/services/auth.py:create_user`, se elimina la posibilidad de recibir roles en el cuerpo JSON del registro, asignando de manera forzada e inmutable `rol = "usuario_utb"`. Los roles de auxiliar o administrador solo podrán ser asignados mediante un endpoint exclusivo protegido por `AdminUser`.
+   En `app/service/auth.py:create_user`, se elimina la posibilidad de recibir roles en el cuerpo JSON del registro, asignando de manera forzada e inmutable `rol = "usuario_utb"`. Los roles de auxiliar o administrador solo podrán ser asignados mediante un endpoint exclusivo protegido por `AdminUser`.
 
 ## Alternativas Evaluadas
 
@@ -54,5 +54,5 @@ Se decide adoptar un esquema de **Control de Acceso Basado en Propiedad de Recur
 - Previene que usuarios maliciosos interactúen con préstamos o perfiles institucionales ajenos.
 
 **Negativas:**
-- Requiere actualizar las firmas de las funciones en `app/services/loans.py`, `app/services/auth.py` y `app/routers/` para propagar `current_user`.
+- Requiere actualizar las firmas de las funciones en `app/service/loans.py`, `app/service/auth.py` y `app/handler/` para propagar `current_user`.
 - Exige actualizar las pruebas existentes en `tests/test_loans.py` y `tests/test_auth.py` para suministrar usuarios con tokens acordes a cada escenario de prueba.

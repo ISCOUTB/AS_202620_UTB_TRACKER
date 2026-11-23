@@ -12,7 +12,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from app.core.database import Base
+from app.db.database import Base
 
 
 def _rol_alto(contexto) -> bool:

@@ -6,7 +6,7 @@ Aceptado (2026-11-21). Completa ADR-0018 (modelo de roles y permisos) y ADR-0024
 
 ## Contexto
 
-- La tabla "rol → permisos" estaba escrita dos veces: `app/core/permisos.py` y
+- La tabla "rol → permisos" estaba escrita dos veces: `app/middleware/permisos.py` y
   `frontend/lib/features/auth/domain/permisos.dart`, más una tercera en
   `docs/seguridad/matriz-permisos.md`. Había que mantenerlas iguales a mano.
 - La copia de la app solo servía con servidores anteriores a ADR-0018 y para el modo prueba del
@@ -14,10 +14,10 @@ Aceptado (2026-11-21). Completa ADR-0018 (modelo de roles y permisos) y ADR-0024
 
 ## Decisión
 
-1. **Una sola fuente:** `app/core/matriz_permisos.json` (roles, etiqueta, descripción y la lista
+1. **Una sola fuente:** `app/middleware/matriz_permisos.json` (roles, etiqueta, descripción y la lista
    de permisos de cada rol). Es el único archivo que se edita para cambiar qué puede hacer cada
    rol. Los valores de rol son los guardados en la base.
-2. **El backend la carga y la valida al arrancar** (`app/core/permisos.py`): los roles del archivo
+2. **El backend la carga y la valida al arrancar** (`app/middleware/permisos.py`): los roles del archivo
    son exactamente los del enum `Rol` y cada permiso nombrado existe en `Permiso`. Si no cuadra,
    la API no arranca. El enum `Permiso` sigue siendo la lista de nombres que usan los routers.
 3. **La app no tiene copia.** Recibe los permisos reales en `GET /auth/me` (`permisos`) y el

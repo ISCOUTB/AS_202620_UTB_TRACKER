@@ -5,7 +5,7 @@ No compara el schema completo campo por campo (eso rompe en cualquier
 cambio cosmético). Compara compatibilidad hacia atras: todo lo que el
 contrato congelado (docs/contracts/openapi.json) promete, la version
 en vivo de la app lo sigue cumpliendo. Un cambio incompatible en
-app/schemas.py o app/routers/*.py hace fallar esta prueba - asi es
+app/schemas.py o app/handler/*.py hace fallar esta prueba - asi es
 como se evita que un cambio del proveedor (el backend) rompa al
 consumidor (el cliente Flutter) en silencio.
 

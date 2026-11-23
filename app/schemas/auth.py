@@ -11,8 +11,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.core import permisos
-from app.core.politica import (
+from app.middleware import permisos
+from app.service.politica import (
     EJEMPLO_CORREO,
     MSG_CORREO_INVALIDO,
     PASSWORD_MINIMO,
@@ -32,7 +32,7 @@ def _correo(v: str) -> str:
 
 
 def _correo_nuevo(v: str) -> str:
-    """Registros y cambios de correo: solo institucionales (ADR-0019, app/core/politica.py)."""
+    """Registros y cambios de correo: solo institucionales (ADR-0019, app/service/politica.py)."""
     v = normalizar_correo(v)
     error = error_correo_nuevo(v)
     if error:

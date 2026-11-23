@@ -33,7 +33,7 @@ como `sub`, así que cambiar el correo rompería las sesiones abiertas.
    `usuario+duplicado<id>@dominio` (no se borra ninguna).
 2. **Login con nombre de usuario O correo** en el mismo campo (`nombre`, por compatibilidad con
    el contrato). El error es idéntico exista o no la cuenta.
-3. **Una sola política de contraseña** (`app/core/politica.py` ↔ `frontend/lib/core/utils/politica.dart`):
+3. **Una sola política de contraseña** (`app/service/politica.py` ↔ `frontend/lib/core/utils/politica.dart`):
    mínimo 8 caracteres, distinta del correo, de su parte local y del nombre; mismos mensajes.
    Los 422 se devuelven en español con la forma estándar de FastAPI.
 4. **Correo verificado.** Columnas `email_verificado` y `email_verificado_en` (migración
@@ -102,10 +102,10 @@ puede entrar pero no solicitar salones, enlaces de 24 h / 30 min.
 
 | Decisión | Código | Pruebas |
 |---|---|---|
-| Correo normalizado y único | `app/core/politica.py`, `app/models/auth_models.py`, `alembic/versions/b2c3d4e5f6a7_*` | `tests/test_identidad.py` |
-| Login por correo o nombre | `app/services/auth.py::login` | `tests/test_identidad.py::test_login_por_correo_y_por_nombre` |
-| Verificación y permisos | `app/services/auth.py`, `app/core/deps.py::require_verified`, `app/routers/prestamos_salon.py` | `tests/test_correo_servicio.py` |
-| Tokens de un solo uso | `app/core/security.py`, `app/models/seguridad_models.py` | `tests/test_correo_servicio.py::test_token_de_verificacion_no_sirve_para_otra_cosa` |
+| Correo normalizado y único | `app/service/politica.py`, `app/models/auth_models.py`, `alembic/versions/b2c3d4e5f6a7_*` | `tests/test_identidad.py` |
+| Login por correo o nombre | `app/service/auth.py::login` | `tests/test_identidad.py::test_login_por_correo_y_por_nombre` |
+| Verificación y permisos | `app/service/auth.py`, `app/middleware/deps.py::require_verified`, `app/handler/prestamos_salon.py` | `tests/test_correo_servicio.py` |
+| Tokens de un solo uso | `app/middleware/security.py`, `app/models/seguridad_models.py` | `tests/test_correo_servicio.py::test_token_de_verificacion_no_sirve_para_otra_cosa` |
 | Persistencia tras reinicio | `scripts/preparar_bd.py`, `iniciar.ps1` | `tests/test_persistencia_cuentas.py` |
 | Refresco en la app | `frontend/lib/core/network/api_client.dart` | `frontend/test/sesion_test.dart` |
 | Verificación en la app | `frontend/lib/features/auth/presentation/verificacion_page.dart` | `frontend/test/auth_controller_test.dart` |

@@ -31,7 +31,7 @@ Future<void> _preparar() async {
 }
 
 void main() {
-  group('regla de correo nuevo (espejo de app/core/politica.py)', () {
+  group('regla de correo nuevo (espejo de app/service/politica.py)', () {
     const solo = ['utb.edu.co'];
 
     test('sin configuración solo admite utb.edu.co', () {

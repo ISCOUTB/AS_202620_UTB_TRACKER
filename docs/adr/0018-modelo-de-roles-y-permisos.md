@@ -7,7 +7,7 @@ compara textos de rol en cada router, sino permisos de una tabla única.
 
 > **Nota (2026-11-21, ADR-0024):** los roles siguen igual en esta fase; el rediseño por funciones (Docente, Operador de salones, Auditor de solo lectura, alcance y matriz en un archivo de datos) continúa en las fases siguientes de ADR-0024. La carga de roles ya no es automática.
 
-> **Nota (2026-11-21, ADR-0025):** la tabla rol → permisos pasó a `app/core/matriz_permisos.json`; la app ya no tiene copia y recibe los roles en `GET /auth/roles`.
+> **Nota (2026-11-21, ADR-0025):** la tabla rol → permisos pasó a `app/middleware/matriz_permisos.json`; la app ya no tiene copia y recibe los roles en `GET /auth/roles`.
 
 ## Contexto
 
@@ -39,12 +39,12 @@ no se puede editar.
 
 ## Decisión
 
-1. **Tabla única** en `app/core/permisos.py` (`PERMISOS_POR_ROL`): 16 permisos con nombre de
+1. **Tabla única** en `app/middleware/permisos.py` (`PERMISOS_POR_ROL`): 16 permisos con nombre de
    acción.
    - Por ejemplo: `salones.solicitar`, `solicitudes.gestionar`, `salones.administrar`,
      `usuarios.gestionar`, `auditoria.ver`, `estadisticas.ver`, `modo_prueba`.
    - Los routers piden un permiso con `require_permiso(...)` mediante alias de tipo en
-     `app/core/deps.py` (`GestionaSolicitudes`, `GestionaUsuarios`…). No quedan listas de
+     `app/middleware/deps.py` (`GestionaSolicitudes`, `GestionaUsuarios`…). No quedan listas de
      roles en los routers ni comparaciones del texto del rol fuera de esa tabla.
    - Un rol desconocido no tiene permisos: la tabla falla cerrada.
 2. **La matriz es la especificación.** `docs/seguridad/matriz-permisos.md` lista cada endpoint,
@@ -64,7 +64,7 @@ no se puede editar.
 4. **"Auditor" no es la "auditoría".** El rol Auditor administra salones. La bitácora de
    cambios (ADR-0010) se llama "Bitácora de auditoría" en la app y solo la ve el
    administrador.
-5. **Seguridad de roles** (`app/services/usuarios.py`):
+5. **Seguridad de roles** (`app/service/usuarios.py`):
    - El registro público siempre crea Estudiante, aunque el cuerpo de la petición traiga otro
      rol.
    - Solo el administrador cambia roles y estados.
@@ -160,12 +160,12 @@ Decisiones tomadas sin consulta (la opción más segura y compatible):
 
 | Decisión | Código | Pruebas |
 |---|---|---|
-| Tabla única y dependencias | `app/core/permisos.py`, `app/core/deps.py` | `tests/test_matriz_permisos.py` (290 casos: endpoint × rol × sin sesión) |
+| Tabla única y dependencias | `app/middleware/permisos.py`, `app/middleware/deps.py` | `tests/test_matriz_permisos.py` (290 casos: endpoint × rol × sin sesión) |
 | `/auth/me` con permisos y etiqueta | `app/schemas/perfil.py`, `app/schemas/auth.py` | `tests/test_roles.py::test_me_devuelve_etiqueta_y_permisos_de_cada_rol` |
-| Reglas de roles | `app/services/usuarios.py`, `app/services/perfil.py::desactivar_cuenta`, `app/routers/usuarios.py` | `test_solo_el_administrador_cambia_roles`, `test_cambio_de_rol_invalida_las_sesiones_y_queda_auditado`, `test_no_se_degrada_ni_desactiva_al_ultimo_administrador_ni_a_uno_mismo`, `test_desactivar_y_reactivar_usuario` |
+| Reglas de roles | `app/service/usuarios.py`, `app/service/perfil.py::desactivar_cuenta`, `app/handler/usuarios.py` | `test_solo_el_administrador_cambia_roles`, `test_cambio_de_rol_invalida_las_sesiones_y_queda_auditado`, `test_no_se_degrada_ni_desactiva_al_ultimo_administrador_ni_a_uno_mismo`, `test_desactivar_y_reactivar_usuario` |
 | Administrador real | `scripts/crear_admin.py`, `scripts/seed_demo.py` | `test_crear_admin_promueve_por_consola_sin_clave_en_argumentos`, `test_crear_admin_crea_la_cuenta_pidiendo_la_clave` |
-| Solicitudes con respuesta | `app/services/prestamos_salon.py`, `app/routers/prestamos_salon.py`, migración `f6a7b8c9d0e1`, `app/services/plantillas_correo.py` | `test_rechazar_exige_motivo_y_avisa_al_estudiante`, `test_la_bandeja_muestra_el_conflicto_y_no_deja_aprobarlo`, `test_la_bandeja_no_hace_una_consulta_por_solicitud`, `test_patch_legado_sigue_funcionando_sin_respuesta` |
-| Estadísticas | `app/services/estadisticas.py`, `app/routers/stats.py` | `test_estadisticas_del_administrador_con_datos_reales` |
+| Solicitudes con respuesta | `app/service/prestamos_salon.py`, `app/handler/prestamos_salon.py`, migración `f6a7b8c9d0e1`, `app/service/plantillas_correo.py` | `test_rechazar_exige_motivo_y_avisa_al_estudiante`, `test_la_bandeja_muestra_el_conflicto_y_no_deja_aprobarlo`, `test_la_bandeja_no_hace_una_consulta_por_solicitud`, `test_patch_legado_sigue_funcionando_sin_respuesta` |
+| Estadísticas | `app/service/estadisticas.py`, `app/handler/stats.py` | `test_estadisticas_del_administrador_con_datos_reales` |
 | App por permisos | `frontend/lib/features/auth/domain/permisos.dart`, `frontend/lib/features/home/presentation/shell_page.dart`, `frontend/lib/shared/sin_acceso.dart` | `frontend/test/roles_test.dart` |
 | Modo prueba | `frontend/lib/features/auth/presentation/auth_controller.dart` (`verComo`), `cuenta_page.dart` | `roles_test.dart` (grupo "Modo prueba") |
 | Pantallas nuevas | `frontend/lib/features/solicitudes/`, `frontend/lib/features/admin/`, `frontend/lib/features/auditoria/` | `roles_test.dart` (360 dp, texto grande) |

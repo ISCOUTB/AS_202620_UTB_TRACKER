@@ -28,11 +28,11 @@ Este directorio agrupa la documentación arquitectónica de persistencia, concur
 
 Toda afirmación técnica contenida en estos documentos se verificó directamente sobre el código fuente mediante herramientas automatizadas:
 
-- **Bloqueos de concurrencia (`with_for_update`):** Verificado mediante búsqueda en el árbol de servicios. Se constató que únicamente existe en `app/services/loans.py:58` condicionado al motor PostgreSQL; ausente en `devolver_prestamo` y `prestamos_salon.py`.
+- **Bloqueos de concurrencia (`with_for_update`):** Verificado mediante búsqueda en el árbol de servicios. Se constató que únicamente existe en `app/service/loans.py:58` condicionado al motor PostgreSQL; ausente en `devolver_prestamo` y `prestamos_salon.py`.
 - **Restricciones de unicidad en base de datos:** Verificado en `app/models/auth_models.py` (`email` único en L20; `nombre` sin restricción única en L19).
 - **Procesamiento y orden del worker:** Verificado en `app/messaging/worker.py:145-153`. El filtro `siguiente_intento <= ahora` combinado con `order_by(creado_en)` rompe el orden global estricto ante reintentos con backoff.
 - **Topología de despliegue:** Verificado en `.github/workflows/ci.yml:77-78` y `run.sh:19`. No se define número de workers de Uvicorn en el repo y el worker de mensajería no forma parte del pipeline de arranque automático.
-- **Vulnerabilidad de autorización en perfil de usuario:** Verificado en `app/routers/auth.py:53-59` y `app/services/auth.py:118-124`. `get_user_endpoint` solo valida autenticación genérica (`CurrentUser`), permitiendo enumeración de identificadores enteros.
+- **Vulnerabilidad de autorización en perfil de usuario:** Verificado en `app/handler/auth.py:53-59` y `app/service/auth.py:118-124`. `get_user_endpoint` solo valida autenticación genérica (`CurrentUser`), permitiendo enumeración de identificadores enteros.
 - **Métricas cuantitativas de impacto:** Verificado mediante scripts de inspección estática (conteos de `primary_key=True`, `ForeignKey`, endpoints con `{id}` y archivos Dart en `frontend/lib/`).
 
 ---

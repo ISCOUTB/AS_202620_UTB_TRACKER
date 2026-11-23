@@ -9,7 +9,7 @@ import pytest
 
 from app.models.auditoria_models import RegistroAuditoria
 from app.models.salon_models import PrestamoSalon, Salon
-from app.services import catalogo
+from app.service import catalogo
 from tests.test_roles import _auditor, _h, _solicitud
 
 

@@ -13,14 +13,14 @@ cambio de correo y avisos de seguridad.
 
 ## Decisión
 
-1. **Interfaz única** `app/services/correo.py::enviar(destino, plantilla, datos)`. Los servicios
+1. **Interfaz única** `app/service/correo.py::enviar(destino, plantilla, datos)`. Los servicios
    no envían: llaman a `encolar(...)`, que escribe el evento `correo.enviar` en `mensajes_outbox`
    **en la misma transacción** del cambio. Si la transacción se revierte, no sale correo.
 2. **Proveedores:** `ProveedorSMTP` (STARTTLS, `USE_REAL_MAIL=true` + `SMTP_*`) y
    `ProveedorDesarrollo`, que no envía: guarda el correo completo (`.eml` + `.html`) en
    `CORREOS_DIR` (`logs/correos/`, fuera de git) y escribe en el log la ruta y el enlace. Así
    se prueba todo el flujo sin cuenta de correo.
-3. **Plantillas en español** (`app/services/plantillas_correo.py`), HTML + texto plano, con el
+3. **Plantillas en español** (`app/service/plantillas_correo.py`), HTML + texto plano, con el
    verde `#187943` y el índigo `#332D83` del Manual de identidad UTB: verificación, bienvenida,
    recuperación, cambio de correo (al nuevo y aviso al anterior), cambio de contraseña e inicio
    de sesión sospechoso. Cada plantilla tiene una **categoría** (`seguridad` o `cuenta`); las de
@@ -61,7 +61,7 @@ cambio de correo y avisos de seguridad.
 
 | Decisión | Código | Pruebas |
 |---|---|---|
-| Interfaz y proveedores | `app/services/correo.py` | `tests/test_correo_servicio.py` |
-| Plantillas y escapado | `app/services/plantillas_correo.py` | `test_plantilla_escapa_html`, `test_no_permite_inyeccion_de_cabeceras` |
+| Interfaz y proveedores | `app/service/correo.py` | `tests/test_correo_servicio.py` |
+| Plantillas y escapado | `app/service/plantillas_correo.py` | `test_plantilla_escapa_html`, `test_no_permite_inyeccion_de_cabeceras` |
 | Worker y reintentos | `app/messaging/worker.py::_procesar_correo` | `test_worker_reintenta_si_el_proveedor_falla`, `test_el_log_del_worker_no_incluye_el_token` |
 | Despliegue | `iniciar.ps1`, `detener.ps1`, `docker-compose.yml`, `.github/workflows/ci.yml`, `docs/despliegue/worker.md` | revisión manual |

@@ -39,7 +39,7 @@ datos PostgreSQL.
   latencia de red sin ningún beneficio.
 
 **3. Mantener Monolito Modular (seleccionada).**
-- Mantiene fronteras lógicas claras entre módulos de dominio bajo `app/routers/`,
+- Mantiene fronteras lógicas claras entre módulos de dominio bajo `app/handler/`,
   permitiendo trabajo en paralelo dentro del equipo sin la sobrecarga operativa del
   despliegue distribuido.
 

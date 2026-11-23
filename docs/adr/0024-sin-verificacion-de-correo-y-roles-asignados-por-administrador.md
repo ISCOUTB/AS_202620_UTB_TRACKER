@@ -25,13 +25,13 @@ cambia en esta fase).
    y permiso. Se conservan `USE_REAL_MAIL` y los correos de seguridad (recuperar contraseña,
    aviso de cambio de correo o de contraseña, inicio de sesión sospechoso).
 2. **Solo el dominio permitido.** El registro y el cambio de correo siguen una única regla
-   (`error_correo_nuevo`, `app/core/politica.py`; espejo `politica.dart`): coincidencia EXACTA
+   (`error_correo_nuevo`, `app/service/politica.py`; espejo `politica.dart`): coincidencia EXACTA
    del dominio (`DOMINIOS_PERMITIDOS`, por defecto `utb.edu.co`), en minúsculas y sin espacios.
    Se rechazan `gmail.com`, `utb.edu.co.otro.com`, `evil-utb.edu.co`, `x.utb.edu.co` y
    `utb.edu.co@evil.com`. La app valida mientras se escribe.
 3. **Mitigación de la suplantación (opción "b pura").**
    - Todo registro nace Estudiante. El cliente no elige rol.
-   - Ningún correo da un rol: `rol_resuelto` (`app/services/asignaciones.py`) devuelve el rol
+   - Ningún correo da un rol: `rol_resuelto` (`app/service/asignaciones.py`) devuelve el rol
      guardado. Desaparecen la lista automática, el recálculo al iniciar sesión y la condición
      de correo comprobado.
    - Un rol con permisos lo pone SOLO un administrador sobre una cuenta que YA existe: pantalla

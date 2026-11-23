@@ -1,15 +1,15 @@
 """
 Solo correos institucionales en registros y cambios de correo nuevos (ADR-0019, Fase 1).
 
-La regla vive en app/core/politica.py (`error_correo_nuevo`) con la lista de
-app/core/config.py (`DOMINIOS_PERMITIDOS`, por defecto "utb.edu.co"). Las cuentas antiguas con
+La regla vive en app/service/politica.py (`error_correo_nuevo`) con la lista de
+app/config/config.py (`DOMINIOS_PERMITIDOS`, por defecto "utb.edu.co"). Las cuentas antiguas con
 otro dominio siguen entrando y el perfil les avisa.
 """
 import pytest
 
-from app.core import config
-from app.core.hashing import hash_password
-from app.core.politica import (
+from app.config import config
+from app.middleware.hashing import hash_password
+from app.service.politica import (
     MSG_CORREO_INVALIDO,
     MSG_CORREO_NO_INSTITUCIONAL,
     error_correo_nuevo,

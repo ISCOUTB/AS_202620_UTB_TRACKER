@@ -1,4 +1,4 @@
-/// Reglas de identidad: espejo exacto de `app/core/politica.py` (ADR-0014).
+/// Reglas de identidad: espejo exacto de `app/service/politica.py` (ADR-0014).
 /// Mismas reglas y mismos mensajes en la app y en el backend: si cambias una, cambia la otra.
 class Politica {
   Politica._();

@@ -11,10 +11,10 @@ import zlib
 
 import pytest
 
-from app.core import config
+from app.config import config
 from app.models.auditoria_models import RegistroAuditoria
 from app.models.auth_models import FotoPerfil
-from app.services import imagenes
+from app.service import imagenes
 
 GPS = b"GPS-LATITUD-10.39-LONGITUD-75.48"
 ESCONDIDO = b"<script>alert(1)</script>"

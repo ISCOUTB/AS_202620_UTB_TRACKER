@@ -29,22 +29,22 @@ A continuación se detalla cada operación del sistema, su escenario de calidad 
 
 | Operación | Escenario de calidad | Garantía que requiere | Mecanismo real (archivo:línea) | Brecha verificada |
 |---|---|---|---|---|
-| **POST /auth/register** | QS-04 (Seguridad) | Fuerte por restricción en BD | `app/services/auth.py:26-38`, `app/models/auth_models.py:19-20` | `Usuario.email` tiene `unique=True` en BD (`auth_models.py:20`), pero `Usuario.nombre` es solo `Column(String, nullable=False)` (`auth_models.py:19`). La unicidad de `nombre` solo se valida en Python (`auth.py:26`); dos registros concurrentes con el mismo nombre se insertan en BD. |
-| **POST /resources** | QS-04 (Seguridad) | Fuerte por transacción ACID | `app/services/resources.py:32-48`, `app/routers/resources.py:34` | Autorización `AdminUser` requerida. No existe restricción de unicidad en `Recurso.nombre` (`app/models/recurso_models.py:23`); permite recursos homónimos en el mismo salón. |
-| **PUT /resources/{id}** | QS-04 (Seguridad) | Fuerte por transacción ACID | `app/services/resources.py:53-73`, `app/routers/resources.py:58` | Check-then-act. No implementa control de concurrencia optimista (sin columna de versión) ni bloqueo pesimista; actualizaciones concurrentes provocan sobreescritura ciega (*lost update*). |
-| **DELETE /resources/{id}** | QS-04 (Seguridad) | Fuerte por transacción ACID | `app/services/resources.py:78-98`, `app/routers/resources.py:90` | Soft-delete marcando `activo = False`. No verifica en base de datos si el recurso tiene préstamos en estado `'activo'` antes de desactivarlo. |
-| **POST /resources/{id}/reportar** | QS-05 (Usabilidad), QS-06 (Confiabilidad) | Fuerte con bloqueo pesimista | `app/services/resources.py:103-128` | Check-then-act sin bloqueo. Consulta el recurso por ID y cambia `estado = "dañado"`. Si ocurre en paralelo a `crear_prestamo`, no hay serialización garantizada sobre el recurso. |
-| **POST /prestamos** | QS-06 (Confiabilidad de los datos), QS-03 (Rendimiento concurrencia) | Fuerte con bloqueo pesimista | `app/services/loans.py:24-125` | Bloqueo pesimista `query.with_for_update()` en `loans.py:58` ejecutado condicionalmente en dialectos distintos a SQLite (`loans.py:54-60`). En una única transacción local (`loans.py:123`) actualiza recurso, crea préstamo e inserta outbox. En SQLite local no bloquea (ver Brechas). |
-| **PATCH /prestamos/{id}/devolver** | QS-06 (Confiabilidad de los datos) | Fuerte con bloqueo pesimista | `app/services/loans.py:146-181` | **Check-then-act sin bloqueo.** Consulta `db.query(Prestamo).filter(id == prestamo_id).first()` (`loans.py:153-155`) sin `.with_for_update()`. Verifica `if prestamo.estado == "devuelto": raise 409`. Dos peticiones paralelas superan la comprobación y ambas marcan devuelto y restauran recurso. |
-| **POST /salones** | QS-04 (Seguridad) | Fuerte por restricción en BD | `app/services/salones.py:26-44`, `app/models/salon_models.py:29` | Protegido por restricción `Column(String, unique=True, index=True)` en `Salon.codigo` (`salon_models.py:29`). Transacción atómica en `salones.py:41`. |
-| **PUT /salones/{id}** | QS-04 (Seguridad) | Fuerte por transacción ACID | `app/services/salones.py:49-74` | Check-then-act. Valida colisión de código en Python (`salones.py:56-62`) antes de actualizar; la BD respalda unicidad de código pero no previene *lost updates* concurrentes. |
-| **DELETE /salones/{id}** | QS-04 (Seguridad) | Fuerte por transacción ACID | `app/services/salones.py:79-99` | Borrado en BD sin validar si el salón posee recursos asignados activos o préstamos de salón pendientes/aprobados. |
-| **POST /horarios** | QS-06 (Confiabilidad de los datos), QS-04 (Seguridad) | Fuerte con exclusión temporal | `app/services/horarios.py:27-58`, `app/services/horarios.py:89-106` | **Check-then-act sin bloqueo.** Ejecuta `_validar_solapamiento` en Python (`horarios.py:89-106`). No existe bloqueo de fila ni restricción de rango (`EXCLUDE USING gist`) en `HorarioDisponibilidad` (`app/models/salon_models.py:53-65`). Solicitudes concurrentes insertan horarios solapados. |
-| **POST /horarios/bulk** | QS-06 (Confiabilidad de los datos), QS-04 (Seguridad) | Fuerte con exclusión temporal | `app/services/horarios.py:59-86` | **Check-then-act sin bloqueo.** Valida solapamientos iterativamente en memoria (`horarios.py:68-75`) antes del `db.commit()`. Susceptible a inserciones cruzadas de otros clientes. |
-| **POST /prestamos-salon** | QS-06 (Confiabilidad de los datos), QS-03 (Rendimiento concurrencia) | Fuerte con exclusión o bloqueo | `app/services/prestamos_salon.py:38-78`, `app/services/prestamos_salon.py:114-138` | **Check-then-act sin bloqueo.** Consulta cruce de fechas en Python (`_validar_cruce_fechas` en `prestamos_salon.py:114-138`). No usa `with_for_update()` ni restricción de exclusión en `PrestamoSalon` (`app/models/salon_models.py:70-85`). Dos reservas concurrentes para el mismo salón y rango horario se aceptan simultáneamente. |
-| **PATCH /prestamos-salon/{id}** | QS-06 (Confiabilidad de los datos) | Fuerte con bloqueo pesimista | `app/services/prestamos_salon.py:82-111` | Check-then-act sin bloqueo. Lee el préstamo de salón, valida transición de estado en Python y ejecuta `db.commit()`. Sin bloqueo de fila. |
-| **Notificación outbox** | QS-06 (Confiabilidad), QS-01 (Disponibilidad) | At-least-once con deduplicación | `app/services/loans.py:110-123`, `app/messaging/worker.py:120-160` | Inserción en `mensajes_outbox` en la misma transacción ACID del préstamo (`loans.py:123`). Procesamiento desacoplado por worker con reintentos y registro en `notificaciones_procesadas`. (Ver sección 3). |
-| **Grupo de Lecturas (Catálogo, recursos, salones, disponibilidad)** | QS-02 (Rendimiento ≤ 3s), QS-03 (Concurrencia 300 usuarios) | Lectura transaccional `READ COMMITTED` | `app/services/resources.py:15-28`, `app/services/salones.py:14-22`, `app/services/horarios.py:14-24` | Lecturas directas al motor relacional en cada petición HTTP. **No existe caché implementada.** En horas pico (300 usuarios simultáneos, QS-03), satura el pool de PostgreSQL. |
+| **POST /auth/register** | QS-04 (Seguridad) | Fuerte por restricción en BD | `app/service/auth.py:26-38`, `app/models/auth_models.py:19-20` | `Usuario.email` tiene `unique=True` en BD (`auth_models.py:20`), pero `Usuario.nombre` es solo `Column(String, nullable=False)` (`auth_models.py:19`). La unicidad de `nombre` solo se valida en Python (`auth.py:26`); dos registros concurrentes con el mismo nombre se insertan en BD. |
+| **POST /resources** | QS-04 (Seguridad) | Fuerte por transacción ACID | `app/service/resources.py:32-48`, `app/handler/resources.py:34` | Autorización `AdminUser` requerida. No existe restricción de unicidad en `Recurso.nombre` (`app/models/recurso_models.py:23`); permite recursos homónimos en el mismo salón. |
+| **PUT /resources/{id}** | QS-04 (Seguridad) | Fuerte por transacción ACID | `app/service/resources.py:53-73`, `app/handler/resources.py:58` | Check-then-act. No implementa control de concurrencia optimista (sin columna de versión) ni bloqueo pesimista; actualizaciones concurrentes provocan sobreescritura ciega (*lost update*). |
+| **DELETE /resources/{id}** | QS-04 (Seguridad) | Fuerte por transacción ACID | `app/service/resources.py:78-98`, `app/handler/resources.py:90` | Soft-delete marcando `activo = False`. No verifica en base de datos si el recurso tiene préstamos en estado `'activo'` antes de desactivarlo. |
+| **POST /resources/{id}/reportar** | QS-05 (Usabilidad), QS-06 (Confiabilidad) | Fuerte con bloqueo pesimista | `app/service/resources.py:103-128` | Check-then-act sin bloqueo. Consulta el recurso por ID y cambia `estado = "dañado"`. Si ocurre en paralelo a `crear_prestamo`, no hay serialización garantizada sobre el recurso. |
+| **POST /prestamos** | QS-06 (Confiabilidad de los datos), QS-03 (Rendimiento concurrencia) | Fuerte con bloqueo pesimista | `app/service/loans.py:24-125` | Bloqueo pesimista `query.with_for_update()` en `loans.py:58` ejecutado condicionalmente en dialectos distintos a SQLite (`loans.py:54-60`). En una única transacción local (`loans.py:123`) actualiza recurso, crea préstamo e inserta outbox. En SQLite local no bloquea (ver Brechas). |
+| **PATCH /prestamos/{id}/devolver** | QS-06 (Confiabilidad de los datos) | Fuerte con bloqueo pesimista | `app/service/loans.py:146-181` | **Check-then-act sin bloqueo.** Consulta `db.query(Prestamo).filter(id == prestamo_id).first()` (`loans.py:153-155`) sin `.with_for_update()`. Verifica `if prestamo.estado == "devuelto": raise 409`. Dos peticiones paralelas superan la comprobación y ambas marcan devuelto y restauran recurso. |
+| **POST /salones** | QS-04 (Seguridad) | Fuerte por restricción en BD | `app/service/salones.py:26-44`, `app/models/salon_models.py:29` | Protegido por restricción `Column(String, unique=True, index=True)` en `Salon.codigo` (`salon_models.py:29`). Transacción atómica en `salones.py:41`. |
+| **PUT /salones/{id}** | QS-04 (Seguridad) | Fuerte por transacción ACID | `app/service/salones.py:49-74` | Check-then-act. Valida colisión de código en Python (`salones.py:56-62`) antes de actualizar; la BD respalda unicidad de código pero no previene *lost updates* concurrentes. |
+| **DELETE /salones/{id}** | QS-04 (Seguridad) | Fuerte por transacción ACID | `app/service/salones.py:79-99` | Borrado en BD sin validar si el salón posee recursos asignados activos o préstamos de salón pendientes/aprobados. |
+| **POST /horarios** | QS-06 (Confiabilidad de los datos), QS-04 (Seguridad) | Fuerte con exclusión temporal | `app/service/horarios.py:27-58`, `app/service/horarios.py:89-106` | **Check-then-act sin bloqueo.** Ejecuta `_validar_solapamiento` en Python (`horarios.py:89-106`). No existe bloqueo de fila ni restricción de rango (`EXCLUDE USING gist`) en `HorarioDisponibilidad` (`app/models/salon_models.py:53-65`). Solicitudes concurrentes insertan horarios solapados. |
+| **POST /horarios/bulk** | QS-06 (Confiabilidad de los datos), QS-04 (Seguridad) | Fuerte con exclusión temporal | `app/service/horarios.py:59-86` | **Check-then-act sin bloqueo.** Valida solapamientos iterativamente en memoria (`horarios.py:68-75`) antes del `db.commit()`. Susceptible a inserciones cruzadas de otros clientes. |
+| **POST /prestamos-salon** | QS-06 (Confiabilidad de los datos), QS-03 (Rendimiento concurrencia) | Fuerte con exclusión o bloqueo | `app/service/prestamos_salon.py:38-78`, `app/service/prestamos_salon.py:114-138` | **Check-then-act sin bloqueo.** Consulta cruce de fechas en Python (`_validar_cruce_fechas` en `prestamos_salon.py:114-138`). No usa `with_for_update()` ni restricción de exclusión en `PrestamoSalon` (`app/models/salon_models.py:70-85`). Dos reservas concurrentes para el mismo salón y rango horario se aceptan simultáneamente. |
+| **PATCH /prestamos-salon/{id}** | QS-06 (Confiabilidad de los datos) | Fuerte con bloqueo pesimista | `app/service/prestamos_salon.py:82-111` | Check-then-act sin bloqueo. Lee el préstamo de salón, valida transición de estado en Python y ejecuta `db.commit()`. Sin bloqueo de fila. |
+| **Notificación outbox** | QS-06 (Confiabilidad), QS-01 (Disponibilidad) | At-least-once con deduplicación | `app/service/loans.py:110-123`, `app/messaging/worker.py:120-160` | Inserción en `mensajes_outbox` en la misma transacción ACID del préstamo (`loans.py:123`). Procesamiento desacoplado por worker con reintentos y registro en `notificaciones_procesadas`. (Ver sección 3). |
+| **Grupo de Lecturas (Catálogo, recursos, salones, disponibilidad)** | QS-02 (Rendimiento ≤ 3s), QS-03 (Concurrencia 300 usuarios) | Lectura transaccional `READ COMMITTED` | `app/service/resources.py:15-28`, `app/service/salones.py:14-22`, `app/service/horarios.py:14-24` | Lecturas directas al motor relacional en cada petición HTTP. **No existe caché implementada.** En horas pico (300 usuarios simultáneos, QS-03), satura el pool de PostgreSQL. |
 
 ---
 
@@ -53,7 +53,7 @@ A continuación se detalla cada operación del sistema, su escenario de calidad 
 El flujo asíncrono para notificaciones de préstamos (`prestamo.creado`) se rige por las siguientes características verificadas en `app/messaging/`:
 
 ### 3.1 Entrega (At-Least-Once)
-- La publicación del evento no ocurre por red en el request HTTP, sino mediante un `INSERT` en la tabla `mensajes_outbox` dentro del mismo bloque transaccional del préstamo (`app/services/loans.py:110-123` y `app/messaging/service.py:19-48`).
+- La publicación del evento no ocurre por red en el request HTTP, sino mediante un `INSERT` en la tabla `mensajes_outbox` dentro del mismo bloque transaccional del préstamo (`app/service/loans.py:110-123` y `app/messaging/service.py:19-48`).
 - Al ejecutarse `db.commit()` (`loans.py:123`), la creación del préstamo, el cambio de estado del recurso a `"prestado"` y el registro del outbox quedan atómicamente confirmados o abortados.
 - El worker de mensajería (`app/messaging/worker.py:120-160`) sondea la tabla periódicamente (`WORKER_POLL_INTERVAL = 5.0` s) y reintenta con backoff exponencial ante fallos hasta un límite de 5 intentos (`WORKER_MAX_INTENTOS = 5`), pasando a estado `"muerto"` (DLQ) si se agota.
 
@@ -102,7 +102,7 @@ El flujo asíncrono para notificaciones de préstamos (`prestamo.creado`) se rig
 Todas las mejoras en esta sección corresponden a **DISEÑO PROPUESTO — NO IMPLEMENTADO**.
 
 ### Brecha B-01: Doble Reserva Concurrente de Salones
-- **Evidencia en código:** `app/services/prestamos_salon.py:38-78` y función `_validar_cruce_fechas` (`prestamos_salon.py:114-138`).
+- **Evidencia en código:** `app/service/prestamos_salon.py:38-78` y función `_validar_cruce_fechas` (`prestamos_salon.py:114-138`).
 - **Condición:** Dos peticiones `POST /prestamos-salon` para el mismo salón en el mismo intervalo de fecha/hora son leídas simultáneamente en memoria antes del `db.commit()`, autorizando dos reservas solapadas sobre el mismo espacio físico.
 - **Mejora propuesta (DISEÑO PROPUESTO — NO IMPLEMENTADO):**  
   Implementar una restricción de exclusión a nivel de PostgreSQL en `app/models/salon_models.py` utilizando la extensión `btree_gist`:
@@ -115,7 +115,7 @@ Todas las mejoras en esta sección corresponden a **DISEÑO PROPUESTO — NO IMP
   Alternativamente, bloquear el salón con `db.query(Salon).filter(Salon.id == salon_id).with_for_update()` antes de validar y registrar la reserva.
 
 ### Brecha B-02: Inserción de Horarios Solapados
-- **Evidencia en código:** `app/services/horarios.py:27-58` y `app/services/horarios.py:89-106`.
+- **Evidencia en código:** `app/service/horarios.py:27-58` y `app/service/horarios.py:89-106`.
 - **Condición:** La validación de superposición horaria (`hora_inicio` y `hora_fin` en un `dia_semana`) se ejecuta en memoria mediante consulta ordinaria. Dos llamadas concurrentes insertan bloques solapados para el mismo salón.
 - **Mejora propuesta (DISEÑO PROPUESTO — NO IMPLEMENTADO):**  
   Crear una restricción de exclusión PostgreSQL en `horarios`:
@@ -125,12 +125,12 @@ Todas las mejoras en esta sección corresponden a **DISEÑO PROPUESTO — NO IMP
   ```
 
 ### Brecha B-03: Doble Devolución de Préstamo (*Race Condition*)
-- **Evidencia en código:** `app/services/loans.py:146-181`.
+- **Evidencia en código:** `app/service/loans.py:146-181`.
 - **Condición:** `devolver_prestamo` lee el préstamo sin `.with_for_update()`. Dos peticiones simultáneas `PATCH /prestamos/{id}/devolver` superan la comprobación `if prestamo.estado == "devuelto":` en paralelo, actualizan `fecha_devolucion_real` y restauran el estado del recurso redundantemente.
 - **Mejora propuesta (DISEÑO PROPUESTO — NO IMPLEMENTADO):**  
   Incorporar bloqueo pesimista en la consulta de préstamo:
   ```python
-  # En app/services/loans.py:devolver_prestamo
+  # En app/service/loans.py:devolver_prestamo
   query = db.query(recurso_models.Prestamo).filter(recurso_models.Prestamo.id == prestamo_id)
   if db.bind and db.bind.dialect.name != "sqlite":
       query = query.with_for_update()
@@ -138,8 +138,8 @@ Todas las mejoras en esta sección corresponden a **DISEÑO PROPUESTO — NO IMP
   ```
 
 ### Brecha B-04: Registro de Nombres de Usuario Duplicados
-- **Evidencia en código:** `app/models/auth_models.py:19` (`nombre = Column(String, nullable=False)` sin `unique=True`) y `app/services/auth.py:26-31`.
-- **Condición:** Si dos usuarios se registran concurrentemente con el mismo nombre pero diferente correo, ambas comprobaciones en memoria pasan y la BD acepta ambos registros. Esto causa un fallo crítico en el inicio de sesión, ya que `login` en `app/services/auth.py:70` busca exclusivamente por nombre (`Usuario.nombre == schema.nombre`).
+- **Evidencia en código:** `app/models/auth_models.py:19` (`nombre = Column(String, nullable=False)` sin `unique=True`) y `app/service/auth.py:26-31`.
+- **Condición:** Si dos usuarios se registran concurrentemente con el mismo nombre pero diferente correo, ambas comprobaciones en memoria pasan y la BD acepta ambos registros. Esto causa un fallo crítico en el inicio de sesión, ya que `login` en `app/service/auth.py:70` busca exclusivamente por nombre (`Usuario.nombre == schema.nombre`).
 - **Mejora propuesta (DISEÑO PROPUESTO — NO IMPLEMENTADO):**  
   Modificar el modelo en `app/models/auth_models.py:19`:
   ```python
@@ -148,11 +148,11 @@ Todas las mejoras en esta sección corresponden a **DISEÑO PROPUESTO — NO IMP
   y generar la migración de esquema correspondiente en Alembic.
 
 ### Brecha B-05: Inoperancia de Bloqueo Pesimista en Entornos SQLite
-- **Evidencia en código:** `app/services/loans.py:54-60`:
+- **Evidencia en código:** `app/service/loans.py:54-60`:
   ```python
   if db.bind and db.bind.dialect.name != "sqlite":
       query = query.with_for_update()
   ```
-- **Condición:** En entornos de desarrollo local o pruebas rápidas basadas en SQLite (`app/core/database.py:27`), `.with_for_update()` se desactiva deliberadamente porque SQLite no soporta bloqueos a nivel de fila (`FOR UPDATE`). Por lo tanto, las pruebas locales no verifican el aislamiento de concurrencia de QS-06.
+- **Condición:** En entornos de desarrollo local o pruebas rápidas basadas en SQLite (`app/db/database.py:27`), `.with_for_update()` se desactiva deliberadamente porque SQLite no soporta bloqueos a nivel de fila (`FOR UPDATE`). Por lo tanto, las pruebas locales no verifican el aislamiento de concurrencia de QS-06.
 - **Mejora propuesta (DISEÑO PROPUESTO — NO IMPLEMENTADO):**  
   Estandarizar los entornos de pruebas locales mediante contenedores de desarrollo con PostgreSQL idénticos al entorno de integración continua (`.github/workflows/ci.yml:11-28`).

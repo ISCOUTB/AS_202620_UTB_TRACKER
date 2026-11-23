@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.models.auth_models import Usuario
-from app.services import auth as auth_service
+from app.service import auth as auth_service
 
 CLAVE = "ClaveSegura1"  # noqa: S105 (solo pruebas)
 

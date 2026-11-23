@@ -10,7 +10,7 @@ import pytest
 
 from app.models.auditoria_models import RegistroAuditoria
 from app.models.auth_models import Usuario
-from app.services import asignaciones
+from app.service import asignaciones
 
 CLAVE = "ClaveSegura1"  # noqa: S105 (solo pruebas)
 

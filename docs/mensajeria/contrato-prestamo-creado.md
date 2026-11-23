@@ -61,7 +61,7 @@ El siguiente es un mensaje real serializado conforme a las clases Pydantic y gua
 }
 ```
 
-En la implementación actual del servicio [`app/services/loans.py:98-118`](../../app/services/loans.py#L98-L118), la fila en `mensajes_outbox` almacena en sus columnas los metadatos del sobre (`message_id`, `tipo`, `version`, `correlation_id`) y en la columna `payload` (TEXT) el diccionario del cuerpo de negocio:
+En la implementación actual del servicio [`app/service/loans.py:98-118`](../../app/service/loans.py#L98-L118), la fila en `mensajes_outbox` almacena en sus columnas los metadatos del sobre (`message_id`, `tipo`, `version`, `correlation_id`) y en la columna `payload` (TEXT) el diccionario del cuerpo de negocio:
 ```json
 {
   "prestamo_id": 1,

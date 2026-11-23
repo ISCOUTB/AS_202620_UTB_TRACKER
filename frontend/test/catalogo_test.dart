@@ -102,7 +102,7 @@ Future<_Servidor> _pintar(WidgetTester tester, {String rol = 'administrador'}) a
 }
 
 void main() {
-  group('regla del código (espejo de app/services/catalogo.py)', () {
+  group('regla del código (espejo de app/service/catalogo.py)', () {
     test('válidos y sus partes', () {
       expect(errorCodigo('A1-101'), isNull);
       expect(errorCodigo(' a2-505 '), isNull);

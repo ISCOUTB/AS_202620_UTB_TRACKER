@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
-from app.core.database import Base
+from app.db.database import Base
 
 RECURSO_FK = "recursos.id"
 

@@ -12,7 +12,7 @@
 **Ninguna operación de escritura lee jamás de la capa de caché.**  
 Toda operación que altere el estado (`POST /prestamos`, `PATCH /prestamos/{id}/devolver`, `POST /resources/{id}/reportar`, `POST /prestamos-salon`, etc.) ejecuta sus comprobaciones de invariantes directamente sobre la base de datos primaria en una transacción ACID con bloqueo pesimista o restricciones relacionales (`docs/datos/consistencia-por-operacion.md`).
 
-*Consecuencia ante obsolescencia:* Si un usuario consulta una lista de recursos en caché que muestra un equipo como `"disponible"` cuando acaba de ser prestado, la interfaz móvil le permitirá presionar el botón de solicitud, pero la petición `POST /prestamos` fallará atómicamente en la API devolviendo `409 Conflict` (`app/services/loans.py:66-70`). La obsolescencia en la lectura solo degrada temporalmente la experiencia de usuario con un rechazo controlado, pero **nunca corrompe los datos ni genera sobre-préstamos** (QS-06).
+*Consecuencia ante obsolescencia:* Si un usuario consulta una lista de recursos en caché que muestra un equipo como `"disponible"` cuando acaba de ser prestado, la interfaz móvil le permitirá presionar el botón de solicitud, pero la petición `POST /prestamos` fallará atómicamente en la API devolviendo `409 Conflict` (`app/service/loans.py:66-70`). La obsolescencia en la lectura solo degrada temporalmente la experiencia de usuario con un rechazo controlado, pero **nunca corrompe los datos ni genera sobre-préstamos** (QS-06).
 
 ### 1.2 Endpoints Incluidos en Caché
 Se seleccionan exclusivamente endpoints de lectura de alta demanda y bajo ritmo de mutación:
@@ -26,10 +26,10 @@ Se seleccionan exclusivamente endpoints de lectura de alta demanda y bajo ritmo 
 7. `GET /horarios/salon/{salon_id}`: Listado de horarios asignados a un aula.
 
 ### 1.3 Endpoints Excluidos de Caché
-1. `GET /prestamos`: Excluido porque su contenido depende del contexto y privilegios del usuario autenticado (`CurrentUser`). Un usuario común solo ve sus préstamos activos (`app/services/loans.py:128-143`), mientras un auxiliar/administrador visualiza el historial general.
-2. `GET /prestamos-salon`: Excluido por depender de la identidad y rol del usuario solicitante (`app/services/prestamos_salon.py:19`).
+1. `GET /prestamos`: Excluido porque su contenido depende del contexto y privilegios del usuario autenticado (`CurrentUser`). Un usuario común solo ve sus préstamos activos (`app/service/loans.py:128-143`), mientras un auxiliar/administrador visualiza el historial general.
+2. `GET /prestamos-salon`: Excluido por depender de la identidad y rol del usuario solicitante (`app/service/prestamos_salon.py:19`).
 3. `GET /auth/me` y `GET /auth/user/{user_id}`: Excluidos por representar información de identidad y seguridad sensible.
-4. `GET /salud`: Excluido deliberadamente porque implementa un sondeo de salud profundo (`deep health check`) que ejecuta `SELECT 1` activo sobre PostgreSQL (`app/routers/health.py:17-26`) para garantizar la medición de disponibilidad en QS-01.
+4. `GET /salud`: Excluido deliberadamente porque implementa un sondeo de salud profundo (`deep health check`) que ejecuta `SELECT 1` activo sobre PostgreSQL (`app/handler/health.py:17-26`) para garantizar la medición de disponibilidad en QS-01.
 
 ---
 
@@ -62,7 +62,7 @@ Ejemplos:
 
 ### 3.2 Secuencia de Consulta y Autenticación
 Para endpoints que requieran autenticación (`CurrentUser` o `AdminUser`):
-1. **Paso 1 (Autenticación y Autorización previa):** FastAPI ejecuta primero las dependencias de seguridad (`Depends(get_current_user)`). Si el token JWT es inválido, expiró o no cumple el rol requerido, la petición se aborta con `401 Unauthorized` o `403 Forbidden` (`app/core/security.py`).
+1. **Paso 1 (Autenticación y Autorización previa):** FastAPI ejecuta primero las dependencias de seguridad (`Depends(get_current_user)`). Si el token JWT es inválido, expiró o no cumple el rol requerido, la petición se aborta con `401 Unauthorized` o `403 Forbidden` (`app/middleware/security.py`).
 2. **Paso 2 (Consulta de Caché):** Solo tras validar exitosamente el token, el interceptor de caché busca la clave correspondiente en memoria. Si existe (*cache hit*), retorna la respuesta serializada de inmediato (tiempo de respuesta < 5 ms, satisfaciendo ampliamente QS-02).
 3. **Paso 3 (Fallo de caché y repoblación):** Si no existe (*cache miss*), la petición continúa a la base de datos, almacena el resultado en memoria con su TTL y retorna el HTTP 200.
 
@@ -94,21 +94,21 @@ Toda operación de escritura real del sistema detona la invalidación del grupo 
 
 | Operación de Escritura Real | Ubicación en Código | Grupo Invalidado | Razón de Dominio |
 |---|---|---|---|
-| `POST /resources` | `app/services/resources.py:32-48` | `recursos` | Nuevo recurso disponible en catálogo. |
-| `PUT /resources/{id}` | `app/services/resources.py:53-73` | `recursos` | Modificación de nombre, tipo o asignación de salón. |
-| `DELETE /resources/{id}` | `app/services/resources.py:78-98` | `recursos` | Desactivación lógica de un equipo. |
-| `POST /resources/{id}/reportar` | `app/services/resources.py:103-128` | `recursos` | **El recurso cambia su estado a `'dañado'`.** Debe reflejarse en catálogo para no ofrecerlo. |
-| `POST /prestamos` | `app/services/loans.py:24-125` | `recursos` | **El recurso cambia su estado a `'prestado'`.** Invalida el listado de disponibles. |
-| `PATCH /prestamos/{id}/devolver` | `app/services/loans.py:146-181` | `recursos` | **El recurso cambia su estado a `'disponible'`.** Vuelve a habilitarse en el catálogo. |
-| `POST /salones` | `app/services/salones.py:26-44` | `salones` | Nueva aula física agregada al campus. |
-| `PUT /salones/{id}` | `app/services/salones.py:49-74` | `salones` | Modificación de código, capacidad o torre. |
-| `DELETE /salones/{id}` | `app/services/salones.py:79-99` | `salones` | Eliminación de aula. |
-| `POST /horarios` | `app/services/horarios.py:27-58` | `salones` | Altera la matriz de horarios y disponibilidad semanal del salón. |
-| `POST /horarios/bulk` | `app/services/horarios.py:59-86` | `salones` | Inserción masiva de bloques horarios. |
-| `PUT /horarios/{id}` | `app/services/horarios.py:89` | `salones` | Modificación de bloque horario. |
-| `DELETE /horarios/{id}` | `app/services/horarios.py:109` | `salones` | Liberación de bloque horario. |
-| `POST /prestamos-salon` | `app/services/prestamos_salon.py:38-78` | `salones` | Reserva de salón; altera el endpoint `/disponibilidad`. |
-| `PATCH /prestamos-salon/{id}` | `app/services/prestamos_salon.py:82-111` | `salones` | Cancelación, rechazo o finalización de reserva de salón. |
+| `POST /resources` | `app/service/resources.py:32-48` | `recursos` | Nuevo recurso disponible en catálogo. |
+| `PUT /resources/{id}` | `app/service/resources.py:53-73` | `recursos` | Modificación de nombre, tipo o asignación de salón. |
+| `DELETE /resources/{id}` | `app/service/resources.py:78-98` | `recursos` | Desactivación lógica de un equipo. |
+| `POST /resources/{id}/reportar` | `app/service/resources.py:103-128` | `recursos` | **El recurso cambia su estado a `'dañado'`.** Debe reflejarse en catálogo para no ofrecerlo. |
+| `POST /prestamos` | `app/service/loans.py:24-125` | `recursos` | **El recurso cambia su estado a `'prestado'`.** Invalida el listado de disponibles. |
+| `PATCH /prestamos/{id}/devolver` | `app/service/loans.py:146-181` | `recursos` | **El recurso cambia su estado a `'disponible'`.** Vuelve a habilitarse en el catálogo. |
+| `POST /salones` | `app/service/salones.py:26-44` | `salones` | Nueva aula física agregada al campus. |
+| `PUT /salones/{id}` | `app/service/salones.py:49-74` | `salones` | Modificación de código, capacidad o torre. |
+| `DELETE /salones/{id}` | `app/service/salones.py:79-99` | `salones` | Eliminación de aula. |
+| `POST /horarios` | `app/service/horarios.py:27-58` | `salones` | Altera la matriz de horarios y disponibilidad semanal del salón. |
+| `POST /horarios/bulk` | `app/service/horarios.py:59-86` | `salones` | Inserción masiva de bloques horarios. |
+| `PUT /horarios/{id}` | `app/service/horarios.py:89` | `salones` | Modificación de bloque horario. |
+| `DELETE /horarios/{id}` | `app/service/horarios.py:109` | `salones` | Liberación de bloque horario. |
+| `POST /prestamos-salon` | `app/service/prestamos_salon.py:38-78` | `salones` | Reserva de salón; altera el endpoint `/disponibilidad`. |
+| `PATCH /prestamos-salon/{id}` | `app/service/prestamos_salon.py:82-111` | `salones` | Cancelación, rechazo o finalización de reserva de salón. |
 
 ---
 
@@ -117,7 +117,7 @@ Toda operación de escritura real del sistema detona la invalidación del grupo 
 ### 6.1 Modos de Fallo y Mitigaciones
 1. **Reinicio del Proceso (*Cold Start*):**  
    Al desplegarse una nueva versión o reiniciarse el servicio (`sudo systemctl restart utb-tracker`), la memoria de caché arranca vacía. Las peticiones iniciales golpearán la base de datos.  
-   *Mitigación:* La base de datos cuenta con índices B-Tree en todas las claves foráneas y columnas de filtro (`app/models/recurso_models.py`, `app/models/salon_models.py`), y el pool de conexiones SQLAlchemy está configurado con pre-ping (`app/core/database.py:20-25`), absorbiendo la carga inicial sin degradación.
+   *Mitigación:* La base de datos cuenta con índices B-Tree en todas las claves foráneas y columnas de filtro (`app/models/recurso_models.py`, `app/models/salon_models.py`), y el pool de conexiones SQLAlchemy está configurado con pre-ping (`app/db/database.py:20-25`), absorbiendo la carga inicial sin degradación.
 2. **Avalancha de Peticiones al Expirar (*Cache Stampede / Thundering Herd*):**  
    Cuando la clave del catálogo general expira bajo una concurrencia de 300 usuarios simultáneos (QS-03), decenas de hilos podrían intentar recalcular la misma consulta SQL simultáneamente.  
    *Mitigación propuesta:* Incorporar cerrojos de ejecución única (*single-flight mutex / asyncio.Lock*) para que el primer hilo adquiera el candado y consulte a PostgreSQL, mientras los demás hilos esperan y consumen el resultado recién generado.

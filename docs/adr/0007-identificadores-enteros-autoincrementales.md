@@ -38,7 +38,7 @@ Migrar de claves enteras autoincrementales a identificadores UUID/opacos es **la
 
 - **10 Claves Primarias:** 8 tablas con PK entero autoincremental (`id = Column(Integer, primary_key=True)`) en `app/models/auth_models.py:18`, `recurso_models.py:22,47,82`, `salon_models.py:28,54,71` y `app/messaging/models.py:36` (más 2 tablas con clave String: `configuracion:67` y `notificaciones_procesadas:81`).
 - **9 Claves Foráneas Estrictas:** Todas las relaciones (`recursos.salon_id`, `prestamos.recurso_id`, `prestamos.usuario_id`, `configuracion.prestamo_id`, `reportes.recurso_id`, `reportes.usuario_id`, `horarios.salon_id`, `prestamos_salon.salon_id`, `prestamos_salon.usuario_id`) enlazan enteros de 32 bits (`app/models/recurso_models.py:24,48,49,69,83,84` y `salon_models.py:55,72,73`). Alterar el tipo exige recrear la totalidad de restricciones de integridad referencial.
-- **16 Endpoints REST:** 16 rutas en controladores FastAPI definen `{.*_id}` numérico en su ruta (`app/routers/auth.py:43,53`, `horarios.py:57,67,78`, `loans.py:65`, `prestamos_salon.py:59`, `resources.py:56,71,88,99,117`, `salones.py:46,56,67,77`).
+- **16 Endpoints REST:** 16 rutas en controladores FastAPI definen `{.*_id}` numérico en su ruta (`app/handler/auth.py:43,53`, `horarios.py:57,67,78`, `loans.py:65`, `prestamos_salon.py:59`, `resources.py:56,71,88,99,117`, `salones.py:46,56,67,77`).
 - **14 Archivos en Flutter (`frontend/lib/`):** 14 archivos entre repositorios, controladores, entidades y widgets (`features/prestamos/data/prestamos_data.dart`, `recursos_data.dart`, `salones_data.dart`, etc.) tipifican `int id` y concatenan IDs en peticiones HTTP.
 - **Migración de Datos en Caliente:** Requeriría transformar millones de enteros a UUIDs preservando integridad relacional histórica y compatibilidad con clientes móviles instalados.
 
@@ -63,7 +63,7 @@ Migrar de claves enteras autoincrementales a identificadores UUID/opacos es **la
 ### Negativas y Brecha de Seguridad Verificada
 - **Enumeración de Entidades e Inseguridad Directa (V3):**  
   Al ser enteros secuenciales predecibles (1, 2, 3...), cualquier usuario puede deducir la existencia de registros vecinos.  
-  *Vulnerabilidad concreta verificada en el código:* En `app/routers/auth.py:53-59`:
+  *Vulnerabilidad concreta verificada en el código:* En `app/handler/auth.py:53-59`:
   ```python
   @router.get("/user/{user_id}", response_model=UserResponse)
   def get_user_endpoint(

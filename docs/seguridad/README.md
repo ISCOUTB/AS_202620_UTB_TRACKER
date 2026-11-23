@@ -27,8 +27,8 @@ Este directorio contiene la documentación formal de seguridad, modelado de amen
 ## 3. Metodología de Verificación en el Repositorio
 
 Toda afirmación técnica, código y tabla de este módulo fue validada directamente contra los archivos del repositorio:
-- **Autenticación y Registro:** Verificado en `app/services/auth.py:40-44` y `app/schemas/auth.py:18` (auto-asignación de rol) y `app/routers/auth.py:53-59` (enumeración de perfiles).
-- **Concurrencia y Consistencia:** Verificado en `app/services/prestamos_salon.py:114-138` (cruce de fechas en salones) y `app/services/loans.py:58` (bloqueo pesimista condicionado).
+- **Autenticación y Registro:** Verificado en `app/service/auth.py:40-44` y `app/schemas/auth.py:18` (auto-asignación de rol) y `app/handler/auth.py:53-59` (enumeración de perfiles).
+- **Concurrencia y Consistencia:** Verificado en `app/service/prestamos_salon.py:114-138` (cruce de fechas en salones) y `app/service/loans.py:58` (bloqueo pesimista condicionado).
 - **Almacenamiento Móvil:** Verificado en `frontend/lib/core/storage/token_storage.dart:18-19` (persistencia en `.utb_sesion.json`).
 - **Escaneo de Vulnerabilidades:** Verificado ejecutando `pip-audit -r requirements.txt` y `flutter pub outdated` directamente en la terminal.
 - **Trazabilidad en CI:** Verificado en `.github/workflows/ci.yml:51-55`.

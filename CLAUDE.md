@@ -6,28 +6,31 @@ verificado y perfil. Backend FastAPI + app Flutter. Todo en **español** (códig
 
 El dueño (Mateo) no programa: explicar en lenguaje simple y con pasos copiables.
 
-## Backend (`app/`) — 4 capas: routers → services → schemas → models
+## Backend (`app/`) — capas handler → service → repository → models (+ config, db, middleware, schemas)
 
-- **Roles (ADR-0018):** `core/permisos.py` es la ÚNICA tabla rol → permisos; los routers usan
-  los alias de `core/deps.py` (`GestionaSolicitudes`, `GestionaUsuarios`…), nunca comparan
+- **Roles (ADR-0018):** `middleware/permisos.py` es la ÚNICA tabla rol → permisos; los handlers usan
+  los alias de `middleware/deps.py` (`GestionaSolicitudes`, `GestionaUsuarios`…), nunca comparan
   `rol`. Valores guardados `usuario_utb`/`auxiliar`/`administrador` = etiquetas
   Estudiante/Auditor/Administrador (NO renombrar: APK instaladas). Todo endpoint nuevo necesita
   fila en `docs/seguridad/matriz-permisos.md` o falla `tests/test_matriz_permisos.py`.
   "Auditor" (rol) ≠ bitácora de auditoría (ADR-0010).
-- `core/`: `config.py` (variables de entorno y reglas de producción), `security.py` (JWT:
-  `sub` = id, `sv` = versión de sesión, tokens de propósito con `jti`), `deps.py`
-  (`CurrentUser`, `VerifiedUser`, `AdminUser`…), `politica.py` (contraseña ≥ 8, correo;
-  `error_correo_nuevo` = solo `DOMINIOS_PERMITIDOS`, por defecto utb.edu.co, ADR-0019;
-  espejo en `frontend/lib/core/utils/politica.dart`), `database.py`, `resilience.py`.
-- **Rol automático (ADR-0019):** `services/asignaciones.py` (`rol_resuelto` es la ÚNICA regla:
+- `config/config.py`: variables de entorno y reglas de producción. `db/database.py`: motor y
+  sesión. `middleware/`: `security.py` (JWT: `sub` = id, `sv` = versión de sesión, tokens de
+  propósito con `jti`), `deps.py` (`CurrentUser`, `VerifiedUser`, `AdminUser`…), `permisos.py` +
+  `matriz_permisos.json`, `hashing.py`. `service/politica.py` (contraseña ≥ 8, correo;
+  `error_correo_nuevo` = solo `DOMINIOS_PERMITIDOS`, por defecto utb.edu.co, ADR-0019; espejo en
+  `frontend/lib/core/utils/politica.dart`) y `service/resilience.py`.
+- **Rol automático (ADR-0019):** `service/asignaciones.py` (`rol_resuelto` es la ÚNICA regla:
   manual gana; sin correo comprobado = base; si no, la lista `asignaciones_rol`). Nadie elige
   su rol; cuentas viejas con otro dominio siguen entrando. **Foto (ADR-0020):** tabla
-  `fotos_perfil`, `services/fotos.py` + `services/imagenes.py` (firma, limpieza EXIF sin Pillow).
-- `routers/` (registro en `main.py`; rutas FIJAS antes de `/{id}`): `auth` (registro, login,
+  `fotos_perfil`, `service/fotos.py` + `service/imagenes.py` (firma, limpieza EXIF sin Pillow).
+- `handler/` (rutas HTTP; se registran en `handler/routes.py`; rutas FIJAS antes de `/{id}`): `auth` (registro, login,
   `/auth/me`, correo, contraseña), `salones` + `salones_admin` (ocupación, presencia,
   reportes), `horarios`, `prestamos_salon` (solicitudes de salón), `resources` (equipos),
   `maintenance`, `loans` (legado), `auditoria`, `stats`, `health` (`/salud`).
-- `services/`: lógica. `auth.py`, `perfil.py`, `correo.py` + `plantillas_correo.py` +
+- `repository/`: acceso a datos (consultas). Hoy: `limite_repository`, `mantenimiento_repository`,
+  `usuario_repository`; el resto de las consultas sigue en su service (ADR-0027).
+- `service/`: lógica. `auth.py`, `perfil.py`, `correo.py` + `plantillas_correo.py` +
   `paginas_auth.py` (correos y páginas HTML de los enlaces), `limites.py` (límites en BD),
   `equipamiento.py` (equipamiento calculado con UNA consulta agrupada), `salones*.py`,
   `auditoria.py` (llamar `auditoria.registrar(..., actor_id=...)` en acciones sensibles),

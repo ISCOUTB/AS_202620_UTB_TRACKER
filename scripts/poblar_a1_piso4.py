@@ -14,9 +14,9 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-from app.core.database import SessionLocal
-from app.core.hashing import hash_password
-from app.core.permisos import Rol
+from app.db.database import SessionLocal
+from app.middleware.hashing import hash_password
+from app.middleware.permisos import Rol
 from app.models.auth_models import Usuario
 from app.models.recurso_models import Recurso
 from app.models.salon_models import Salon

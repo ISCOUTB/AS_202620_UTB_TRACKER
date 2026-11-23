@@ -34,7 +34,7 @@ que no se prestan) y ADR-0017 (equipamiento calculado).
 - **OCUPACIÓN (calculada):** el salón está ocupado si hay una clase de su horario en curso
   (hora del campus, UTC-5) o una solicitud aprobada o en uso (UTC sin zona). No se edita.
   - Se calcula para muchos salones con un número **fijo** de consultas
-    (`app/services/estado_salon.py`).
+    (`app/service/estado_salon.py`).
 
 ### 2. `estado` sigue existiendo y se calcula
 

@@ -54,7 +54,7 @@ La persona quiere poner y cambiar su foto de perfil. Hay cuatro condiciones:
   - `X-Content-Type-Options: nosniff`.
   - `Content-Security-Policy: default-src 'none'`.
 
-### 3. Validación en el servidor, sin paquetes nuevos (`app/services/imagenes.py`)
+### 3. Validación en el servidor, sin paquetes nuevos (`app/service/imagenes.py`)
 
 - **Tamaño.** Máximo 200 KB (`FOTO_MAX_BYTES`). El cuerpo se lee en trozos y se corta apenas
   pasa el límite, aunque el cliente mienta en `Content-Length`. Responde 413.

@@ -118,7 +118,7 @@ por qué se tomaron — el detalle completo de cada una vive en su propio ADR ba
 |---|---|
 | Backend en FastAPI (Python) | Proporciona un desarrollo rápido, tipado estático con Pydantic para validación automática en los formularios (crucial para la usabilidad de QS-05) y documentación interactiva nativa (Swagger/OpenAPI). Se ejecuta mediante Uvicorn. |
 | Persistencia en SQL (SQLAlchemy / Alembic) | Garantiza la integridad de las transacciones de préstamos mediante restricciones de clave foránea y transacciones ACID. Alembic maneja las migraciones de forma estructurada. |
-| Arquitectura Monolítica Modular | Permite a los 4 desarrolladores trabajar en paralelo en sus propios módulos de dominio (`users`, `loans`, `resources`) bajo `app/routers/` reduciendo conflictos en Git y manteniendo fronteras claras. |
+| Arquitectura Monolítica Modular | Permite a los 4 desarrolladores trabajar en paralelo en sus propios módulos de dominio (`users`, `loans`, `resources`) bajo `app/handler/` reduciendo conflictos en Git y manteniendo fronteras claras. |
 
 ## Decisión de estilo arquitectónico
 
@@ -155,7 +155,7 @@ En resumen: se descartó *capas* porque el acoplamiento técnico dificulta que e
 
 **Motivación**
 
-Cada módulo bajo `app/routers/` corresponde a un módulo de dominio, siguiendo el estilo Monolito Modular (ADR-0001). La estructura de carpetas del repositorio (`app/routers/resources.py`, `app/routers/loans.py`, etc.) coincide 1 a 1 con los bloques del diagrama.
+Cada módulo bajo `app/handler/` corresponde a un módulo de dominio, siguiendo el estilo Monolito Modular (ADR-0001). La estructura de carpetas del repositorio (`app/handler/resources.py`, `app/handler/loans.py`, etc.) coincide 1 a 1 con los bloques del diagrama.
 
 **Bloques contenidos**
 
@@ -168,20 +168,20 @@ Cada módulo bajo `app/routers/` corresponde a un módulo de dominio, siguiendo 
 
 **Interfaces importantes**
 
-Todos los módulos se comunican vía HTTP/JSON. Internamente, `prestamos` depende de `recursos` (consulta y modifica estado). La dependencia está declarada explícitamente en `app/routers/loans.py`.
+Todos los módulos se comunican vía HTTP/JSON. Internamente, `prestamos` depende de `recursos` (consulta y modifica estado). La dependencia está declarada explícitamente en `app/handler/loans.py`.
 
 ### recursos
 
 *Responsabilidad:* mantener el catálogo de equipos y su estado (disponible/prestado/dañado).
 *Interfaz:* `POST /recursos`, `GET /recursos`, `GET /recursos/{id}`.
-*Ubicación:* `app/routers/resources.py`, modelo en `app/models.py::Recurso`.
+*Ubicación:* `app/handler/resources.py`, modelo en `app/models.py::Recurso`.
 *Requisitos que cumple:* base para QS-06 (confiabilidad de datos).
 
 ### prestamos
 
 *Responsabilidad:* registrar préstamos y aplicar la regla "un recurso solo puede prestarse si está disponible".
 *Interfaz:* `POST /prestamos`, `GET /prestamos`.
-*Ubicación:* `app/routers/loans.py`, modelo en `app/models.py::Prestamo`.
+*Ubicación:* `app/handler/loans.py`, modelo en `app/models.py::Prestamo`.
 *Requisitos que cumple:* QS-06 (confiabilidad de datos) probado en `tests/test_loans.py`.
 
 ### cuenta y correo (ADR-0014, ADR-0015, ADR-0016)
@@ -195,8 +195,8 @@ correo y de contraseña, alertas).
 `POST /auth/reset-password`, `GET /auth/restablecer`, `GET|PATCH /auth/me`,
 `POST /auth/me/cambiar-correo`, `POST /auth/me/cambiar-password`, `POST /auth/me/cerrar-sesiones`,
 `POST /auth/me/desactivar`.
-*Ubicación:* `app/routers/auth.py` → `app/services/auth.py`, `app/services/perfil.py`,
-`app/services/correo.py` (+ `plantillas_correo.py`), `app/services/limites.py` →
+*Ubicación:* `app/handler/auth.py` → `app/service/auth.py`, `app/service/perfil.py`,
+`app/service/correo.py` (+ `plantillas_correo.py`), `app/service/limites.py` →
 `app/schemas/auth.py`, `app/schemas/perfil.py` → `app/models/auth_models.py`,
 `app/models/seguridad_models.py`. Los correos salen por el outbox y el worker
 (`app/messaging/worker.py::_procesar_correo`).
@@ -209,7 +209,7 @@ correo y de contraseña, alertas).
 recursos activos (una consulta agrupada para todos los salones), con sugerencia de tipo.
 *Interfaz:* `GET /salones?tipo=&con_equipo=&busqueda=`, `GET /salones/{id}`,
 `GET /salones/ocupacion` (campos `tipo`, `descripcion`, `equipamiento`, `tipo_sugerido`).
-*Ubicación:* `app/services/equipamiento.py`, `app/services/salones.py`, `app/schemas/salones.py`.
+*Ubicación:* `app/service/equipamiento.py`, `app/service/salones.py`, `app/schemas/salones.py`.
 *Requisitos que cumple:* QS-05 (usabilidad) y QS-02 (sin consultas N+1) —
 `tests/test_salones_tipo_equipamiento.py`.
 
@@ -222,9 +222,9 @@ del auditor y estadísticas del administrador. "Auditor" (rol) no es la bitácor
 *Interfaz:* `GET /auth/me` (`rol_etiqueta`, `permisos`), `GET /usuarios`,
 `PATCH /usuarios/{id}/rol|estado`, `GET /prestamos-salon/mias`, `GET /prestamos-salon/gestion`,
 `POST /prestamos-salon/{id}/aprobar|rechazar`, `GET /stats/admin`.
-*Ubicación:* `app/core/permisos.py` (tabla) → `app/core/deps.py` (`require_permiso` y alias por
-permiso) → routers; `app/services/usuarios.py`, `app/services/prestamos_salon.py`,
-`app/services/estadisticas.py`; en la app `frontend/lib/features/auth/domain/permisos.dart`,
+*Ubicación:* `app/middleware/permisos.py` (tabla) → `app/middleware/deps.py` (`require_permiso` y alias por
+permiso) → routers; `app/service/usuarios.py`, `app/service/prestamos_salon.py`,
+`app/service/estadisticas.py`; en la app `frontend/lib/features/auth/domain/permisos.dart`,
 `features/home/presentation/shell_page.dart` (pestañas por permisos), `features/solicitudes/`,
 `features/admin/`, `shared/sin_acceso.dart`.
 *Requisitos que cumple:* QS-04 (seguridad) — `tests/test_matriz_permisos.py` (cada endpoint ×
@@ -243,10 +243,10 @@ como miniatura limpia (sin EXIF/GPS) en una tabla aparte.
 `tiene_foto`, `foto_version`), `GET|POST /usuarios/asignaciones`,
 `PATCH|DELETE /usuarios/asignaciones/{id}`, `POST /usuarios/asignaciones/importar`,
 `POST /usuarios/{id}/rol/automatico`, `PUT|DELETE|GET /auth/me/foto`, `GET /usuarios/{id}/foto`.
-*Ubicación:* `app/core/politica.py` (`error_correo_nuevo`), `app/core/config.py`,
-`app/services/asignaciones.py` (`rol_resuelto`, `recalcular`, importación),
-`app/services/fotos.py`, `app/services/imagenes.py` (firma, estructura y limpieza sin
-librerías), `app/routers/asignaciones.py`, `app/routers/fotos.py`, `scripts/cargar_asignaciones.py`;
+*Ubicación:* `app/service/politica.py` (`error_correo_nuevo`), `app/config/config.py`,
+`app/service/asignaciones.py` (`rol_resuelto`, `recalcular`, importación),
+`app/service/fotos.py`, `app/service/imagenes.py` (firma, estructura y limpieza sin
+librerías), `app/handler/asignaciones.py`, `app/handler/fotos.py`, `scripts/cargar_asignaciones.py`;
 en la app `frontend/lib/core/utils/politica.dart`, `features/admin/presentation/asignaciones_page.dart`,
 `features/cuenta/presentation/foto_perfil_sheet.dart`, `shared/foto_perfil.dart`.
 *Requisitos que cumple:* QS-04 (seguridad) y privacidad — `tests/test_correo_institucional.py`,
@@ -262,7 +262,7 @@ propuesta; dejar crear, renombrar y desactivar solo al Administrador.
 *Interfaz:* `POST /salones/catalogo/rango/vista-previa`, `POST /salones/catalogo/rango`,
 `GET /salones/catalogo/fuera`, `POST|DELETE /salones` (ahora `salones.crear_catalogo`),
 `GET /salones?edificio=&piso=`, campo `capacidad_estimada`.
-*Ubicación:* `app/services/catalogo.py`, `app/routers/catalogo.py`, `app/schemas/catalogo.py`,
+*Ubicación:* `app/service/catalogo.py`, `app/handler/catalogo.py`, `app/schemas/catalogo.py`,
 `scripts/datos/catalogo_utb.json`, `scripts/cargar_catalogo_utb.py`; en la app
 `features/salones_admin/domain/catalogo.dart` (espejo de la regla) y
 `features/salones_admin/presentation/catalogo_page.dart`.
@@ -281,8 +281,8 @@ fijos (nunca "prestado") con sugerencia de reporte; aplicar plantillas con vista
 `GET /salones/exportar.csv`, `PATCH /recursos/{id}/estado`, `GET /recursos/plantillas`,
 `POST /recursos/plantillas/{vista-previa|aplicar}`; campos `habilitado`, `aviso_deshabilitado`,
 `ocupado_ahora` y `aviso_salon`.
-*Ubicación:* `app/services/estado_salon.py`, `app/services/equipos.py`,
-`app/services/exportar.py`, `app/routers/estado_salon.py`, `app/schemas/estado_salon.py`,
+*Ubicación:* `app/service/estado_salon.py`, `app/service/equipos.py`,
+`app/service/exportar.py`, `app/handler/estado_salon.py`, `app/schemas/estado_salon.py`,
 `app/schemas/equipos.py`, modelo `HistorialSalon`; en la app
 `features/salones_admin/domain/disponibilidad.dart`, `data/disponibilidad_data.dart`,
 `presentation/disponibilidad_secciones.dart`.
@@ -455,7 +455,7 @@ sequenceDiagram
     Ad->>API: PATCH /usuarios/{id}/rol (o POST /usuarios/asignaciones/importar, solo cuentas existentes)
     API->>DB: guarda el rol, sube sesion_version (cierra sesiones) + bitácora usuario.rol
     P->>API: POST /auth/login -> GET /auth/me
-    API-->>P: rol y permisos (la matriz única de app/core/matriz_permisos.json)
+    API-->>P: rol y permisos (la matriz única de app/middleware/matriz_permisos.json)
 ```
 
 Ningún correo da un rol: registrarse con el correo de una persona de la lista no hereda nada
@@ -511,11 +511,11 @@ gestionados. La decisión de no usar microservicios está formalizada en
 
 | Bloque (`app/`) | Infraestructura |
 |---|---|
-| `routers/health.py` — `GET /salud` | Uvicorn → PostgreSQL (`SELECT 1` activo) |
-| `routers/resources.py` — `/recursos` | Uvicorn → PostgreSQL (tabla `recurso`) |
-| `routers/loans.py` — `/prestamos` | Uvicorn → PostgreSQL (tablas `recurso`, `prestamo`, `mensajes_outbox`, transacción ACID) |
+| `handler/health.py` — `GET /salud` | Uvicorn → PostgreSQL (`SELECT 1` activo) |
+| `handler/resources.py` — `/recursos` | Uvicorn → PostgreSQL (tabla `recurso`) |
+| `handler/loans.py` — `/prestamos` | Uvicorn → PostgreSQL (tablas `recurso`, `prestamo`, `mensajes_outbox`, transacción ACID) |
 | `messaging/worker.py` — Worker Outbox | Ejecución manual CLI (`python -m app.messaging.worker`); no arrancado en el despliegue actual |
-| `routers/auth.py` — `/auth` | Uvicorn → PostgreSQL (tabla `usuario`) |
+| `handler/auth.py` — `/auth` | Uvicorn → PostgreSQL (tabla `usuario`) |
 
 ## Infrastructure Level 2
 
@@ -560,9 +560,9 @@ Costos aproximados para el entorno de producción del proyecto académico:
 
 > **Regla automática (ADR-0023, S09):** `tests/test_erosion_capas.py` falla si un router importa modelos o consulta la base, si un servicio importa routers, si un modelo depende de capas superiores, o si `domain/` de Flutter importa Flutter, `http`, `data/` o `presentation/`. Corre en el CI en cada unión a `main`.
 Para evitar la erosión del estilo Monolito Modular (S9 — req. 9.6), el backend implementa una separación estricta de tres capas en cada módulo de dominio:
-1. **Capa de Enrutamiento HTTP (`app/routers/`):** Expone endpoints REST, valida datos de entrada mediante esquemas Pydantic y gestiona respuestas HTTP/códigos de estado (200, 201, 404, 409). No ejecuta lógica de negocio ni consultas directas al ORM.
-2. **Capa de Servicio (`app/services/`):** Orquesta la lógica de negocio, reglas de dominio (ej. exclusividad de recursos en préstamo — QS-06) y transacciones de base de datos. Módulos: `services/resources.py`, `services/loans.py`, `services/auth.py`.
-3. **Capa de Persistencia y Modelos (`app/models/` y `app/core/database.py`):** Define entidades SQLAlchemy mapeadas a tablas PostgreSQL y administra la sesión de conexión.
+1. **Capa de Enrutamiento HTTP (`app/handler/`):** Expone endpoints REST, valida datos de entrada mediante esquemas Pydantic y gestiona respuestas HTTP/códigos de estado (200, 201, 404, 409). No ejecuta lógica de negocio ni consultas directas al ORM.
+2. **Capa de Servicio (`app/service/`):** Orquesta la lógica de negocio, reglas de dominio (ej. exclusividad de recursos en préstamo — QS-06) y transacciones de base de datos. Módulos: `service/resources.py`, `service/loans.py`, `service/auth.py`.
+3. **Capa de Persistencia y Modelos (`app/models/` y `app/db/database.py`):** Define entidades SQLAlchemy mapeadas a tablas PostgreSQL y administra la sesión de conexión.
 
 ## 8.2 Seguridad, Hashing y Autenticación
 - **Protección de Credenciales (QS-04 / ADR-0004 / req. 9.8):** Las contraseñas se almacenan exclusivamente como hashes irreversibles generados con `bcrypt` (sales dinámicas automáticas). El sistema nunca almacena ni compara contraseñas en texto plano.
@@ -571,7 +571,7 @@ Para evitar la erosión del estilo Monolito Modular (S9 — req. 9.6), el backen
 ## 8.3 Observabilidad y Logging Estructurado
 - **Middleware HTTP (`app/main.py`):** Cada petición entrante es interceptada para asignarle un identificador único correlativo (`request_id` formato UUID de 8 caracteres).
 - **Formato Estructurado:** Los eventos de acceso se registran en formato JSON con marca de tiempo UTC, método HTTP, ruta, código de estado y latencia en milisegundos (`latency_ms`), listo para ingesta en herramientas de monitoreo como Grafana Loki o Datadog.
-- **Sondeo de Salud Profundo (`app/routers/health.py`):** El endpoint `GET /salud` ejecuta activamente una consulta `SELECT 1` sobre el pool de PostgreSQL para validar la salud real de la infraestructura.
+- **Sondeo de Salud Profundo (`app/handler/health.py`):** El endpoint `GET /salud` ejecuta activamente una consulta `SELECT 1` sobre el pool de PostgreSQL para validar la salud real de la infraestructura.
 
 ## 8.4 Evaluación de Inteligencia Artificial Generativa en el Producto (req. 9.9)
 Se evaluó la posible integración de modelos de IA generativa (LLMs) dentro del flujo operativo de UTB Tracker.
@@ -579,17 +579,17 @@ Se evaluó la posible integración de modelos de IA generativa (LLMs) dentro del
 - **Justificación:** UTB Tracker es un sistema de misión crítica para el control y la trazabilidad de inventario físico en salones de clase. Los requisitos centrales del sistema son la **consistencia transaccional inmediata (QS-06)** y la **alta confiabilidad y predictibilidad (QS-03)**. Los modelos generativos introducen no determinismo, latencia adicional de inferencia y costos de API externos que no agregan valor al registro transaccional de préstamos. La IA se utiliza exclusivamente como herramienta de asistencia en el desarrollo y revisión de código por el equipo de ingeniería, documentada en `docs/ia.md`.
 
 ## 8.5 Resiliencia, Timeouts y Reintentos (S11 — req. 11.1 y 11.2)
-- **Pool de Conexiones Resiliente (`app/core/database.py`):** Configurado con `pool_size=10`, `max_overflow=20`, `pool_timeout=30`, `pool_recycle=1800` y `pool_pre_ping=True`. La validación de ping previo descarta conexiones inactivas cerradas por el kernel o firewall, eliminando errores `OperationalError` tras periodos de inactividad.
-- **Reintentos con Backoff y Jitter (`app/core/resilience.py`):** Decorador `@with_retry` implementado para tolerar fallos transitorios en conexiones de red o base de datos. Emplea la fórmula `delay = min(max_delay, base_delay * 2^intento) + random_jitter`, mitigando problemas de sincronización de reintentos concurrentes (*thundering herd*).
+- **Pool de Conexiones Resiliente (`app/db/database.py`):** Configurado con `pool_size=10`, `max_overflow=20`, `pool_timeout=30`, `pool_recycle=1800` y `pool_pre_ping=True`. La validación de ping previo descarta conexiones inactivas cerradas por el kernel o firewall, eliminando errores `OperationalError` tras periodos de inactividad.
+- **Reintentos con Backoff y Jitter (`app/service/resilience.py`):** Decorador `@with_retry` implementado para tolerar fallos transitorios en conexiones de red o base de datos. Emplea la fórmula `delay = min(max_delay, base_delay * 2^intento) + random_jitter`, mitigando problemas de sincronización de reintentos concurrentes (*thundering herd*).
 
 ## 8.6 Idempotencia y Prevención de Condiciones de Carrera (S11 — req. 11.3 y R-02)
-- **Idempotencia de Préstamos (`app/routers/loans.py`, `app/services/loans.py`):** Soporte para la cabecera `X-Idempotency-Key`. Los clientes móviles reintentan peticiones de forma transparente ante fluctuaciones de Wi-Fi; el backend registra la clave en `idempotencia_registros` y devuelve el préstamo original sin duplicar registros ni emitir falsos errores 409.
+- **Idempotencia de Préstamos (`app/handler/loans.py`, `app/service/loans.py`):** Soporte para la cabecera `X-Idempotency-Key`. Los clientes móviles reintentan peticiones de forma transparente ante fluctuaciones de Wi-Fi; el backend registra la clave en `idempotencia_registros` y devuelve el préstamo original sin duplicar registros ni emitir falsos errores 409.
 - **Bloqueo Pesimista de Fila (QS-06):** Para evitar la condición de carrera identificada en R-02, la consulta del recurso en `crear_prestamo` aplica bloqueo pesimista `.with_for_update()`, serializando solicitudes que intenten prestar el mismo equipo simultáneamente.
 
 ## 8.7 Descomposición: Sagas, Patrón Outbox y Circuit Breakers (S11/S12 — req. 11.4, 11.5 y 11.6)
 - **Regla central de negocio (Préstamos): Transacción ACID local:** La validación de disponibilidad y asignación del préstamo ocurren en un único `db.commit()` atómico local, garantizando consistencia inmediata (QS-06). Las Sagas no aplican para la reserva del recurso.
 - **Transactional Outbox para Notificaciones Desacopladas (S12 / ADR-0006):** Para los efectos colaterales secundarios (notificación por correo al usuario), se implementó el patrón Transactional Outbox ([ADR-0006](../adr/0006-mensajeria-asincrona-outbox.md)). La inserción en `mensajes_outbox` comparte la transacción del préstamo; un proceso consumidor (`app/messaging/worker.py`) entrega las notificaciones de forma asíncrona con semántica *at-least-once*, deduplicación en `notificaciones_procesadas` y reintentos con backoff exponencial.
-- **Circuit Breaker (`app/core/resilience.py`):** Se provee la clase `CircuitBreaker` para aislar fallos en integraciones externas directas, alternando estados CLOSED, OPEN y HALF_OPEN para evitar caídas en cascada.
+- **Circuit Breaker (`app/service/resilience.py`):** Se provee la clase `CircuitBreaker` para aislar fallos en integraciones externas directas, alternando estados CLOSED, OPEN y HALF_OPEN para evitar caídas en cascada.
 - **Decisión de Microservicios:** Formalizada en [ADR-0005](../adr/0005-monolito-vs-microservicios.md), donde se fundamenta el rechazo de microservicios para maximizar la consistencia transaccional y simplicidad operativa del equipo.
 
 ## 8.8 Estrategia de Consistencia de Datos
@@ -633,7 +633,7 @@ sección. Índice de decisiones tomadas hasta ahora:
 - [ADR-0020](../adr/0020-foto-de-perfil.md) — Foto de perfil como miniatura limpia (firma real, sin EXIF/GPS, sin librerías nuevas en el backend) en la tabla aparte `fotos_perfil`
 - [ADR-0023](../adr/0023-retiro-del-prestamo-de-equipos-y-control-de-erosion.md) — "prestado" deja de usarse (422 y migración de datos auditada), `/prestamos/*` queda como legado obsoleto y las capas se verifican solas con `tests/test_erosion_capas.py` (S09)
 - [ADR-0024](../adr/0024-sin-verificacion-de-correo-y-roles-asignados-por-administrador.md) — Se quita la verificación de correo (el dominio `@utb.edu.co` ya es de la UTB), todo registro nace Estudiante, el rol lo asigna solo un administrador a cuentas existentes (carga masiva con vista previa), las cuentas de otro dominio se desactivan y se rompe a propósito la compatibilidad con las APK viejas
-- [ADR-0025](../adr/0025-matriz-de-permisos-en-un-archivo-de-datos.md) — La matriz rol → permisos vive solo en `app/core/matriz_permisos.json`; el backend la valida al arrancar, la app la recibe en `GET /auth/roles` y `GET /auth/me` (sin copia propia) y la documentación se valida contra ella
+- [ADR-0025](../adr/0025-matriz-de-permisos-en-un-archivo-de-datos.md) — La matriz rol → permisos vive solo en `app/middleware/matriz_permisos.json`; el backend la valida al arrancar, la app la recibe en `GET /auth/roles` y `GET /auth/me` (sin copia propia) y la documentación se valida contra ella
 - [ADR-0022](../adr/0022-habilitacion-ocupacion-y-equipos-del-salon.md) — Habilitación manual del salón (motivo obligatorio) separada de la ocupación calculada; `estado` calculado con los valores de siempre; salón deshabilitado no se solicita y sus solicitudes se señalan y avisan sin cancelarse solas; historial del salón; equipos fijos con estado (nunca "prestado"), plantillas con vista previa; panel sin N+1
 - [ADR-0021](../adr/0021-catalogo-de-salones-utb.md) — Catálogo de salones UTB: regla del código en un solo lugar, lista provisional en un archivo de datos (59 salones, corregida con una tesis de la biblioteca UTB), carga idempotente que nunca borra y solo el Administrador crea, renombra y desactiva
 
@@ -739,7 +739,7 @@ aspecto correspondiente en `docs/aspectos.md`.
 | **Fuente** | Dos auxiliares o usuarios que intentan prestar el mismo recurso simultáneamente |
 | **Estímulo** | Dos peticiones `POST /prestamos` concurrentes sobre el mismo `recurso_id` |
 | **Ambiente** | Hora pico del campus, red del campus |
-| **Artefacto** | Módulo de préstamos (`app/routers/loans.py`) + PostgreSQL |
+| **Artefacto** | Módulo de préstamos (`app/handler/loans.py`) + PostgreSQL |
 | **Respuesta** | Solo una petición crea el préstamo; la segunda recibe 409 Conflict sin crear ningún registro |
 | **Medida** | 0% de recursos con dos préstamos activos simultáneos; segunda petición siempre recibe 409 |
 
@@ -750,27 +750,27 @@ en `docs/auditoria_s8_s9_s11.md`.
 
 | # | Riesgo / Deuda Técnica | Impacto | Mitigación y Estado |
 |---|---|---|---|
-| **R-01** | Contraseñas sin hashing criptográfico (`services/auth.py`) | Crítico — Seguridad / QS-04. Fuga de BD comprometería credenciales | **Mitigado en S9:** Hashing con salt dinámico `bcrypt` nativo en `app/core/hashing.py`. |
-| **R-02** | Condición de carrera en préstamos (sin bloqueo de fila) | Alto — Confiabilidad / QS-06. Dos solicitudes paralelas pueden prestar el mismo equipo | **Mitigado en S11:** Bloqueo pesimista de fila `.with_for_update()` en `app/services/loans.py`. |
+| **R-01** | Contraseñas sin hashing criptográfico (`service/auth.py`) | Crítico — Seguridad / QS-04. Fuga de BD comprometería credenciales | **Mitigado en S9:** Hashing con salt dinámico `bcrypt` nativo en `app/middleware/hashing.py`. |
+| **R-02** | Condición de carrera en préstamos (sin bloqueo de fila) | Alto — Confiabilidad / QS-06. Dos solicitudes paralelas pueden prestar el mismo equipo | **Mitigado en S11:** Bloqueo pesimista de fila `.with_for_update()` en `app/service/loans.py`. |
 | **R-03** | Ausencia de migraciones Alembic en producción | Medio — Operabilidad. `create_all()` no permite cambios de esquema en caliente | **Parcialmente mitigado en S12:** Se creó la migración `6c7d8e9f0a1b` para las tablas de mensajería outbox (verificada únicamente en SQLite, no en PostgreSQL). Persiste la deuda técnica de que la migración previa `5b652dd28f00` falla desde una base vacía. |
 | **R-04** | Pipeline CI apuntaba a `app/tests/` (1 test) en lugar de `tests/` (suite completa) | Alto — Calidad. Código defectuoso podía desplegarse pasando el único test de salud | **Mitigado en S8:** `ci.yml` ahora corre la suite completa (`pytest tests/ -v`) con contenedor PostgreSQL. |
 | **R-05** | Falta de `Idempotency-Key` en `POST /prestamos` | Medio — Integridad. Reintentos del cliente Flutter en red inestable pueden duplicar reservas | **Mitigado en S11:** Soporte de cabecera `X-Idempotency-Key` respaldada por `idempotencia_registros`. |
-| **R-06** | Doble reserva concurrente de salones (`services/prestamos_salon.py:114`) | Alto — Confiabilidad / QS-06. Validación en Python sin bloqueo permite reservas solapadas | **Abierto / Deuda técnica:** Propuesta de restricción de exclusión GiST o `with_for_update` en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
-| **R-07** | Inserción de horarios solapados (`services/horarios.py:89`) | Medio — Integridad / QS-06. Falta de restricción de exclusión en BD permite superposición horaria | **Abierto / Deuda técnica:** Propuesta de restricción PostgreSQL en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
-| **R-08** | Doble devolución de préstamo por falta de bloqueo (`services/loans.py:146`) | Medio — Confiabilidad / QS-06. Peticiones simultáneas marcan devolución doblemente | **Abierto / Deuda técnica:** Propuesta de `.with_for_update()` en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
+| **R-06** | Doble reserva concurrente de salones (`service/prestamos_salon.py:114`) | Alto — Confiabilidad / QS-06. Validación en Python sin bloqueo permite reservas solapadas | **Abierto / Deuda técnica:** Propuesta de restricción de exclusión GiST o `with_for_update` en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
+| **R-07** | Inserción de horarios solapados (`service/horarios.py:89`) | Medio — Integridad / QS-06. Falta de restricción de exclusión en BD permite superposición horaria | **Abierto / Deuda técnica:** Propuesta de restricción PostgreSQL en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
+| **R-08** | Doble devolución de préstamo por falta de bloqueo (`service/loans.py:146`) | Medio — Confiabilidad / QS-06. Peticiones simultáneas marcan devolución doblemente | **Abierto / Deuda técnica:** Propuesta de `.with_for_update()` en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
 | **R-09** | Nombres de usuario duplicados por omisión de `unique=True` (`models/auth_models.py:19`) | Alto — Seguridad / QS-04. Nombres idénticos rompen el flujo de login (`auth.py:70`) | **Abierto / Deuda técnica:** Propuesta de restricción única en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
-| **R-10** | Inoperancia de bloqueo pesimista en SQLite (`services/loans.py:54-60`) | Medio — Confiabilidad / QS-06. Pruebas locales en SQLite no validan aislamiento de concurrencia | **Abierto / Deuda técnica:** Propuesta de estandarizar PostgreSQL local en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
-| **R-11** | Enumeración de usuarios por clave entera expuesta (`routers/auth.py:53-59`) | Alto — Seguridad / QS-04. Falta de chequeo de autorización permite enumerar usuarios | **Abierto / Deuda técnica:** Documentado en [`docs/adr/0007-identificadores-enteros-autoincrementales.md`](../adr/0007-identificadores-enteros-autoincrementales.md). |
-| **R-12** | Auto-asignación de roles privilegiados en registro público | Crítico — Seguridad / QS-04. Atacante podía enviar `{"rol": "administrador"}` y ganar control total | **Mitigado:** el registro ignora el rol enviado y siempre asigna `usuario_utb`; solo una asignación comprobada puede cambiarlo tras verificar el correo ([`app/services/auth.py`](../../app/services/auth.py), [`app/services/asignaciones.py`](../../app/services/asignaciones.py)). |
-| **R-13** | Creación de préstamos a nombre de terceros por falta de validación de titularidad (`services/loans.py:46-48`) | Alto — Seguridad / Integridad. Estudiantes pueden comprometer a otros asignándoles equipos | **Abierto / Deuda técnica:** Propuesta de autorización a nivel de recurso en [`docs/adr/0008-control-acceso-granular-recurso.md`](../adr/0008-control-acceso-granular-recurso.md). |
-| **R-14** | Secretos de JWT y firmas criptográficas con valores débiles por defecto | Crítico — Seguridad / QS-04. Si falta configuración, podía permitirse una clave insegura | **Mitigado:** producción rechaza las claves por defecto y exige secretos distintos mediante [`app/core/config.py`](../../app/core/config.py). |
-| **R-15** | Ausencia de Rate Limiting en API y Login | Alto — Disponibilidad / QS-03. Ataques de fuerza bruta y agotamiento de CPU por hashing `bcrypt` | **Mitigado:** existen límites persistidos por cuenta, correo e IP para login, recuperación, verificación y cambio de correo ([`app/services/limites.py`](../../app/services/limites.py), [`app/services/auth.py`](../../app/services/auth.py), [`app/services/perfil.py`](../../app/services/perfil.py)). |
+| **R-10** | Inoperancia de bloqueo pesimista en SQLite (`service/loans.py:54-60`) | Medio — Confiabilidad / QS-06. Pruebas locales en SQLite no validan aislamiento de concurrencia | **Abierto / Deuda técnica:** Propuesta de estandarizar PostgreSQL local en [`docs/datos/consistencia-por-operacion.md`](../datos/consistencia-por-operacion.md). |
+| **R-11** | Enumeración de usuarios por clave entera expuesta (`handler/auth.py:53-59`) | Alto — Seguridad / QS-04. Falta de chequeo de autorización permite enumerar usuarios | **Abierto / Deuda técnica:** Documentado en [`docs/adr/0007-identificadores-enteros-autoincrementales.md`](../adr/0007-identificadores-enteros-autoincrementales.md). |
+| **R-12** | Auto-asignación de roles privilegiados en registro público | Crítico — Seguridad / QS-04. Atacante podía enviar `{"rol": "administrador"}` y ganar control total | **Mitigado:** el registro ignora el rol enviado y siempre asigna `usuario_utb`; solo una asignación comprobada puede cambiarlo tras verificar el correo ([`app/service/auth.py`](../../app/service/auth.py), [`app/service/asignaciones.py`](../../app/service/asignaciones.py)). |
+| **R-13** | Creación de préstamos a nombre de terceros por falta de validación de titularidad (`service/loans.py:46-48`) | Alto — Seguridad / Integridad. Estudiantes pueden comprometer a otros asignándoles equipos | **Abierto / Deuda técnica:** Propuesta de autorización a nivel de recurso en [`docs/adr/0008-control-acceso-granular-recurso.md`](../adr/0008-control-acceso-granular-recurso.md). |
+| **R-14** | Secretos de JWT y firmas criptográficas con valores débiles por defecto | Crítico — Seguridad / QS-04. Si falta configuración, podía permitirse una clave insegura | **Mitigado:** producción rechaza las claves por defecto y exige secretos distintos mediante [`app/config/config.py`](../../app/config/config.py). |
+| **R-15** | Ausencia de Rate Limiting en API y Login | Alto — Disponibilidad / QS-03. Ataques de fuerza bruta y agotamiento de CPU por hashing `bcrypt` | **Mitigado:** existen límites persistidos por cuenta, correo e IP para login, recuperación, verificación y cambio de correo ([`app/service/limites.py`](../../app/service/limites.py), [`app/service/auth.py`](../../app/service/auth.py), [`app/service/perfil.py`](../../app/service/perfil.py)). |
 | **R-16** | Vulnerabilidades conocidas en dependencias externas Starlette y PyJWT (`requirements.txt`) | Alto — Seguridad. PYSEC-2026-161 y GHSA-pxh4-856f-4h89 detectados por `pip-audit` | **Abierto / En proceso:** Actualización de paquetes y bloqueo en CI en [`docs/seguridad/analisis-dependencias.md`](../seguridad/analisis-dependencias.md). |
 | **R-17** | Almacenamiento de tokens de sesión en almacenamiento inseguro en Flutter | Medio — Privacidad / Seguridad. Exposición de tokens en el dispositivo | **Mitigado:** Flutter usa `flutter_secure_storage` en [`frontend/lib/core/storage/token_storage.dart`](../../frontend/lib/core/storage/token_storage.dart). |
 | **R-18** | Entrega at-least-once con potenciales duplicados y orden no garantizado en Outbox (`messaging/worker.py:145-153, 250-291`) | Bajo — Calidad / Usabilidad. Mensajes pueden entregarse fuera de orden o duplicarse si el worker cae | **Amenaza aceptada (S13):** Se asume por diseño para mantener desacoplamiento sin 2PC ni colas FIFO complejas ([`docs/seguridad/modelo-amenazas.md`](../seguridad/modelo-amenazas.md)). |
 | **R-19** | Vulnerabilidad de bypass y forja de tokens JWT por omisión de lista de revocación (T-17) | Medio — Seguridad / QS-04. Cierre de sesión declarativo mantiene tokens válidos hasta su expiración | **Amenaza aceptada (S13 / A-03):** Se preserva diseño stateless; ventana de riesgo acotada por `ACCESS_TOKEN_EXPIRE_MINUTES`. |
 | **R-20** | Vulnerabilidades en cadena de suministro de paquetes backend (T-22) | Medio — Seguridad / Integridad. Dependencias desactualizadas pueden contener CVEs | **Mitigado:** requirements bloquea por hashes, instala versiones actualizadas (`starlette==1.3.1`, `PyJWT==2.15.1`) y CI ejecuta `pip-audit`; esta fila debe actualizarse con cada run de CI ([`docs/seguridad/analisis-dependencias.md`](../seguridad/analisis-dependencias.md)). |
-| **R-21** | Margen mínimo de QS-02 bajo 300 peticiones concurrentes con 1 worker (máx 2976 ms vs 3000 ms) | Medio — Rendimiento / QS-02. Latencia al límite del umbral ante picos de demanda. Causa no aislada (hipótesis no verificada: 1 worker de Uvicorn y pool de 30 conexiones en `app/core/database.py:21-24`) | **Abierto / Deuda técnica:** Mitigación propuesta mediante caché en memoria acotada por TTL ([`docs/datos/diseno-cache.md`](../datos/diseno-cache.md)) y despliegue multi-worker de Uvicorn. Evidencia en [`docs/calidad/medicion-qs03.md`](../calidad/medicion-qs03.md). |
+| **R-21** | Margen mínimo de QS-02 bajo 300 peticiones concurrentes con 1 worker (máx 2976 ms vs 3000 ms) | Medio — Rendimiento / QS-02. Latencia al límite del umbral ante picos de demanda. Causa no aislada (hipótesis no verificada: 1 worker de Uvicorn y pool de 30 conexiones en `app/db/database.py:21-24`) | **Abierto / Deuda técnica:** Mitigación propuesta mediante caché en memoria acotada por TTL ([`docs/datos/diseno-cache.md`](../datos/diseno-cache.md)) y despliegue multi-worker de Uvicorn. Evidencia en [`docs/calidad/medicion-qs03.md`](../calidad/medicion-qs03.md). |
 
 ## 11. Revisión entre pares
 
@@ -792,7 +792,7 @@ en `docs/auditoria_s8_s9_s11.md`.
 |---|---|
 | **Recurso** | Equipo electrónico individual trackeado por el sistema (video beam, computador, A/C, TV, sistema de audio). No incluye mobiliario (sillas, mesas) — esos no se registran por unidad. |
 | **Salón** | Aula, laboratorio, auditorio o almacén de la UTB, identificado por un código (ej. `A1-304`). Es la ubicación "de origen" de un recurso. |
-| **Estado (de un recurso)** | Uno de: `disponible`, `prestado`, `dañado`, `mantenimiento`. Determina si el recurso puede prestarse — ver regla de negocio en `app/routers/loans.py`. |
+| **Estado (de un recurso)** | Uno de: `disponible`, `prestado`, `dañado`, `mantenimiento`. Determina si el recurso puede prestarse — ver regla de negocio en `app/handler/loans.py`. |
 | **Préstamo** | Registro de que un `Usuario` tomó un `Recurso` prestado, con fecha esperada y real de devolución. Un recurso solo puede tener un préstamo activo a la vez (QS-06). |
 | **Vencido** | Un préstamo cuya fecha de devolución esperada ya pasó y no se ha devuelto. Se calcula en la consulta, no se guarda como estado aparte. *(La regla de bloqueo por préstamo vencido está pendiente de implementación — ver arc42 sección 5, riesgos abiertos de `prestamos`.)* |
 | **Auxiliar (de planta / laboratorio)** | Rol administrador del sistema: gestiona el catálogo, revisa préstamos, reporta daños. |

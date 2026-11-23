@@ -21,7 +21,7 @@ la base, pero la API no la entregaba junto al salón.
    agrupado por categoría: `{categoria, total, operativos}`. Un equipo dañado o en
    mantenimiento baja `operativos` pero no `total`; uno dado de baja (`activo = false`) no
    cuenta. Se calcula con **una sola consulta agrupada** para todos los salones de la respuesta
-   (`app/services/equipamiento.py::calcular`), nunca una por salón.
+   (`app/service/equipamiento.py::calcular`), nunca una por salón.
 3. **`tipo_sugerido`**: regla simple y explicable (8 o más computadores → laboratorio de
    cómputo; capacidad ≥ 100 con audio o video beam → auditorio; video beam + audio + TV → sala
    audiovisual). Es **solo una sugerencia**: nunca cambia el tipo guardado. La app la muestra
@@ -62,9 +62,9 @@ la base, pero la API no la entregaba junto al salón.
 | Decisión | Código | Pruebas |
 |---|---|---|
 | Tipo y descripción | `app/schemas/enums.py::TipoSalon`, `app/models/salon_models.py`, `app/schemas/salones.py`, migración `e5f6a7b8c9d0` | `tests/test_salones_tipo_equipamiento.py::test_tipo_por_defecto_y_descripcion_recortada`, `test_tipo_invalido_y_descripcion_larga_dan_422` |
-| Equipamiento calculado | `app/services/equipamiento.py` | `test_equipamiento_solo_con_recursos_activos_y_operativos`, `test_equipamiento_no_hace_una_consulta_por_salon` |
-| Filtros | `app/services/salones.py::listar_salones`, `app/routers/salones.py` | `test_filtros_por_tipo_por_equipo_y_busqueda_en_descripcion` |
-| Ocupación | `app/services/salones_admin.py` | `test_ocupacion_trae_tipo_descripcion_y_equipamiento` |
-| Auditoría del tipo | `app/services/salones.py::actualizar_salon` | `test_la_sugerencia_desaparece_al_aceptarla_y_el_cambio_queda_auditado` |
+| Equipamiento calculado | `app/service/equipamiento.py` | `test_equipamiento_solo_con_recursos_activos_y_operativos`, `test_equipamiento_no_hace_una_consulta_por_salon` |
+| Filtros | `app/service/salones.py::listar_salones`, `app/handler/salones.py` | `test_filtros_por_tipo_por_equipo_y_busqueda_en_descripcion` |
+| Ocupación | `app/service/salones_admin.py` | `test_ocupacion_trae_tipo_descripcion_y_equipamiento` |
+| Auditoría del tipo | `app/service/salones.py::actualizar_salon` | `test_la_sugerencia_desaparece_al_aceptarla_y_el_cambio_queda_auditado` |
 | App | `frontend/lib/shared/equipamiento_chips.dart`, `frontend/lib/features/salones/presentation/tipo_salon_campos.dart`, `panel_salones_page.dart`, `salon_control_page.dart`, `salon_detalle_page.dart` | `frontend/test/equipamiento_test.dart`, `frontend/test/escala_test.dart` |
 | Datos de ejemplo | `scripts/seed_demo.py` | revisión manual |

@@ -9,7 +9,7 @@ Cubre:
 import time
 import pytest
 
-from app.core.resilience import (
+from app.service.resilience import (
     CircuitBreaker,
     CircuitBreakerOpenException,
     CircuitBreakerState,

@@ -14,11 +14,11 @@ from pathlib import Path
 import pytest
 from fastapi.routing import APIRoute
 
-from app.core import permisos
-from app.core.hashing import hash_password
+from app.middleware import permisos
+from app.middleware.hashing import hash_password
 from app.main import app
 from app.models.auth_models import Usuario
-from app.services.auth import emitir_tokens
+from app.service.auth import emitir_tokens
 
 MATRIZ = Path(__file__).resolve().parent.parent / "docs" / "seguridad" / "matriz-permisos.md"
 ROLES = ("usuario_utb", "auxiliar", "administrador")
@@ -119,7 +119,7 @@ def entorno():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    from app.core.database import Base, get_db
+    from app.db.database import Base, get_db
     from tests.conftest import TEST_DATABASE_URL
 
     extra = {"check_same_thread": False} if TEST_DATABASE_URL.startswith("sqlite") else {}

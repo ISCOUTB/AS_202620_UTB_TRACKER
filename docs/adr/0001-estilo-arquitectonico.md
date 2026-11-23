@@ -26,8 +26,8 @@ de estilo arquitectónico afecta la estructura completa del código, no un solo 
 ## Decisión
 
 Se organiza UTB Tracker como un **Monolito Modular** sobre FastAPI: un único desplegable,
-dividido internamente en módulos de dominio independientes (`app/routers/resources.py`,
-`app/routers/loans.py`, `app/routers/auth.py`), cada uno con su propia frontera de
+dividido internamente en módulos de dominio independientes (`app/handler/resources.py`,
+`app/handler/loans.py`, `app/handler/auth.py`), cada uno con su propia frontera de
 responsabilidad.
 
 ## Alternativas consideradas

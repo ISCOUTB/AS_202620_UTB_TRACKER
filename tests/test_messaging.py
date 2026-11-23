@@ -472,7 +472,7 @@ def test_rollback_real_forzando_fallo_en_commit(
     - El recurso sigue con estado "disponible".
     """
     from app.main import app
-    from app.core.database import get_db
+    from app.db.database import get_db
     from app.models.recurso_models import Prestamo
 
     recurso_id = _crear_recurso(client, admin_headers, serial="VB-RBACK-01")

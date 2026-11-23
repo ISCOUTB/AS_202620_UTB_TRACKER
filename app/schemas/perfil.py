@@ -10,8 +10,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.core import permisos as permisos_core
-from app.core.politica import PASSWORD_MINIMO, es_institucional, normalizar_nombre
+from app.middleware import permisos as permisos_core
+from app.service.politica import PASSWORD_MINIMO, es_institucional, normalizar_nombre
 
 TamanoTexto = Literal["normal", "grande", "extra_grande"]
 PantallaInicio = Literal["inicio", "salones", "control"]
@@ -49,7 +49,7 @@ class Preferencias(BaseModel):
 
 
 class RolCatalogo(BaseModel):
-    """Un rol con sus permisos, tal como están en app/core/matriz_permisos.json (ADR-0025)."""
+    """Un rol con sus permisos, tal como están en app/middleware/matriz_permisos.json (ADR-0025)."""
     valor: str = Field(description="Valor guardado del rol")
     etiqueta: str
     descripcion: str
@@ -71,7 +71,7 @@ class PerfilResponse(BaseModel):
     color_avatar: Optional[str] = None
     preferencias: Preferencias = Field(default_factory=Preferencias)
     # ADR-0018: `rol` conserva el valor guardado (usuario_utb | auxiliar | administrador) para
-    # las APK instaladas; la etiqueta y los permisos se calculan de app/core/permisos.py.
+    # las APK instaladas; la etiqueta y los permisos se calculan de app/middleware/permisos.py.
     rol_etiqueta: str = ""
     permisos: list[str] = Field(default_factory=list)
     # ADR-0019: False en cuentas antiguas con correo no institucional (la app muestra un aviso

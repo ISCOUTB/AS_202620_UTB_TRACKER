@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core import permisos
+from app.middleware import permisos
 
 
 class UsuarioAdmin(BaseModel):

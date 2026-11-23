@@ -30,10 +30,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import or_  # noqa: E402
 
-from app.core import config  # noqa: E402
-from app.core.database import Base, SessionLocal, engine  # noqa: E402
-from app.core.permisos import etiqueta  # noqa: E402
-from app.core.hashing import hash_password  # noqa: E402
+from app.config import config  # noqa: E402
+from app.db.database import Base, SessionLocal, engine  # noqa: E402
+from app.middleware.permisos import etiqueta  # noqa: E402
+from app.middleware.hashing import hash_password  # noqa: E402
 from app.models import (  # noqa: E402
     Horario, Prestamo, PrestamoSalon, Recurso, Reporte, Salon, Usuario,
 )

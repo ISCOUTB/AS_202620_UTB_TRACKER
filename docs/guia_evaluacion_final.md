@@ -14,8 +14,8 @@
 UTB Tracker implementa un **monolito modular con diseño guiado por capas** (ADR-0001, ADR-0005) desplegado en un VPS Linux (Ubuntu 24.04, Nginx como reverse proxy, Uvicorn bajo systemd y PostgreSQL 16 relacional). Se descartó microservicios para evitar la complejidad operativa y sobrecarga de latencia distribuida sin justificación de escala.
 
 La correspondencia entre el diseño y el código es estricta (validada por `tests/test_erosion_capas.py`):
-1. **Capa Adaptadores HTTP (`app/routers/`):** Controladores FastAPI que reciben DTOs validados con Pydantic (`app/schemas/`), resuelven inyección de dependencias (`Depends`) y autorizan por rol/permisos (ADR-0018).
-2. **Capa Servicios de Dominio (`app/services/`):** Encapsula transacciones de base de datos, reglas de negocio de disponibilidad de salones, hashing con bcrypt nativo (ADR-0004), cálculo de ocupación y publicación en outbox.
+1. **Capa Adaptadores HTTP (`app/handler/`):** Controladores FastAPI que reciben DTOs validados con Pydantic (`app/schemas/`), resuelven inyección de dependencias (`Depends`) y autorizan por rol/permisos (ADR-0018).
+2. **Capa Servicios de Dominio (`app/service/`):** Encapsula transacciones de base de datos, reglas de negocio de disponibilidad de salones, hashing con bcrypt nativo (ADR-0004), cálculo de ocupación y publicación en outbox.
 3. **Capa Persistencia (`app/models/`):** Mapeo relacional SQLAlchemy 2.0 (`Usuario`, `Salon`, `Recurso`, `PrestamoSalon`, `Auditoria`, `MensajeOutbox`). Migraciones administradas con Alembic (`alembic upgrade head`).
 4. **Worker Asíncrono (`app/messaging/worker.py`):** Proceso desacoplado que implementa el patrón **Transactional Outbox** (ADR-0006) para garantizar entrega at-least-once de correos (SMTP) y push (FCM) sin comprometer el tiempo de respuesta HTTP.
 
@@ -56,7 +56,7 @@ El sistema evolucionó a lo largo de 16 semanas respondiendo a escenarios de cal
    * *Beneficio:* Garantía matemática absoluta contra colisiones de reserva (QS-06) sin requerir reintentos fallidos en el cliente.
 
 ### 3.2 Modos de Fallo, Límites del Sistema y Resiliencia
-* **Caída del servicio SMTP o Firebase:** La API no se bloquea ni retorna error 500 al usuario. El evento queda en estado `pendiente` y el worker reintenta con backoff exponencial y jitter (ADR-0006, `app/core/resilience.py`).
+* **Caída del servicio SMTP o Firebase:** La API no se bloquea ni retorna error 500 al usuario. El evento queda en estado `pendiente` y el worker reintenta con backoff exponencial y jitter (ADR-0006, `app/service/resilience.py`).
 * **Saturación de Conexiones a BD:** El pool de SQLAlchemy limita a 30 conexiones con timeout controlado. Ante fallo de BD, el Circuit Breaker entra en estado `OPEN` evitando saturar la infraestructura.
 * **Límite de Rendimiento Identificado:** Bajo pruebas extremas de carga con 1 worker Uvicorn, 300 usuarios concurrentes alcanzan un p95 de 2523 ms (cercano al umbral de 3000 ms). Mitigación futura documentada: despliegue multi-worker (`gunicorn -k uvicorn.workers.UvicornWorker -w 4`) y caché TTL en memoria (`docs/datos/diseno-cache.md`).
 
@@ -77,7 +77,7 @@ El sistema evolucionó a lo largo de 16 semanas respondiendo a escenarios de cal
 | Tema | Decisión | Evidencia |
 |---|---|---|
 | Identidad y roles | Sin verificación de correo (el dominio `@utb.edu.co` ya es de la UTB); todo registro nace Estudiante y solo un administrador asigna roles a cuentas existentes; correo único y sin alias `+` | ADR-0024, `tests/test_roles_sin_verificacion.py`, `tests/test_correo_unico.py`, amenaza T-36 |
-| Una sola fuente de verdad | La matriz rol → permisos vive en `app/core/matriz_permisos.json`; la app la recibe en `GET /auth/roles` y no tiene copia | ADR-0025, `tests/test_matriz_unica.py` |
+| Una sola fuente de verdad | La matriz rol → permisos vive en `app/middleware/matriz_permisos.json`; la app la recibe en `GET /auth/roles` y no tiene copia | ADR-0025, `tests/test_matriz_unica.py` |
 | Datos de demostración | Equipos, horarios, solicitudes y reportes sobre los 59 salones del catálogo, marcados y repetibles; no crean salones | `docs/despliegue/demostracion.md`, `tests/test_demo_datos.py` |
 | Marca | Logo de la UTB en toda la app | ADR-0026 |
 | Calidad | SonarCloud: complejidad reducida; suite del backend y de la app en verde | `sonar-project.properties`, CI |

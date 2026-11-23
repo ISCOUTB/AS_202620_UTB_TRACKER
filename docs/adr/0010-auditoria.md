@@ -14,7 +14,7 @@ cambian el dato, pero no dejan rastro de **quién** las hizo ni **cuándo**. Sin
 
 ## Decisión
 
-Se agrega una tabla `auditoria` y un servicio `app/services/auditoria.py`:
+Se agrega una tabla `auditoria` y un servicio `app/service/auditoria.py`:
 
 - **Qué se registra:** quién (`actor_id` y `actor_nombre`), cuándo (UTC), qué acción
   (`salon.presencia`, `salon.solicitud.estado`, `usuario.rol`…), sobre qué entidad y un `detalle`

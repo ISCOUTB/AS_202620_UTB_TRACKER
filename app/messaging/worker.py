@@ -42,8 +42,8 @@ from sqlalchemy.orm import Session
 
 from app.messaging.events import VERSIONES_SOPORTADAS
 from app.messaging.models import MensajeOutbox, NotificacionProcesada
-from app.services import correo as correo_service
-from app.core.config import (
+from app.service import correo as correo_service
+from app.config.config import (
     FIREBASE_CREDENTIALS_PATH, SMTP_FROM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT,
     SMTP_USERNAME, USE_REAL_MAIL, USE_REAL_PUSH,
 )
@@ -555,7 +555,7 @@ def _run_loop() -> None:
         datefmt="%Y-%m-%dT%H:%M:%S",
     )
 
-    from app.core.database import SessionLocal
+    from app.db.database import SessionLocal
     from app.messaging.models import MensajeOutbox, NotificacionProcesada  # noqa: F401 — registra tablas
 
     notificador = NotificadorConPush(
@@ -574,7 +574,7 @@ def _run_loop() -> None:
             try:
                 # Cada ~1000 ciclos (≈ 1 h con 3 s) borra intentos de límite viejos (ADR-0014).
                 if ciclo % 1000 == 1:
-                    from app.services.limites import purgar_viejos
+                    from app.service.limites import purgar_viejos
                     if purgar_viejos(db):
                         db.commit()
                 n = procesar_pendientes(db, notificador, proveedor_correo=proveedor)

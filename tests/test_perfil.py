@@ -11,7 +11,7 @@ import pytest
 from app.messaging.models import MensajeOutbox
 from app.messaging.worker import NotificadorSimulado, procesar_pendientes
 from app.models.auditoria_models import RegistroAuditoria
-from app.services.correo import ProveedorDesarrollo, TIPO_EVENTO
+from app.service.correo import ProveedorDesarrollo, TIPO_EVENTO
 
 CLAVE = "TestPassword1"
 
@@ -148,7 +148,7 @@ def test_worker_respeta_preferencias_salvo_seguridad(client, db_session, buzon):
         "notificaciones": {"correo": {"cuenta": False, "salones": False}}}})
     user_id = client.get("/auth/me", headers=headers).json()["id"]
 
-    from app.services import correo
+    from app.service import correo
     correo.encolar(db_session, "user1@utb.edu.co", "bienvenida", {"nombre": "U"}, usuario_id=user_id)
     db_session.commit()
     client.post("/auth/me/cambiar-password", headers=headers,

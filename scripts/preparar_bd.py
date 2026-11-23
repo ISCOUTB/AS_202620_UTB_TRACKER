@@ -20,8 +20,8 @@ from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 from sqlalchemy import inspect  # noqa: E402
 
-from app.core.config import DATABASE_URL  # noqa: E402
-from app.core.database import Base, engine  # noqa: E402
+from app.config.config import DATABASE_URL  # noqa: E402
+from app.db.database import Base, engine  # noqa: E402
 import app.main  # noqa: E402,F401  (registra todos los modelos en Base.metadata)
 
 # Del más nuevo al más viejo: (revisión, prueba de que el esquema ya la tiene).

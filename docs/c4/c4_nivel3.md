@@ -9,8 +9,8 @@ Este diagrama descompone el contenedor **API Backend** (FastAPI) en sus componen
 | Componente | Paquete / Ruta | Responsabilidad |
 |---|---|---|
 | **Middleware & Core** | `app/main.py`, `app/core/` | CORS, logging estructurado con `request_id`, configuración (`config.py`), seguridad JWT (`security.py`, `hashing.py`) y motor SQLAlchemy (`database.py`). |
-| **Routers (Adaptadores HTTP)** | `app/routers/` | Endpoints REST: deserializan DTOs, validan con Pydantic, aplican inyección de dependencias (`Depends`) y autorizan por roles/permisos. (`auth`, `salones`, `salones_admin`, `catalogo`, `estado_salon`, `horarios`, `prestamos_salon`, `auditoria`, `usuarios`, `stats`, `health`). |
-| **Servicios de Dominio** | `app/services/` | Lógica de negocio transaccional: reglas de disponibilidad, bloqueo pesimista `.with_for_update()`, hashing, validaciones de dominio y publicación en outbox. |
+| **Routers (Adaptadores HTTP)** | `app/handler/` | Endpoints REST: deserializan DTOs, validan con Pydantic, aplican inyección de dependencias (`Depends`) y autorizan por roles/permisos. (`auth`, `salones`, `salones_admin`, `catalogo`, `estado_salon`, `horarios`, `prestamos_salon`, `auditoria`, `usuarios`, `stats`, `health`). |
+| **Servicios de Dominio** | `app/service/` | Lógica de negocio transaccional: reglas de disponibilidad, bloqueo pesimista `.with_for_update()`, hashing, validaciones de dominio y publicación en outbox. |
 | **Modelos de Persistencia (ORM)** | `app/models/` | Entidades mapeadas en SQLAlchemy: `Usuario`, `Salon`, `Recurso`, `Horario`, `PrestamoSalon`, `Auditoria`, `IdempotenciaRegistro`. |
 | **Outbox & Messaging** | `app/messaging/` | Patrón *Transactional Outbox*: inserción transaccional en `mensajes_outbox` y worker asíncrono con backoff exponencial y jitter para entrega SMTP / FCM. |
 

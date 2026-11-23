@@ -1,9 +1,9 @@
 # Matriz de permisos — UTB Tracker (ADR-0018)
 
-Fuente única: [`app/core/matriz_permisos.json`](../../app/core/matriz_permisos.json) (ADR-0025), que
-carga [`app/core/permisos.py`](../../app/core/permisos.py). La app no tiene copia: recibe los roles
+Fuente única: [`app/middleware/matriz_permisos.json`](../../app/middleware/matriz_permisos.json) (ADR-0025), que
+carga [`app/middleware/permisos.py`](../../app/middleware/permisos.py). La app no tiene copia: recibe los roles
 en `GET /auth/roles`. La tabla "Permisos por rol" de abajo la valida `tests/test_matriz_unica.py`. Los routers
-piden un permiso (`require_permiso`, alias en `app/core/deps.py`) y la app recibe la lista en
+piden un permiso (`require_permiso`, alias en `app/middleware/deps.py`) y la app recibe la lista en
 `GET /auth/me` (`permisos`). **Esta tabla la verifica `tests/test_matriz_permisos.py`**:
 si se agrega un endpoint sin fila aquí, o la fila no coincide con el código, la prueba falla.
 

@@ -10,14 +10,14 @@ from datetime import datetime, timedelta, time
 
 from sqlalchemy.orm import sessionmaker
 
-from app.core import permisos
-from app.core.hashing import hash_password
+from app.middleware import permisos
+from app.middleware.hashing import hash_password
 from app.messaging.models import MensajeOutbox
 from app.models.auditoria_models import RegistroAuditoria
 from app.models.auth_models import Usuario
 from app.models.salon_models import Horario, PrestamoSalon, Salon
-from app.services import correo
-from app.services.auth import emitir_tokens
+from app.service import correo
+from app.service.auth import emitir_tokens
 
 
 def _h(db, email: str) -> dict:
@@ -270,7 +270,7 @@ def test_la_bandeja_muestra_el_conflicto_y_no_deja_aprobarlo(client, db_session)
 def test_la_bandeja_no_hace_una_consulta_por_solicitud(client, db_session):
     from sqlalchemy import event
 
-    from app.core.database import get_db
+    from app.db.database import get_db
     from app.main import app
 
     _auditor(db_session)
@@ -337,7 +337,7 @@ def test_patch_legado_sigue_funcionando_sin_respuesta(client, db_session):
 
 
 def test_fecha_franja_del_correo_en_hora_de_colombia():
-    from app.services.prestamos_salon import _franja
+    from app.service.prestamos_salon import _franja
     p = PrestamoSalon(fecha_inicio=datetime(2030, 1, 7, 15), fecha_fin=datetime(2030, 1, 7, 16)
                       + timedelta(minutes=30))
     assert _franja(p) == "lun 07/01 10:00–11:30"

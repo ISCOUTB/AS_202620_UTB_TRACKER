@@ -1,7 +1,7 @@
 /// Permisos del usuario (ADR-0018). La app decide qué mostrar SOLO con esta clase: ninguna
 /// pantalla compara el texto del rol. La lista viene del servidor en `GET /auth/me`
 /// (`permisos`) y el catálogo de roles en `GET /auth/roles` (matriz única del servidor,
-/// `app/core/matriz_permisos.json`, ADR-0025). Aquí no hay copia de esa tabla.
+/// `app/middleware/matriz_permisos.json`, ADR-0025). Aquí no hay copia de esa tabla.
 class Permisos {
   const Permisos(this.valores);
 

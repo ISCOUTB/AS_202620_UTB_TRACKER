@@ -49,14 +49,14 @@ La prueba evalúa el comportamiento del backend Uvicorn frente a ráfagas de usu
 
 ### 2.2 Endpoints Medidos
 Las peticiones se distribuyeron equitativamente en round-robin entre los 3 endpoints de lectura de hora pico (`scripts/medir_qs03.py:85-89`):
-1. `GET /recursos`: Catálogo general de equipos (`app/routers/resources.py:37`, montado en `app/main.py:85`).
-2. `GET /salones`: Listado de aulas y salones (`app/routers/salones.py:31`, montado en `app/main.py:87`).
-3. `GET /salones/1/disponibilidad?dia_semana=1`: Cruce de horarios y reservas del aula (`app/routers/salones.py:77`, montado en `app/main.py:87`).
+1. `GET /recursos`: Catálogo general de equipos (`app/handler/resources.py:37`, montado en `app/main.py:85`).
+2. `GET /salones`: Listado de aulas y salones (`app/handler/salones.py:31`, montado en `app/main.py:87`).
+3. `GET /salones/1/disponibilidad?dia_semana=1`: Cruce de horarios y reservas del aula (`app/handler/salones.py:77`, montado en `app/main.py:87`).
 
 ### 2.3 Requisitos para Reproducir
 - **Dependencias de los scripts:**
   - `scripts/medir_qs03.py`: Utiliza exclusivamente la biblioteca estándar de Python (`argparse`, `sys`, `time`, `concurrent.futures`, `urllib.request`, `urllib.error`, `json`). No requiere librerías externas de terceros como `requests`.
-  - `scripts/sembrar_medicion.py`: Requiere `SQLAlchemy` (incluida en `requirements.txt`), los modelos de dominio y hashing del backend (`app.core.database`, `app.core.hashing`, `app.models.*`) y la variable de entorno `$env:PYTHONPATH = (Get-Location).Path` para la resolución de módulos internos.
+  - `scripts/sembrar_medicion.py`: Requiere `SQLAlchemy` (incluida en `requirements.txt`), los modelos de dominio y hashing del backend (`app.db.database`, `app.middleware.hashing`, `app.models.*`) y la variable de entorno `$env:PYTHONPATH = (Get-Location).Path` para la resolución de módulos internos.
 - **Base de datos:** Requiere una base de datos PostgreSQL activa accesible mediante la variable de entorno `DATABASE_URL` (enmascarada como `postgresql+psycopg://postgres:***@localhost:5432/utb_tracker_medicion`).
 - **Orden estricto de ejecución:**
   1. Configuración de variables de entorno (`DATABASE_URL` y `PYTHONPATH`).
@@ -89,7 +89,7 @@ $env:PYTHONPATH = (Get-Location).Path
 - **Hardware:** Procesador Intel(R) Core(TM) i5-12450H (12th Gen, 8 núcleos / 12 hilos lógicos), 7.70 GB de memoria RAM
 - **Versión de Python:** Python 3.14.4 (intérprete en `venv/Scripts/python.exe`)
 - **Motor de Base de Datos:** PostgreSQL 18.1 local. *(Nota: el pipeline de integración continua en `.github/workflows/ci.yml:14` utiliza PostgreSQL 16)*
-- **Parámetros del pool de conexiones (`app/core/database.py:21-24`):**
+- **Parámetros del pool de conexiones (`app/db/database.py:21-24`):**
   - `pool_size = 10`
   - `max_overflow = 20`
   - `pool_timeout = 30`
@@ -188,7 +188,7 @@ A medida que la concurrencia escala de 50 a 300 usuarios, la latencia mediana (p
 
 La causa de este crecimiento en los tiempos de respuesta se define estrictamente como una **hipótesis no verificada**, ya que el protocolo de medición ejecutado no aisló las variables intervinientes. Se plantean dos causas candidatas:
 1. **Un solo worker de Uvicorn:** La API se ejecutó con un único proceso servidor, por lo que las peticiones concurrentes compiten por la ejecución en el bucle de eventos asyncio y por los recursos de CPU asignados a ese único proceso.
-2. **Capacidad del pool de conexiones a base de datos:** El pool configurado en `app/core/database.py:21-24` opera con `pool_size=10` y `max_overflow=20`, estableciendo un tope de 30 conexiones simultáneas. Al llegar ráfagas de 50, 150 y 300 peticiones concurrentes, las solicitudes que superan la capacidad disponible deben aguardar turno en cola hasta que se liberen conexiones dentro del margen de `pool_timeout=30`.
+2. **Capacidad del pool de conexiones a base de datos:** El pool configurado en `app/db/database.py:21-24` opera con `pool_size=10` y `max_overflow=20`, estableciendo un tope de 30 conexiones simultáneas. Al llegar ráfagas de 50, 150 y 300 peticiones concurrentes, las solicitudes que superan la capacidad disponible deben aguardar turno en cola hasta que se liberen conexiones dentro del margen de `pool_timeout=30`.
 
 La medición no aisló experimentalmente cuál de estos dos factores fue el determinante principal del incremento de latencia ni en qué proporción contribuyó cada uno. No se debe asumir el pool de conexiones como una causa comprobada.
 

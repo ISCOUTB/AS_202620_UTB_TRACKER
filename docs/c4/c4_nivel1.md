@@ -42,7 +42,7 @@ Correspondencia con el código:
 
 | Elemento del diagrama | Dónde está en el código |
 |---|---|
-| Personas | `app/core/permisos.py` (tabla rol → permisos) |
+| Personas | `app/middleware/permisos.py` (tabla rol → permisos) |
 | Sistema UTB Tracker | `app/` y `frontend/` |
-| Correo | `app/services/correo.py` y `app/messaging/worker.py` |
+| Correo | `app/service/correo.py` y `app/messaging/worker.py` |
 | Push | `NotificadorFCM` en `app/messaging/worker.py` |

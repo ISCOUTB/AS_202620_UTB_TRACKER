@@ -32,7 +32,7 @@ Aceptado (2026-11-16). Amplía ADR-0017 (tipo de salón) y ADR-0018 (roles y per
 - **Formato:** `A` + edificio (1 dígito) + `-` + piso (1 dígito) + salón (2 dígitos).
   - A1-101 = edificio A1, piso 1, salón 01.
   - A2-505 = edificio A2, piso 5, salón 05.
-- **Dónde vive la regla:** en `app/services/catalogo.py`. Su espejo para avisar antes de
+- **Dónde vive la regla:** en `app/service/catalogo.py`. Su espejo para avisar antes de
   enviar está en `frontend/lib/features/salones_admin/domain/catalogo.dart`.
 - **Normalización:** el código se guarda en mayúsculas y sin espacios.
 - **Coincidencia:** el `edificio` ("A2") y el `piso` (5) guardados deben coincidir con los

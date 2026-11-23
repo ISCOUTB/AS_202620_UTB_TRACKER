@@ -25,13 +25,13 @@ Aceptado (2026-11-16). Completa ADR-0014 (correo verificado) y ADR-0018 (roles y
 
 ### 1. Solo correos institucionales en correos NUEVOS
 
-- **Configuración.** `DOMINIOS_PERMITIDOS` (en `app/core/config.py`) es una lista separada por
+- **Configuración.** `DOMINIOS_PERMITIDOS` (en `app/config/config.py`) es una lista separada por
   comas. Su valor por defecto es `utb.edu.co`, así que producción no necesita la variable.
 - **Coincidencia exacta.** Se compara lo que va después de la **última** `@`. Por eso:
   - Un subdominio (`estudiantes.utb.edu.co`) **no** entra si no está en la lista. Si la UTB lo
     usa, el administrador lo agrega a la lista por configuración.
   - `usuario@utb.edu.co.malo.com` no entra.
-- **Una sola regla.** Vive en `app/core/politica.py` (`error_correo_nuevo`), con su espejo
+- **Una sola regla.** Vive en `app/service/politica.py` (`error_correo_nuevo`), con su espejo
   en la app (`frontend/lib/core/utils/politica.dart`, `errorCorreoNuevo`): mismas reglas y
   mismo mensaje.
 - **Cómo se revisa un correo.**
@@ -60,7 +60,7 @@ Aceptado (2026-11-16). Completa ADR-0014 (correo verificado) y ADR-0018 (roles y
 
 - **Tabla `asignaciones_rol`.** Guarda el correo exacto, el rol, un cargo opcional, quién la
   creó y cuándo. No admite comodines ni patrones. El correo debe cumplir la regla del punto 1.
-- **Una sola función decide el rol:** `rol_resuelto` en `app/services/asignaciones.py`.
+- **Una sola función decide el rol:** `rol_resuelto` en `app/service/asignaciones.py`.
   - Si el rol es **manual**, gana siempre.
   - Si el correo **no está comprobado**, el rol es el base: `usuario_utb`, que se muestra como
     "Estudiante".

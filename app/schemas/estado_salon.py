@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.prestamos_salon import PrestamoSalonResponse
 from app.schemas.salones import SalonResponse
-from app.services.estado_salon import MotivoDeshabilitacion
+from app.service.estado_salon import MotivoDeshabilitacion
 
 
 class HabilitacionUpdate(BaseModel):

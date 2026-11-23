@@ -47,9 +47,9 @@ responsabilidades.
 
 Cada módulo de dominio mantiene una frontera funcional dentro de `app/`:
 
-- `routers/`: adaptadores HTTP. Reciben solicitudes, aplican dependencias de
+- `handler/`: adaptadores HTTP. Reciben solicitudes, aplican dependencias de
   FastAPI y convierten la entrada/salida mediante esquemas Pydantic.
-- `services/`: reglas de negocio y transacciones. Aquí viven las validaciones
+- `service/`: reglas de negocio y transacciones. Aquí viven las validaciones
   de disponibilidad, idempotencia, vencimiento, mantenimiento y autorización.
 - `models/`: entidades y mapeos SQLAlchemy de usuarios, recursos, salones,
   préstamos, reportes y mensajería.
@@ -105,7 +105,7 @@ sea una cebolla pura.
 | Idempotencia | `X-Idempotency-Key` evita duplicar préstamos ante reintentos del cliente. |
 | Middleware | CORS y logging estructurado agregan políticas transversales sin repetirlas en cada router. |
 | State/Workflow | Estados de préstamos, recursos, mantenimiento y mensajes controlan transiciones válidas. |
-| Circuit Breaker | `app/core/resilience.py` bloquea llamadas después de fallos consecutivos y permite una prueba en estado `HALF_OPEN`. |
+| Circuit Breaker | `app/service/resilience.py` bloquea llamadas después de fallos consecutivos y permite una prueba en estado `HALF_OPEN`. |
 | Retry / backoff | `ApiClient` reintenta lecturas transitorias; el worker reprograma mensajes con backoff exponencial y jitter. |
 | Observer / Publisher-Subscriber | `ChangeNotifier` notifica cambios a la UI Flutter y `onTokenRefresh` observa la rotación de tokens FCM. |
 | Facade | `ApiClient` ofrece una interfaz única para HTTP, autenticación, serialización, timeout y errores. |

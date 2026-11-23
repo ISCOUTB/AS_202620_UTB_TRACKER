@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, event
 
-from app.core.database import Base
+from app.db.database import Base
 
 
 class RegistroAuditoria(Base):

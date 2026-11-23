@@ -26,16 +26,16 @@ from sqlalchemy import func
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core import config  # noqa: E402
-from app.core.database import SessionLocal  # noqa: E402
-from app.core.hashing import hash_password  # noqa: E402
+from app.config import config  # noqa: E402
+from app.db.database import SessionLocal  # noqa: E402
+from app.middleware.hashing import hash_password  # noqa: E402
 from app.models import Recurso, Reporte, Salon, Usuario  # noqa: E402
 from app.models.auditoria_models import RegistroAuditoria  # noqa: E402
 from app.models.recurso_models import MantenimientoRecurso  # noqa: E402
 from app.models.salon_models import (  # noqa: E402
     Horario, PrestamoSalon, ReporteSalon,
 )
-from app.services import auditoria  # noqa: E402
+from app.service import auditoria  # noqa: E402
 from scripts.cargar_equipos_demo import SALON_DESHABILITADO, codigos_del_catalogo  # noqa: E402
 
 SEMESTRE = "2026-2 DEMO"

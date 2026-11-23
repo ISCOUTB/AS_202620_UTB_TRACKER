@@ -25,8 +25,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core import config  # noqa: E402
-from app.core.database import SessionLocal  # noqa: E402
+from app.config import config  # noqa: E402
+from app.db.database import SessionLocal  # noqa: E402
 from app.models import Recurso, Salon, Usuario  # noqa: E402
 from app.models.salon_models import HistorialSalon  # noqa: E402
 

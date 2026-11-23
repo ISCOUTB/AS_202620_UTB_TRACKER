@@ -14,12 +14,12 @@ from pathlib import Path
 import jwt
 import pytest
 
-from app.core import config
+from app.config import config
 from app.messaging.models import MensajeOutbox
 from app.messaging.worker import NotificadorSimulado, procesar_pendientes
 from app.models.auditoria_models import RegistroAuditoria
-from app.services import correo
-from app.services.correo import ProveedorDesarrollo
+from app.service import correo
+from app.service.correo import ProveedorDesarrollo
 
 CLAVE = "ClaveSegura1"
 
@@ -134,7 +134,7 @@ def test_alerta_si_entra_tras_varios_fallos(client, db_session, buzon):
 
 
 def test_token_de_sesion_viejo_con_correo_sigue_valiendo(client):
-    from app.core.security import create_access_token, create_refresh_token
+    from app.middleware.security import create_access_token, create_refresh_token
     viejo = create_access_token({"sub": "user1@utb.edu.co"})
     r = client.get("/auth/me", headers={"Authorization": f"Bearer {viejo}"})
     assert r.status_code == 200
@@ -215,7 +215,7 @@ def test_produccion_arranca_solo_con_las_claves_anteriores(tmp_path):
         "URL_PUBLICA", "USE_REAL_MAIL")}
     env.update(ENVIRONMENT="production", SECRET_KEY="s" * 40, FORGET_PWD_SECRET_KEY="f" * 40,
                DATABASE_URL="postgresql+psycopg://u@localhost/x")
-    codigo = ("from app.core import config as c; "
+    codigo = ("from app.config import config as c; "
               "print(c.URL_PUBLICA, hasattr(c, 'VERIFICACION_OBLIGATORIA'))")
     r = subprocess.run([sys.executable, "-c", codigo], cwd=tmp_path, env={
         **env, "PYTHONPATH": str(Path(__file__).resolve().parent.parent)},

@@ -20,15 +20,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.database import SessionLocal  # noqa: E402
-from app.core.hashing import hash_password  # noqa: E402
-from app.core.permisos import Rol, etiqueta  # noqa: E402
-from app.core.politica import (  # noqa: E402
+from app.db.database import SessionLocal  # noqa: E402
+from app.middleware.hashing import hash_password  # noqa: E402
+from app.middleware.permisos import Rol, etiqueta  # noqa: E402
+from app.service.politica import (  # noqa: E402
     correo_valido, error_correo_nuevo, error_password, normalizar_correo,
 )
 from app.models.auth_models import Usuario  # noqa: E402
-from app.services import auditoria  # noqa: E402
-from app.services.auth import buscar_por_correo  # noqa: E402
+from app.service import auditoria  # noqa: E402
+from app.service.auth import buscar_por_correo  # noqa: E402
 
 
 def _pedir_clave(correo: str, nombre: str) -> str:

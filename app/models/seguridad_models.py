@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, Integer, String
 
-from app.core.database import Base
+from app.db.database import Base
 
 
 def _ahora():

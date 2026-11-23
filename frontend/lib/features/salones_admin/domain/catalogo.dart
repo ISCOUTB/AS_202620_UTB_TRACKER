@@ -1,4 +1,4 @@
-/// Regla del código de salón de la UTB (ADR-0021). ESPEJO de `app/services/catalogo.py`:
+/// Regla del código de salón de la UTB (ADR-0021). ESPEJO de `app/service/catalogo.py`:
 /// si cambia allá, cambia aquí (el servidor valida siempre; esto es para avisar antes).
 ///
 ///   A + edificio (1 dígito) + "-" + piso (1 dígito) + salón (2 dígitos)

@@ -1,7 +1,7 @@
 """
 Una sola fuente de verdad para roles y permisos (ADR-0025).
 
-`app/core/matriz_permisos.json` es el único lugar donde se edita. Estas pruebas aseguran que:
+`app/middleware/matriz_permisos.json` es el único lugar donde se edita. Estas pruebas aseguran que:
 el código y el archivo cuadran, la tabla de la documentación dice lo mismo, la app recibe la
 matriz del servidor y no guarda una copia propia.
 """
@@ -9,11 +9,11 @@ import json
 import re
 from pathlib import Path
 
-from app.core import permisos
+from app.middleware import permisos
 
 RAIZ = Path(__file__).resolve().parent.parent
 DOC = RAIZ / "docs" / "seguridad" / "matriz-permisos.md"
-JSON = RAIZ / "app" / "core" / "matriz_permisos.json"
+JSON = RAIZ / "app" / "middleware" / "matriz_permisos.json"
 
 
 def _datos():

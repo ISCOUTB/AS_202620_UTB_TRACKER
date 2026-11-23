@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 sys.path.append(os.getcwd())
 
-from app.core.database import Base
+from app.db.database import Base
 from app.models import auth_models, auditoria_models, recurso_models, salon_models  # noqa: F401
 from app.models import seguridad_models  # noqa: F401
 from app.messaging import models as messaging_models  # noqa: F401

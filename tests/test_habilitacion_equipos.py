@@ -16,8 +16,8 @@ from app.models.auditoria_models import RegistroAuditoria
 from app.models.auth_models import Usuario
 from app.models.recurso_models import Recurso
 from app.models.salon_models import HistorialSalon, Horario, PrestamoSalon, ReporteSalon, Salon
-from app.services import correo
-from app.services.estado_salon import ahora_campus
+from app.service import correo
+from app.service.estado_salon import ahora_campus
 from tests.test_roles import _auditor, _h
 
 MANANA = datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0) + timedelta(days=1)

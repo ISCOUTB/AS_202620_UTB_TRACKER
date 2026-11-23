@@ -17,8 +17,8 @@ from datetime import time
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.core.database import Base
-from app.core.hashing import hash_password
+from app.db.database import Base
+from app.middleware.hashing import hash_password
 from app.models.auth_models import Usuario
 from app.models.recurso_models import Recurso
 from app.models.salon_models import Salon, Horario

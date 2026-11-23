@@ -7,7 +7,7 @@ Las reglas de capas se COMPRUEBAN en cada prueba y en el CI, no solo se document
 Backend (4 capas, la dependencia apunta hacia abajo):
     routers -> services -> schemas / models -> core
 - Un router no toca la base: no importa `app.models` ni hace consultas (`db.query`).
-- Un servicio no conoce HTTP de rutas: no importa `app.routers`.
+- Un servicio no conoce HTTP de rutas: no importa `app.handler`.
 - Los modelos no dependen de schemas, servicios ni routers.
 - `core` no depende de routers ni de servicios.
 
@@ -43,10 +43,13 @@ def _violaciones_py(carpeta: str, prohibidos: tuple[str, ...]) -> list[str]:
 
 
 @pytest.mark.parametrize("carpeta,prohibidos", [
-    ("routers", ("app.models",)),
-    ("services", ("app.routers",)),
-    ("models", ("app.schemas", "app.services", "app.routers")),
-    ("core", ("app.routers", "app.services")),
+    ("handler", ("app.models", "app.repository")),
+    ("service", ("app.handler",)),
+    ("repository", ("app.handler", "app.service")),
+    ("models", ("app.schemas", "app.service", "app.handler", "app.repository")),
+    ("config", ("app.handler", "app.service", "app.repository")),
+    ("db", ("app.handler", "app.service", "app.repository")),
+    ("middleware", ("app.handler", "app.service", "app.repository")),
 ])
 def test_backend_respeta_las_capas(carpeta, prohibidos):
     malas = _violaciones_py(carpeta, prohibidos)
@@ -55,7 +58,7 @@ def test_backend_respeta_las_capas(carpeta, prohibidos):
 
 def test_los_routers_no_consultan_la_base():
     malas = []
-    for archivo in sorted((APP / "routers").glob("*.py")):
+    for archivo in sorted((APP / "handler").glob("*.py")):
         for n, linea in enumerate(archivo.read_text(encoding="utf-8").splitlines(), 1):
             if re.search(r"\bdb\.(query|add|execute|commit|delete)\(", linea):
                 malas.append(f"{archivo.relative_to(RAIZ)}:{n}: {linea.strip()}")
